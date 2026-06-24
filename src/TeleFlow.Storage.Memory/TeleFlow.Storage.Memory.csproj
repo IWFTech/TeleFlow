@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>In-memory state storage provider for TeleFlow applications.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TeleFlow.Core\TeleFlow.Core.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Low-level Telegram Bot API client for TeleFlow, including generated client methods, transport contracts, defaults, JSON options, deep links, and request exceptions.</Description>
+    <RootNamespace>TeleFlow.Telegram</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TeleFlow.Telegram.Schema\TeleFlow.Telegram.Schema.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,8 @@
+[*.cs]
+# This project targets netstandard2.0 for analyzer/source-generator packaging.
+# Keep collection-expression modernization disabled here because some suggestions
+# compile only when newer BCL helper types/builders are available.
+dotnet_diagnostic.IDE0305.severity = none
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = false:suggestion
+csharp_style_var_elsewhere = false:suggestion

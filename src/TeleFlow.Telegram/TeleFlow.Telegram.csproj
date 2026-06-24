@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Client-first convenience package for direct Telegram Bot API access.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TeleFlow.Telegram.Client\TeleFlow.Telegram.Client.csproj" />
+  </ItemGroup>
+</Project>

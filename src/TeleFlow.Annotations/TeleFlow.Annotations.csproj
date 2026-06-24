@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Compile-time attributes for TeleFlow handler, callback, filter, route, scene, and module metadata.</Description>
+  </PropertyGroup>
+</Project>

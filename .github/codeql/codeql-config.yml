@@ -1,0 +1,21 @@
+name: TeleFlow CodeQL
+
+paths:
+  - TeleFlow.Annotations
+  - TeleFlow.Core
+  - TeleFlow.Generators
+  - TeleFlow.Storage.Memory
+  - TeleFlow.Telegram
+  - TeleFlow.Telegram.Client
+  - TeleFlow.Telegram.Framework
+  - TeleFlow.Telegram.Framework.LongPolling
+  - TeleFlow.Telegram.Framework.Webhooks
+  - TeleFlow.Telegram.LongPolling
+  - TeleFlow.Telegram.Schema
+  - TeleFlow.Telegram.Webhooks
+  - tests
+
+paths-ignore:
+  - .artifacts
+  - artifacts
+  - schema

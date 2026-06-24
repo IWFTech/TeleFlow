@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Raw ASP.NET Core Telegram webhook endpoint helpers over Telegram Update payloads for TeleFlow.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TeleFlow.Telegram.Client\TeleFlow.Telegram.Client.csproj" />
+    <ProjectReference Include="..\TeleFlow.Telegram.Schema\TeleFlow.Telegram.Schema.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+  NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+
+jobs:
+  verify:
+    name: Verify (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - ubuntu-latest
+          - macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore solution
+        shell: pwsh
+        run: dotnet restore ./TeleFlow.sln
+
+      - name: Verify whitespace formatting
+        shell: pwsh
+        run: dotnet format whitespace ./TeleFlow.sln --verify-no-changes --no-restore --verbosity minimal
+
+      - name: Verify style formatting
+        shell: pwsh
+        run: dotnet format style ./TeleFlow.sln --verify-no-changes --no-restore --verbosity minimal
+
+      - name: Build
+        shell: pwsh
+        run: dotnet build ./TeleFlow.sln -c Release --no-restore /nodeReuse:false
+
+      - name: Verify strict analyzers
+        shell: pwsh
+        run: ./eng/verify-strict-analyzers.ps1 -Configuration Release -NoRestore
+
+      - name: Test
+        shell: pwsh
+        run: dotnet test ./TeleFlow.sln -c Release --no-build --no-restore /nodeReuse:false --logger "console;verbosity=minimal"

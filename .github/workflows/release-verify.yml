@@ -1,0 +1,83 @@
+name: Release Verify
+
+on:
+  workflow_dispatch:
+    inputs:
+      packageVersion:
+        description: NuGet package version to verify.
+        required: true
+        type: string
+      configuration:
+        description: Build configuration.
+        required: true
+        default: Release
+        type: choice
+        options:
+          - Release
+          - Debug
+  push:
+    tags:
+      - v*
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-verify-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+  NUGET_PACKAGES: ${{ github.workspace }}\.nuget\packages
+
+jobs:
+  verify-release:
+    name: Verify release packages
+    runs-on: windows-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Resolve release inputs
+        shell: pwsh
+        run: |
+          $packageVersion = "${{ github.event.inputs.packageVersion }}"
+          $configuration = "${{ github.event.inputs.configuration }}"
+
+          if ([string]::IsNullOrWhiteSpace($packageVersion)) {
+              $refName = "${{ github.ref_name }}"
+
+              if (-not $refName.StartsWith("v", [System.StringComparison]::Ordinal)) {
+                  throw "Tag-triggered release verification expects a tag named v<version>. Current ref: '$refName'."
+              }
+
+              $packageVersion = $refName.Substring(1)
+          }
+
+          if ([string]::IsNullOrWhiteSpace($configuration)) {
+              $configuration = "Release"
+          }
+
+          "PACKAGE_VERSION=$packageVersion" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "CONFIGURATION=$configuration" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Verify release
+        shell: pwsh
+        run: .\eng\verify-release.ps1 -PackageVersion $env:PACKAGE_VERSION -Configuration $env:CONFIGURATION
+
+      - name: Upload release packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: teleflow-release-packages-${{ env.PACKAGE_VERSION }}
+          path: artifacts/release-packages/${{ env.PACKAGE_VERSION }}
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
