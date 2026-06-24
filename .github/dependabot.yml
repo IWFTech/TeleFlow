@@ -21,6 +21,10 @@ updates:
           - "Microsoft.NET.Test.Sdk"
           - "xunit*"
           - "coverlet*"
+    ignore:
+      - dependency-name: "Microsoft.CodeAnalysis.CSharp"
+        update-types:
+          - "version-update:semver-major"
 
   - package-ecosystem: "github-actions"
     directory: "/"

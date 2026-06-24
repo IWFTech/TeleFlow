@@ -27,6 +27,14 @@ Run before release packaging changes:
 ./eng/verify-release.ps1 -PackageVersion <version>
 ```
 
+Run before changing `TeleFlow.Generators` Roslyn dependencies:
+
+```powershell
+./eng/verify-minimum-sdk-generator.ps1 -Configuration Release -RequiredSdkVersionPrefix "10.0.1"
+```
+
+`TeleFlow.Generators` is loaded by the user's compiler as an analyzer/source generator. Keep its `Microsoft.CodeAnalysis.*` references compatible with the minimum supported .NET SDK compiler band. A newer GitHub runner SDK is not enough proof of compatibility; package smoke tests must also pass on the minimum SDK feature band.
+
 ## Pull Request Expectations
 
 - Branch from `main` and open pull requests back into `main` unless a maintainer explicitly asks for a release branch target.

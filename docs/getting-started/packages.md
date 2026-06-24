@@ -69,6 +69,8 @@ using TeleFlow.Telegram;
 
 Direct registration with `AddTelegramHandler<THandler>()` does not require `TeleFlow.Generators`. Assembly registration with `AddTelegramHandlersFromAssembly(...)` requires generated metadata and fails fast when the generator package is missing.
 
+`TeleFlow.Generators` runs inside the application's C# compiler. The package is built against the minimum Roslyn compiler version TeleFlow supports, not automatically against the newest available Roslyn package. This keeps generated handler registration usable for users on the supported .NET SDK feature band.
+
 ## Client-Only Applications
 
 Use `TeleFlow.Telegram` when the application only needs to call Telegram Bot API methods and does not need handlers, dispatcher, filters, state, long polling, or webhooks.
