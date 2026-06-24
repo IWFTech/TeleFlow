@@ -28,6 +28,9 @@ env:
 jobs:
   analyze:
     name: Analyze C#
+    # Code scanning upload requires GitHub Advanced Security on private repositories.
+    # The job should run automatically once the repository is public.
+    if: ${{ github.event.repository.private == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
