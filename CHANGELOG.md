@@ -14,4 +14,5 @@ TeleFlow follows SemVer for published NuGet packages and documented public behav
 ### Changed
 
 - CI is intended to run on Windows, Linux, and macOS for normal pull request verification.
+- CI and CodeQL skip heavy verification steps when a change touches only documentation or non-code repository files.
 - NuGet package IDs use the `IWF.TeleFlow.*` prefix while public C# namespaces stay `TeleFlow.*`.

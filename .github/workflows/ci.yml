@@ -22,8 +22,35 @@ env:
   NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Detect code changes
+        id: filter
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            code:
+              - '.github/workflows/**'
+              - 'Directory.Build.props'
+              - 'Directory.Build.targets'
+              - 'global.json'
+              - 'NuGet.config'
+              - 'TeleFlow.sln'
+              - 'eng/**'
+              - 'src/**'
+              - 'tests/**'
+
   verify:
     name: Verify (${{ matrix.os }})
+    needs: changes
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:
@@ -35,48 +62,69 @@ jobs:
           - macos-latest
 
     steps:
+      - name: Skip code verification
+        if: ${{ needs.changes.outputs.code != 'true' }}
+        shell: pwsh
+        run: Write-Host "No code, project, build, test, or CI files changed. Skipping code verification."
+
       - name: Checkout
+        if: ${{ needs.changes.outputs.code == 'true' }}
         uses: actions/checkout@v7
 
       - name: Setup .NET
+        if: ${{ needs.changes.outputs.code == 'true' }}
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
 
       - name: Restore solution
+        if: ${{ needs.changes.outputs.code == 'true' }}
         shell: pwsh
         run: dotnet restore ./TeleFlow.sln
 
       - name: Verify whitespace formatting
+        if: ${{ needs.changes.outputs.code == 'true' }}
         shell: pwsh
         run: dotnet format whitespace ./TeleFlow.sln --verify-no-changes --no-restore --verbosity minimal
 
       - name: Verify style formatting
+        if: ${{ needs.changes.outputs.code == 'true' }}
         shell: pwsh
         run: dotnet format style ./TeleFlow.sln --verify-no-changes --no-restore --verbosity minimal
 
       - name: Build
+        if: ${{ needs.changes.outputs.code == 'true' }}
         shell: pwsh
         run: dotnet build ./TeleFlow.sln -c Release --no-restore /nodeReuse:false
 
       - name: Verify strict analyzers
+        if: ${{ needs.changes.outputs.code == 'true' }}
         shell: pwsh
         run: ./eng/verify-strict-analyzers.ps1 -Configuration Release -NoRestore
 
       - name: Test
+        if: ${{ needs.changes.outputs.code == 'true' }}
         shell: pwsh
         run: dotnet test ./TeleFlow.sln -c Release --no-build --no-restore /nodeReuse:false --logger "console;verbosity=minimal"
 
   minimum-sdk-generator-smoke:
     name: Minimum SDK generator smoke
+    needs: changes
     runs-on: windows-latest
     timeout-minutes: 25
 
     steps:
+      - name: Skip minimum SDK generator smoke
+        if: ${{ needs.changes.outputs.code != 'true' }}
+        shell: pwsh
+        run: Write-Host "No code, project, build, test, or CI files changed. Skipping minimum SDK generator smoke."
+
       - name: Checkout
+        if: ${{ needs.changes.outputs.code == 'true' }}
         uses: actions/checkout@v7
 
       - name: Setup minimum .NET SDK feature band
+        if: ${{ needs.changes.outputs.code == 'true' }}
         id: setup-minimum-sdk
         uses: actions/setup-dotnet@v5
         with:
@@ -84,6 +132,7 @@ jobs:
           dotnet-quality: ga
 
       - name: Pin SDK roll-forward to minimum feature band
+        if: ${{ needs.changes.outputs.code == 'true' }}
         shell: pwsh
         run: |
           $minimumGlobalJson = @{
@@ -99,5 +148,6 @@ jobs:
           dotnet --version
 
       - name: Verify generator package on minimum SDK
+        if: ${{ needs.changes.outputs.code == 'true' }}
         shell: pwsh
         run: ./eng/verify-minimum-sdk-generator.ps1 -Configuration Release -RequiredSdkVersionPrefix "10.0.1"
