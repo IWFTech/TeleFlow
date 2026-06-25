@@ -19,9 +19,9 @@ The storage here is in-memory because the goal is framework usage, not productio
 ## Project Packages
 
 ```xml
-<PackageReference Include="TeleFlow.Telegram.Framework.LongPolling" Version="..." />
-<PackageReference Include="TeleFlow.Generators" Version="..." PrivateAssets="all" />
-<PackageReference Include="TeleFlow.Storage.Memory" Version="..." />
+<PackageReference Include="IWF.TeleFlow.Telegram.Framework.LongPolling" Version="..." />
+<PackageReference Include="IWF.TeleFlow.Generators" Version="..." PrivateAssets="all" />
+<PackageReference Include="IWF.TeleFlow.Storage.Memory" Version="..." />
 <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="..." />
 ```
 

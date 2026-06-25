@@ -25,7 +25,7 @@ The repository documentation is split like a small product site and is ready to 
 ## What TeleFlow Gives You
 
 - Handler routing with attributes such as `[Command]`, `[Text]`, `[Callback]`, `[State]`, `[SceneStep]`, and media filters.
-- Build-time generated handler metadata through `TeleFlow.Generators`.
+- Build-time generated handler metadata through the `IWF.TeleFlow.Generators` package.
 - A deliberate failure when generated metadata is missing. No silent reflection fallback on the recommended path.
 - Direct Telegram Bot API access through `ITelegramClient` and generated `ctx.Bot.*Async` extension methods.
 - Message and callback helpers for common flows: answers, replies, edits, deletion, media, keyboards, and chat actions.
@@ -40,21 +40,21 @@ The repository documentation is split like a small product site and is ready to 
 For a handler-based long polling bot:
 
 ```bash
-dotnet add package TeleFlow.Telegram.Framework.LongPolling
-dotnet add package TeleFlow.Generators
-dotnet add package TeleFlow.Storage.Memory
+dotnet add package IWF.TeleFlow.Telegram.Framework.LongPolling
+dotnet add package IWF.TeleFlow.Generators
+dotnet add package IWF.TeleFlow.Storage.Memory
 ```
 
 Keep the generator as a private build-time dependency:
 
 ```xml
-<PackageReference Include="TeleFlow.Generators" Version="..." PrivateAssets="all" />
+<PackageReference Include="IWF.TeleFlow.Generators" Version="..." PrivateAssets="all" />
 ```
 
 For direct Bot API access without the framework:
 
 ```bash
-dotnet add package TeleFlow.Telegram
+dotnet add package IWF.TeleFlow.Telegram
 ```
 
 ## First Bot
@@ -88,7 +88,7 @@ public sealed class StartHandler
 }
 ```
 
-This example uses generated assembly registration. If `TeleFlow.Generators` is not referenced by the application project, `AddTelegramHandlersFromAssembly(...)` fails during startup with a clear configuration error.
+This example uses generated assembly registration. If the `IWF.TeleFlow.Generators` package is not referenced by the application project, `AddTelegramHandlersFromAssembly(...)` fails during startup with a clear configuration error.
 
 ## Recommended Reading Order
 
@@ -120,7 +120,7 @@ TeleFlow is in active development. The documentation describes APIs that exist i
 
 Planned framework work is tracked in the [roadmap](docs/en/roadmap.md).
 
-Runtime packages currently target `net10.0`. `TeleFlow.Generators` targets `netstandard2.0` because analyzers and source generators run inside the compiler.
+Runtime packages currently target `net10.0`. The `IWF.TeleFlow.Generators` package targets `netstandard2.0` because analyzers and source generators run inside the compiler.
 
 ## License
 

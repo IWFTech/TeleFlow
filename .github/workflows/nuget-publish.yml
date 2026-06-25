@@ -1,0 +1,104 @@
+name: NuGet Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      packageVersion:
+        description: NuGet package version to build and publish.
+        required: true
+        type: string
+      configuration:
+        description: Build configuration.
+        required: true
+        default: Release
+        type: choice
+        options:
+          - Release
+          - Debug
+      publishToNuGet:
+        description: Push packages to nuget.org after verification.
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nuget-publish-${{ github.event.inputs.packageVersion }}
+  cancel-in-progress: false
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+  NUGET_PACKAGES: ${{ github.workspace }}\.nuget\packages
+
+jobs:
+  publish:
+    name: Build and publish NuGet packages
+    runs-on: windows-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Verify release packages
+        shell: pwsh
+        run: .\eng\verify-release.ps1 -PackageVersion "${{ github.event.inputs.packageVersion }}" -Configuration "${{ github.event.inputs.configuration }}"
+
+      - name: Upload verified packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: teleflow-nuget-packages-${{ github.event.inputs.packageVersion }}
+          path: artifacts/release-packages/${{ github.event.inputs.packageVersion }}
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
+      - name: Publish packages to nuget.org
+        if: ${{ github.event.inputs.publishToNuGet == 'true' }}
+        shell: pwsh
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:NUGET_API_KEY)) {
+              throw "NUGET_API_KEY secret is required to publish packages."
+          }
+
+          $packageDirectory = Join-Path $env:GITHUB_WORKSPACE "artifacts\release-packages\${{ github.event.inputs.packageVersion }}"
+          $packages = @(Get-ChildItem -LiteralPath $packageDirectory -Filter "*.nupkg" -File |
+              Where-Object { -not $_.Name.EndsWith(".symbols.nupkg", [System.StringComparison]::OrdinalIgnoreCase) })
+
+          if ($packages.Count -eq 0) {
+              throw "No NuGet packages were found in '$packageDirectory'."
+          }
+
+          foreach ($package in $packages) {
+              dotnet nuget push $package.FullName `
+                  --api-key $env:NUGET_API_KEY `
+                  --source "https://api.nuget.org/v3/index.json" `
+                  --skip-duplicate
+
+              if ($LASTEXITCODE -ne 0) {
+                  throw "Failed to publish package '$($package.FullName)'."
+              }
+          }
+
+          $symbolPackages = @(Get-ChildItem -LiteralPath $packageDirectory -Filter "*.snupkg" -File)
+
+          foreach ($symbolPackage in $symbolPackages) {
+              dotnet nuget push $symbolPackage.FullName `
+                  --api-key $env:NUGET_API_KEY `
+                  --source "https://api.nuget.org/v3/index.json" `
+                  --skip-duplicate
+
+              if ($LASTEXITCODE -ne 0) {
+                  throw "Failed to publish symbol package '$($symbolPackage.FullName)'."
+              }
+          }

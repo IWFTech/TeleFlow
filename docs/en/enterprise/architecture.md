@@ -19,7 +19,7 @@ Application
 
 - `TeleFlow.Core`: application, middleware, update processing, state contracts, replacement points.
 - `TeleFlow.Annotations`: compile-time metadata attributes.
-- `TeleFlow.Generators`: source generator and analyzer package.
+- `IWF.TeleFlow.Generators`: source generator and analyzer package.
 - `TeleFlow.Telegram.Schema`: generated Telegram DTOs and method models.
 - `TeleFlow.Telegram.Client`: low-level Telegram client and generated client method extensions.
 - `TeleFlow.Telegram.Framework`: Telegram handler runtime.

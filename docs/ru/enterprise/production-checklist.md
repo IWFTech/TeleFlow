@@ -11,7 +11,7 @@
 ## Пакеты
 
 - Используй narrow package set, который реально нужен app.
-- Держи `TeleFlow.Generators` private через `PrivateAssets="all"`.
+- Держи `IWF.TeleFlow.Generators` private через `PrivateAssets="all"`.
 - Не ставь raw transports и framework transports вместе, если оба не используются осознанно.
 
 ## Регистрация

@@ -23,8 +23,8 @@ Assembly scanning удобен, но runtime reflection как скрытый de
 Project file:
 
 ```xml
-<PackageReference Include="TeleFlow.Telegram.Framework.LongPolling" Version="..." />
-<PackageReference Include="TeleFlow.Generators" Version="..." PrivateAssets="all" />
+<PackageReference Include="IWF.TeleFlow.Telegram.Framework.LongPolling" Version="..." />
+<PackageReference Include="IWF.TeleFlow.Generators" Version="..." PrivateAssets="all" />
 ```
 
 Startup:
@@ -100,7 +100,7 @@ Generated metadata описывает:
 
 ## Analyzer feedback
 
-`TeleFlow.Generators` также содержит analyzer checks для invalid handler shapes, route usage, callback payloads, scene state definitions и error handler signatures.
+`IWF.TeleFlow.Generators` также содержит analyzer checks для invalid handler shapes, route usage, callback payloads, scene state definitions и error handler signatures.
 
 Держи analyzer warnings видимыми в CI. Это часть framework contract.
 
@@ -140,6 +140,6 @@ Generated metadata описывает:
 Для production apps:
 
 - используй generated assembly registration by default;
-- держи `TeleFlow.Generators` private через `PrivateAssets="all"`;
+- держи `IWF.TeleFlow.Generators` private через `PrivateAssets="all"`;
 - используй direct registration в tests, где это улучшает clarity;
 - избегай reflection registration, если нет documented reason.

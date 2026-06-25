@@ -39,18 +39,18 @@ This quickstart uses an environment variable because it is the shortest safe exa
 ```bash
 dotnet new console -n EchoBot
 cd EchoBot
-dotnet add package TeleFlow.Telegram.Framework.LongPolling
-dotnet add package TeleFlow.Generators
-dotnet add package TeleFlow.Storage.Memory
+dotnet add package IWF.TeleFlow.Telegram.Framework.LongPolling
+dotnet add package IWF.TeleFlow.Generators
+dotnet add package IWF.TeleFlow.Storage.Memory
 ```
 
 Keep the generator private in the project file:
 
 ```xml
-<PackageReference Include="TeleFlow.Generators" Version="..." PrivateAssets="all" />
+<PackageReference Include="IWF.TeleFlow.Generators" Version="..." PrivateAssets="all" />
 ```
 
-`TeleFlow.Generators` runs during compilation. It is not part of the runtime dependency surface of your bot.
+`IWF.TeleFlow.Generators` runs during compilation. It is not part of the runtime dependency surface of your bot.
 
 ## Program.cs
 
@@ -119,7 +119,7 @@ Registers process-local state storage, state data storage, state history storage
 builder.Services.AddTelegramHandlersFromAssembly(typeof(Program).Assembly);
 ```
 
-Registers handlers from generated metadata. This is the recommended path for applications with multiple handlers. If the application project does not reference `TeleFlow.Generators`, startup fails clearly instead of falling back to reflection.
+Registers handlers from generated metadata. This is the recommended path for applications with multiple handlers. If the application project does not reference `IWF.TeleFlow.Generators`, startup fails clearly instead of falling back to reflection.
 
 ```csharp
 builder.Services.AddLongPolling();

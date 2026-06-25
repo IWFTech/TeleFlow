@@ -6,7 +6,7 @@ Framework helpers - это удобства. Они не заменяют low-le
 
 ## Прямая регистрация клиента
 
-Для client-only приложений используй `TeleFlow.Telegram`:
+Для client-only приложений используй package `IWF.TeleFlow.Telegram`. C# namespace остаётся `TeleFlow.Telegram`:
 
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
@@ -189,6 +189,6 @@ Telegram media group должен содержать от 2 до 10 элемен
 
 ## Schema package
 
-`TeleFlow.Telegram.Schema` содержит generated Telegram DTOs, method models и abstractions. Большинство приложений получают его транзитивно через client или framework packages.
+Package `IWF.TeleFlow.Telegram.Schema` содержит generated Telegram DTOs, method models и abstractions. Большинство приложений получают его транзитивно через client или framework packages.
 
 Подключай его напрямую только если тебе нужны schema models без client runtime.

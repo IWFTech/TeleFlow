@@ -6,32 +6,32 @@
 using TeleFlow.Telegram;
 ```
 
-Названия пакетов показывают, какой runtime surface установлен. Namespace остаётся коротким для пользовательского кода.
+NuGet package IDs используют prefix `IWF.TeleFlow.*`. C# namespaces остаются короткими для пользовательского кода.
 
 ## Быстрый выбор
 
 | Сценарий | Package reference | Что даёт |
 | --- | --- | --- |
-| Прямой доступ к Telegram Bot API | `TeleFlow.Telegram` | Low-level `ITelegramClient`, generated Bot API methods, defaults, JSON, transport, exceptions, deep links |
-| Прямой client через owner package | `TeleFlow.Telegram.Client` | Тот же client runtime через явное package-boundary имя |
-| Handler framework с long polling | `TeleFlow.Telegram.Framework.LongPolling` | Handler framework плюс long-polling transport |
-| Handler framework с webhooks | `TeleFlow.Telegram.Framework.Webhooks` | Handler framework плюс ASP.NET Core webhook transport |
-| Raw long polling без handlers | `TeleFlow.Telegram.LongPolling` | `getUpdates` runner и acknowledged update stream поверх raw Telegram `Update` values |
-| Raw ASP.NET Core webhooks без handlers | `TeleFlow.Telegram.Webhooks` | ASP.NET Core endpoint helpers поверх raw Telegram `Update` values |
-| In-memory state storage | `TeleFlow.Storage.Memory` | Process-local state, state data, wizard history и регистрация state middleware |
-| Handler attributes | `TeleFlow.Annotations` | Атрибуты вроде `[Command]`, `[Text]`, `[Callback]`, `[State]` и filters |
-| Generated handler metadata | `TeleFlow.Generators` | Source generator и analyzer package для build-time handler registration |
+| Прямой доступ к Telegram Bot API | `IWF.TeleFlow.Telegram` | Low-level `ITelegramClient`, generated Bot API methods, defaults, JSON, transport, exceptions, deep links |
+| Прямой client через owner package | `IWF.TeleFlow.Telegram.Client` | Тот же client runtime через явное package-boundary имя |
+| Handler framework с long polling | `IWF.TeleFlow.Telegram.Framework.LongPolling` | Handler framework плюс long-polling transport |
+| Handler framework с webhooks | `IWF.TeleFlow.Telegram.Framework.Webhooks` | Handler framework плюс ASP.NET Core webhook transport |
+| Raw long polling без handlers | `IWF.TeleFlow.Telegram.LongPolling` | `getUpdates` runner и acknowledged update stream поверх raw Telegram `Update` values |
+| Raw ASP.NET Core webhooks без handlers | `IWF.TeleFlow.Telegram.Webhooks` | ASP.NET Core endpoint helpers поверх raw Telegram `Update` values |
+| In-memory state storage | `IWF.TeleFlow.Storage.Memory` | Process-local state, state data, wizard history и регистрация state middleware |
+| Handler attributes | `IWF.TeleFlow.Annotations` | Атрибуты вроде `[Command]`, `[Text]`, `[Callback]`, `[State]` и filters |
+| Generated handler metadata | `IWF.TeleFlow.Generators` | Source generator и analyzer package для build-time handler registration |
 
-`TeleFlow.Telegram.Schema` обычно подтягивается Telegram-пакетами. Подключай его напрямую только если намеренно работаешь с generated Telegram DTOs и method models без client/framework runtime.
+`IWF.TeleFlow.Telegram.Schema` обычно подтягивается Telegram-пакетами. Подключай его напрямую только если намеренно работаешь с generated Telegram DTOs и method models без client/framework runtime.
 
 ## Рекомендуемый дефолт
 
 Для handler-based long polling bot:
 
 ```xml
-<PackageReference Include="TeleFlow.Telegram.Framework.LongPolling" Version="..." />
-<PackageReference Include="TeleFlow.Generators" Version="..." PrivateAssets="all" />
-<PackageReference Include="TeleFlow.Storage.Memory" Version="..." />
+<PackageReference Include="IWF.TeleFlow.Telegram.Framework.LongPolling" Version="..." />
+<PackageReference Include="IWF.TeleFlow.Generators" Version="..." PrivateAssets="all" />
+<PackageReference Include="IWF.TeleFlow.Storage.Memory" Version="..." />
 ```
 
 ```csharp
@@ -50,8 +50,8 @@ builder.Services.AddLongPolling();
 Для handler-based webhook bot:
 
 ```xml
-<PackageReference Include="TeleFlow.Telegram.Framework.Webhooks" Version="..." />
-<PackageReference Include="TeleFlow.Generators" Version="..." PrivateAssets="all" />
+<PackageReference Include="IWF.TeleFlow.Telegram.Framework.Webhooks" Version="..." />
+<PackageReference Include="IWF.TeleFlow.Generators" Version="..." PrivateAssets="all" />
 ```
 
 ```csharp
@@ -68,7 +68,7 @@ app.MapTelegramWebhook();
 Для прямого доступа к Bot API:
 
 ```xml
-<PackageReference Include="TeleFlow.Telegram" Version="..." />
+<PackageReference Include="IWF.TeleFlow.Telegram" Version="..." />
 ```
 
 ```csharp
@@ -83,7 +83,7 @@ var me = await bot.GetMeAsync();
 
 ## Зависимость для generated registration
 
-Используй `TeleFlow.Generators`, когда приложение вызывает:
+Используй package `IWF.TeleFlow.Generators`, когда приложение вызывает:
 
 ```csharp
 services.AddTelegramHandlersFromAssembly(typeof(Program).Assembly);
@@ -108,16 +108,16 @@ services.AddTelegramHandlersFromAssemblyReflection(typeof(Program).Assembly);
 
 ## Client-only приложения
 
-Используй `TeleFlow.Telegram`, когда приложению нужно только вызывать Telegram Bot API methods без handlers, dispatcher, filters, state, long polling или webhooks.
+Используй package `IWF.TeleFlow.Telegram`, когда приложению нужно только вызывать Telegram Bot API methods без handlers, dispatcher, filters, state, long polling или webhooks.
 
 ```xml
-<PackageReference Include="TeleFlow.Telegram" Version="..." />
+<PackageReference Include="IWF.TeleFlow.Telegram" Version="..." />
 ```
 
-`TeleFlow.Telegram.Client` нужен только если хочется явно указать owner package name:
+`IWF.TeleFlow.Telegram.Client` нужен только если хочется явно указать owner package name:
 
 ```xml
-<PackageReference Include="TeleFlow.Telegram.Client" Version="..." />
+<PackageReference Include="IWF.TeleFlow.Telegram.Client" Version="..." />
 ```
 
 Оба пакета используют обычный namespace:
@@ -133,20 +133,20 @@ Raw transport packages нужны, когда ты хочешь получать
 Raw long polling:
 
 ```xml
-<PackageReference Include="TeleFlow.Telegram.LongPolling" Version="..." />
+<PackageReference Include="IWF.TeleFlow.Telegram.LongPolling" Version="..." />
 ```
 
 Raw webhooks:
 
 ```xml
-<PackageReference Include="TeleFlow.Telegram.Webhooks" Version="..." />
+<PackageReference Include="IWF.TeleFlow.Telegram.Webhooks" Version="..." />
 ```
 
 Raw long polling использует Telegram `allowed_updates` string values. Framework long polling использует `TelegramAllowedUpdates` и handler metadata для выбора update types.
 
 ## State storage
 
-`TeleFlow.Storage.Memory` подходит для local development, examples и process-local bots:
+Package `IWF.TeleFlow.Storage.Memory` подходит для local development, examples и process-local bots:
 
 ```csharp
 using TeleFlow.Storage.Memory;
@@ -166,4 +166,4 @@ services.AddMemoryStateStorage();
 
 ## Target framework
 
-Runtime-пакеты сейчас target `net10.0`. `TeleFlow.Generators` target `netstandard2.0`, потому что analyzer/generator packages запускаются внутри C# compiler.
+Runtime-пакеты сейчас target `net10.0`. Package `IWF.TeleFlow.Generators` target `netstandard2.0`, потому что analyzer/generator packages запускаются внутри C# compiler.

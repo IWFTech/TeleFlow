@@ -133,7 +133,7 @@ Current public TeleFlow docs не заявляют `drop_pending_updates` option
 Перед production:
 
 - используется generated registration или reflection use задокументирован;
-- `TeleFlow.Generators` private;
+- `IWF.TeleFlow.Generators` private;
 - token и webhook secret не committed;
 - transport choice documented;
 - state storage подходит под deployment topology;

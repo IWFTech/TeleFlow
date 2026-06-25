@@ -7,9 +7,9 @@ TeleFlow can be used as a tiny bot library or as a framework for a larger servic
 Start with the framework long polling package:
 
 ```bash
-dotnet add package TeleFlow.Telegram.Framework.LongPolling
-dotnet add package TeleFlow.Generators
-dotnet add package TeleFlow.Storage.Memory
+dotnet add package IWF.TeleFlow.Telegram.Framework.LongPolling
+dotnet add package IWF.TeleFlow.Generators
+dotnet add package IWF.TeleFlow.Storage.Memory
 ```
 
 Use this shape:
@@ -59,7 +59,7 @@ Infrastructure/
 Recommended defaults:
 
 - use generated registration;
-- keep `TeleFlow.Generators` private;
+- keep `IWF.TeleFlow.Generators` private;
 - pass `CancellationToken` to I/O;
 - keep Telegram-specific code in bot adapters and handlers;
 - keep domain services free from Telegram DTOs when possible;

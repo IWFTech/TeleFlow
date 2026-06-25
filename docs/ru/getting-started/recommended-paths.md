@@ -7,9 +7,9 @@ TeleFlow можно использовать как маленькую bot libra
 Начинай с framework long polling package:
 
 ```bash
-dotnet add package TeleFlow.Telegram.Framework.LongPolling
-dotnet add package TeleFlow.Generators
-dotnet add package TeleFlow.Storage.Memory
+dotnet add package IWF.TeleFlow.Telegram.Framework.LongPolling
+dotnet add package IWF.TeleFlow.Generators
+dotnet add package IWF.TeleFlow.Storage.Memory
 ```
 
 Используй такую форму:
@@ -59,7 +59,7 @@ Infrastructure/
 Рекомендуемые дефолты:
 
 - используй generated registration;
-- держи `TeleFlow.Generators` private-зависимостью;
+- держи `IWF.TeleFlow.Generators` private-зависимостью;
 - передавай `CancellationToken` в I/O;
 - держи Telegram-specific code в bot adapters и handlers;
 - по возможности не протаскивай Telegram DTOs в domain services;

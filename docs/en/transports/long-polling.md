@@ -7,7 +7,7 @@ Long polling is the simplest way to run a Telegram bot. The application repeated
 Install:
 
 ```bash
-dotnet add package TeleFlow.Telegram.Framework.LongPolling
+dotnet add package IWF.TeleFlow.Telegram.Framework.LongPolling
 ```
 
 Register:

@@ -83,4 +83,4 @@ For production apps, add at least one startup test that uses:
 services.AddTelegramHandlersFromAssembly(typeof(Program).Assembly);
 ```
 
-That protects against accidentally removing `TeleFlow.Generators` or breaking generated metadata.
+That protects against accidentally removing `IWF.TeleFlow.Generators` or breaking generated metadata.

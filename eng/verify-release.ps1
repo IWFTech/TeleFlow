@@ -17,22 +17,22 @@ $solutionPath = Join-Path $repositoryRoot "TeleFlow.sln"
 $strictAnalyzerScriptPath = Join-Path $repositoryRoot "eng\verify-strict-analyzers.ps1"
 
 $runtimePackages = @(
-    @{ Id = "TeleFlow.Annotations"; Project = "src\TeleFlow.Annotations\TeleFlow.Annotations.csproj" },
-    @{ Id = "TeleFlow.Core"; Project = "src\TeleFlow.Core\TeleFlow.Core.csproj" },
-    @{ Id = "TeleFlow.Storage.Memory"; Project = "src\TeleFlow.Storage.Memory\TeleFlow.Storage.Memory.csproj" },
-    @{ Id = "TeleFlow.Telegram.Schema"; Project = "src\TeleFlow.Telegram.Schema\TeleFlow.Telegram.Schema.csproj" },
-    @{ Id = "TeleFlow.Telegram.Client"; Project = "src\TeleFlow.Telegram.Client\TeleFlow.Telegram.Client.csproj" },
-    @{ Id = "TeleFlow.Telegram.Framework"; Project = "src\TeleFlow.Telegram.Framework\TeleFlow.Telegram.Framework.csproj" },
-    @{ Id = "TeleFlow.Telegram.LongPolling"; Project = "src\TeleFlow.Telegram.LongPolling\TeleFlow.Telegram.LongPolling.csproj" },
-    @{ Id = "TeleFlow.Telegram.Webhooks"; Project = "src\TeleFlow.Telegram.Webhooks\TeleFlow.Telegram.Webhooks.csproj" },
-    @{ Id = "TeleFlow.Telegram.Framework.LongPolling"; Project = "src\TeleFlow.Telegram.Framework.LongPolling\TeleFlow.Telegram.Framework.LongPolling.csproj" },
-    @{ Id = "TeleFlow.Telegram.Framework.Webhooks"; Project = "src\TeleFlow.Telegram.Framework.Webhooks\TeleFlow.Telegram.Framework.Webhooks.csproj" },
-    @{ Id = "TeleFlow.Telegram"; Project = "src\TeleFlow.Telegram\TeleFlow.Telegram.csproj" }
+    @{ Id = "IWF.TeleFlow.Annotations"; Project = "src\TeleFlow.Annotations\TeleFlow.Annotations.csproj" },
+    @{ Id = "IWF.TeleFlow.Core"; Project = "src\TeleFlow.Core\TeleFlow.Core.csproj" },
+    @{ Id = "IWF.TeleFlow.Storage.Memory"; Project = "src\TeleFlow.Storage.Memory\TeleFlow.Storage.Memory.csproj" },
+    @{ Id = "IWF.TeleFlow.Telegram.Schema"; Project = "src\TeleFlow.Telegram.Schema\TeleFlow.Telegram.Schema.csproj" },
+    @{ Id = "IWF.TeleFlow.Telegram.Client"; Project = "src\TeleFlow.Telegram.Client\TeleFlow.Telegram.Client.csproj" },
+    @{ Id = "IWF.TeleFlow.Telegram.Framework"; Project = "src\TeleFlow.Telegram.Framework\TeleFlow.Telegram.Framework.csproj" },
+    @{ Id = "IWF.TeleFlow.Telegram.LongPolling"; Project = "src\TeleFlow.Telegram.LongPolling\TeleFlow.Telegram.LongPolling.csproj" },
+    @{ Id = "IWF.TeleFlow.Telegram.Webhooks"; Project = "src\TeleFlow.Telegram.Webhooks\TeleFlow.Telegram.Webhooks.csproj" },
+    @{ Id = "IWF.TeleFlow.Telegram.Framework.LongPolling"; Project = "src\TeleFlow.Telegram.Framework.LongPolling\TeleFlow.Telegram.Framework.LongPolling.csproj" },
+    @{ Id = "IWF.TeleFlow.Telegram.Framework.Webhooks"; Project = "src\TeleFlow.Telegram.Framework.Webhooks\TeleFlow.Telegram.Framework.Webhooks.csproj" },
+    @{ Id = "IWF.TeleFlow.Telegram"; Project = "src\TeleFlow.Telegram\TeleFlow.Telegram.csproj" }
 )
 
 $releaseAlignedToolingPackages = @(
     @{
-        Id = "TeleFlow.Generators"
+        Id = "IWF.TeleFlow.Generators"
         Project = "src\TeleFlow.Generators\TeleFlow.Generators.csproj"
         AnalyzerPath = "analyzers/dotnet/cs/TeleFlow.Generators.dll"
         ProhibitLib = $true
@@ -146,8 +146,8 @@ function Assert-ExpectedPackageArchive {
         throw "Package version mismatch for $packagePath. Expected '$ExpectedVersion', got '$($metadata.Version)'."
     }
 
-    if ($metadata.Authors -ne "TeleFlow") {
-        throw "Package authors mismatch for $packagePath. Expected 'TeleFlow', got '$($metadata.Authors)'."
+    if ($metadata.Authors -ne "IWFTech") {
+        throw "Package authors mismatch for $packagePath. Expected 'IWFTech', got '$($metadata.Authors)'."
     }
 
     if ([string]::IsNullOrWhiteSpace($metadata.Description)) {

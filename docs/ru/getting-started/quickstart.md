@@ -39,18 +39,18 @@ $env:TELEFLOW_BOT_TOKEN = "123456:token"
 ```bash
 dotnet new console -n EchoBot
 cd EchoBot
-dotnet add package TeleFlow.Telegram.Framework.LongPolling
-dotnet add package TeleFlow.Generators
-dotnet add package TeleFlow.Storage.Memory
+dotnet add package IWF.TeleFlow.Telegram.Framework.LongPolling
+dotnet add package IWF.TeleFlow.Generators
+dotnet add package IWF.TeleFlow.Storage.Memory
 ```
 
 В project file держи generator приватной зависимостью:
 
 ```xml
-<PackageReference Include="TeleFlow.Generators" Version="..." PrivateAssets="all" />
+<PackageReference Include="IWF.TeleFlow.Generators" Version="..." PrivateAssets="all" />
 ```
 
-`TeleFlow.Generators` запускается во время компиляции. Это не runtime-зависимость твоего бота.
+`IWF.TeleFlow.Generators` запускается во время компиляции. Это не runtime-зависимость твоего бота.
 
 ## Program.cs
 
@@ -119,7 +119,7 @@ builder.Services.AddMemoryStateStorage();
 builder.Services.AddTelegramHandlersFromAssembly(typeof(Program).Assembly);
 ```
 
-Регистрирует handlers из generated metadata. Это рекомендуемый путь для приложений с несколькими handlers. Если application project не ссылается на `TeleFlow.Generators`, startup падает с понятной ошибкой вместо silent fallback на reflection.
+Регистрирует handlers из generated metadata. Это рекомендуемый путь для приложений с несколькими handlers. Если application project не ссылается на `IWF.TeleFlow.Generators`, startup падает с понятной ошибкой вместо silent fallback на reflection.
 
 ```csharp
 builder.Services.AddLongPolling();

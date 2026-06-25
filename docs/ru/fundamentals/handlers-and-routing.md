@@ -161,4 +161,4 @@ Generated assembly registration - recommended default для больших пр
 builder.Services.AddTelegramHandlersFromAssembly(typeof(Program).Assembly);
 ```
 
-Для этого нужен `TeleFlow.Generators`. Отсутствие generated metadata считается startup configuration error.
+Для этого нужен `IWF.TeleFlow.Generators`. Отсутствие generated metadata считается startup configuration error.

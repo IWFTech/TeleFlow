@@ -23,8 +23,8 @@ That gives three practical benefits:
 Project file:
 
 ```xml
-<PackageReference Include="TeleFlow.Telegram.Framework.LongPolling" Version="..." />
-<PackageReference Include="TeleFlow.Generators" Version="..." PrivateAssets="all" />
+<PackageReference Include="IWF.TeleFlow.Telegram.Framework.LongPolling" Version="..." />
+<PackageReference Include="IWF.TeleFlow.Generators" Version="..." PrivateAssets="all" />
 ```
 
 Startup:
@@ -100,7 +100,7 @@ You normally do not call generated types directly.
 
 ## Analyzer Feedback
 
-`TeleFlow.Generators` also includes analyzer checks for invalid handler shapes, route usage, callback payloads, scene state definitions, and error handler signatures.
+`IWF.TeleFlow.Generators` also includes analyzer checks for invalid handler shapes, route usage, callback payloads, scene state definitions, and error handler signatures.
 
 Keep analyzer warnings visible in CI. They are part of the framework contract.
 
@@ -140,6 +140,6 @@ Current diagnostic ids:
 For production apps:
 
 - use generated assembly registration by default;
-- keep `TeleFlow.Generators` private with `PrivateAssets="all"`;
+- keep `IWF.TeleFlow.Generators` private with `PrivateAssets="all"`;
 - use direct registration in tests where it improves clarity;
 - avoid reflection registration unless there is a documented reason.

@@ -83,4 +83,4 @@ Stateful flows тестируй sequences:
 services.AddTelegramHandlersFromAssembly(typeof(Program).Assembly);
 ```
 
-Это защищает от случайного удаления `TeleFlow.Generators` или поломки generated metadata.
+Это защищает от случайного удаления `IWF.TeleFlow.Generators` или поломки generated metadata.

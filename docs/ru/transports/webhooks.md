@@ -7,8 +7,8 @@ Webhooks позволяют Telegram пушить updates в ASP.NET Core endpoi
 Установка:
 
 ```bash
-dotnet add package TeleFlow.Telegram.Framework.Webhooks
-dotnet add package TeleFlow.Generators
+dotnet add package IWF.TeleFlow.Telegram.Framework.Webhooks
+dotnet add package IWF.TeleFlow.Generators
 ```
 
 Регистрация services:

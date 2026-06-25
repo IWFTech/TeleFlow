@@ -7,21 +7,39 @@ TeleFlow должен быть предсказуемым для upgrade. Versio
 Пакеты TeleFlow обычно должны выпускаться как один согласованный version set:
 
 ```text
-TeleFlow.Telegram
-TeleFlow.Telegram.Client
-TeleFlow.Telegram.Schema
-TeleFlow.Telegram.Framework
-TeleFlow.Telegram.Framework.LongPolling
-TeleFlow.Telegram.Framework.Webhooks
-TeleFlow.Telegram.LongPolling
-TeleFlow.Telegram.Webhooks
-TeleFlow.Core
-TeleFlow.Annotations
-TeleFlow.Generators
-TeleFlow.Storage.Memory
+IWF.TeleFlow.Telegram
+IWF.TeleFlow.Telegram.Client
+IWF.TeleFlow.Telegram.Schema
+IWF.TeleFlow.Telegram.Framework
+IWF.TeleFlow.Telegram.Framework.LongPolling
+IWF.TeleFlow.Telegram.Framework.Webhooks
+IWF.TeleFlow.Telegram.LongPolling
+IWF.TeleFlow.Telegram.Webhooks
+IWF.TeleFlow.Core
+IWF.TeleFlow.Annotations
+IWF.TeleFlow.Generators
+IWF.TeleFlow.Storage.Memory
 ```
 
 Держи package versions aligned, если нет documented reason делать иначе. Согласованные versions уменьшают support friction и упрощают enterprise dependency review.
+
+NuGet package IDs используют prefix `IWF.TeleFlow.*`. Public C# namespaces остаются `TeleFlow.*`.
+
+## NuGet publishing
+
+Release verification и NuGet publishing намеренно разделены:
+
+- `Release Verify` делает restore, tests, pack, проверяет package metadata и загружает package artifacts.
+- `NuGet Publish` запускает ту же release verification и может отправить packages на nuget.org, только если это явно включено.
+
+Для alpha releases используй workflow `NuGet Publish`:
+
+1. Укажи `packageVersion` в SemVer prerelease формате, например `0.1.0-alpha.1`.
+2. Оставь `publishToNuGet` выключенным для dry verification run.
+3. Включай `publishToNuGet` только когда packages реально нужно отправить на nuget.org.
+4. Перед публикацией добавь repository secret `NUGET_API_KEY`.
+
+Publish workflow использует `eng/verify-release.ps1`, поэтому package не будет опубликован, пока не пройдут restore, format verification, build, strict analyzer verification, tests, pack и package metadata checks.
 
 ## До 1.0
 
@@ -90,7 +108,7 @@ Policy:
 
 ## Generator updates
 
-`TeleFlow.Generators` - build-time dependency, но generator changes могут влиять на runtime registration.
+`IWF.TeleFlow.Generators` - build-time dependency, но generator changes могут влиять на runtime registration.
 
 Generator releases должны держать эти contracts:
 
@@ -121,4 +139,3 @@ Application teams должны:
 - проверять generated registration в startup tests;
 - читать release notes перед minor и major upgrades;
 - не смешивать prerelease packages со stable packages, если это не intentional testing.
-

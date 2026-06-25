@@ -14,12 +14,12 @@ builder.Services.AddLongPolling();
 
 ## `Assembly does not contain generated Telegram handler metadata`
 
-`AddTelegramHandlersFromAssembly(...)` requires `TeleFlow.Generators`.
+`AddTelegramHandlersFromAssembly(...)` requires `IWF.TeleFlow.Generators`.
 
 Fix:
 
 ```xml
-<PackageReference Include="TeleFlow.Generators" Version="..." PrivateAssets="all" />
+<PackageReference Include="IWF.TeleFlow.Generators" Version="..." PrivateAssets="all" />
 ```
 
 Then rebuild the application.
