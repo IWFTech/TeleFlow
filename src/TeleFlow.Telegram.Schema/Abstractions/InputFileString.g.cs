@@ -99,8 +99,6 @@ file sealed class InputFileStringJsonConverter : JsonConverter<InputFileString>
             throw new JsonException("Unable to deserialize InputFileString: unexpected JSON token.");
         }
 
-        using var document = JsonDocument.ParseValue(ref reader);
-
         throw new JsonException("Unable to deserialize InputFileString from the provided Telegram payload.");
     }
 

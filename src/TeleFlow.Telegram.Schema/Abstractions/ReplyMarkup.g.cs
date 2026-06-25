@@ -154,33 +154,122 @@ file sealed class ReplyMarkupJsonConverter : JsonConverter<ReplyMarkup>
             throw new JsonException("Unable to deserialize ReplyMarkup: unexpected JSON token.");
         }
 
-        using var document = JsonDocument.ParseValue(ref reader);
+        var objectReader = reader;
+        ReadObjectMetadata(
+            ref objectReader,
+            out var hasForceReplyProperty,
+            out var hasInlineKeyboardProperty,
+            out var hasKeyboardProperty,
+            out var hasRemoveKeyboardProperty);
 
-        if (document.RootElement.TryGetProperty("force_reply", out _))
+        if (hasForceReplyProperty)
         {
-            return ReplyMarkup.From(document.RootElement.Deserialize<ForceReply>(options)
+            return ReplyMarkup.From(JsonSerializer.Deserialize<ForceReply>(ref reader, options)
                 ?? throw new JsonException("Unable to deserialize ReplyMarkup as ForceReply."));
         }
 
-        if (document.RootElement.TryGetProperty("inline_keyboard", out _))
+        if (hasInlineKeyboardProperty)
         {
-            return ReplyMarkup.From(document.RootElement.Deserialize<InlineKeyboardMarkup>(options)
+            return ReplyMarkup.From(JsonSerializer.Deserialize<InlineKeyboardMarkup>(ref reader, options)
                 ?? throw new JsonException("Unable to deserialize ReplyMarkup as InlineKeyboardMarkup."));
         }
 
-        if (document.RootElement.TryGetProperty("keyboard", out _))
+        if (hasKeyboardProperty)
         {
-            return ReplyMarkup.From(document.RootElement.Deserialize<ReplyKeyboardMarkup>(options)
+            return ReplyMarkup.From(JsonSerializer.Deserialize<ReplyKeyboardMarkup>(ref reader, options)
                 ?? throw new JsonException("Unable to deserialize ReplyMarkup as ReplyKeyboardMarkup."));
         }
 
-        if (document.RootElement.TryGetProperty("remove_keyboard", out _))
+        if (hasRemoveKeyboardProperty)
         {
-            return ReplyMarkup.From(document.RootElement.Deserialize<ReplyKeyboardRemove>(options)
+            return ReplyMarkup.From(JsonSerializer.Deserialize<ReplyKeyboardRemove>(ref reader, options)
                 ?? throw new JsonException("Unable to deserialize ReplyMarkup as ReplyKeyboardRemove."));
         }
 
         throw new JsonException("Unable to deserialize ReplyMarkup from the provided Telegram payload.");
+    }
+
+    private static void ReadObjectMetadata(
+        ref Utf8JsonReader reader,
+        out bool hasForceReplyProperty,
+        out bool hasInlineKeyboardProperty,
+        out bool hasKeyboardProperty,
+        out bool hasRemoveKeyboardProperty)
+    {
+        hasForceReplyProperty = false;
+        hasInlineKeyboardProperty = false;
+        hasKeyboardProperty = false;
+        hasRemoveKeyboardProperty = false;
+
+        while (reader.Read())
+        {
+            if (reader.TokenType == JsonTokenType.EndObject)
+            {
+                return;
+            }
+
+            if (reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException("Unable to scan union object metadata: expected a JSON property name.");
+            }
+
+            if (reader.ValueTextEquals("force_reply"u8))
+            {
+                hasForceReplyProperty = true;
+                if (!reader.Read())
+                {
+                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
+                }
+
+                reader.Skip();
+                continue;
+            }
+
+            if (reader.ValueTextEquals("inline_keyboard"u8))
+            {
+                hasInlineKeyboardProperty = true;
+                if (!reader.Read())
+                {
+                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
+                }
+
+                reader.Skip();
+                continue;
+            }
+
+            if (reader.ValueTextEquals("keyboard"u8))
+            {
+                hasKeyboardProperty = true;
+                if (!reader.Read())
+                {
+                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
+                }
+
+                reader.Skip();
+                continue;
+            }
+
+            if (reader.ValueTextEquals("remove_keyboard"u8))
+            {
+                hasRemoveKeyboardProperty = true;
+                if (!reader.Read())
+                {
+                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
+                }
+
+                reader.Skip();
+                continue;
+            }
+
+            if (!reader.Read())
+            {
+                throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
+            }
+
+            reader.Skip();
+        }
+
+        throw new JsonException("Unable to scan union object metadata: object was not closed.");
     }
 
     public override void Write(Utf8JsonWriter writer, ReplyMarkup value, JsonSerializerOptions options)

@@ -584,7 +584,7 @@ public sealed class TelegramSchemaTests
         Assert.Equal("june-11-2026", telegramBotApi.GetProperty("changelogAnchor").GetString());
         Assert.Equal("https://core.telegram.org/bots/api-changelog#june-11-2026", telegramBotApi.GetProperty("changelogUrl").GetString());
         Assert.Equal(6, pipeline.GetProperty("schemaVersion").GetInt32());
-        Assert.Equal(9, pipeline.GetProperty("generatorVersion").GetInt32());
+        Assert.Equal(10, pipeline.GetProperty("generatorVersion").GetInt32());
     }
 
     [Fact]

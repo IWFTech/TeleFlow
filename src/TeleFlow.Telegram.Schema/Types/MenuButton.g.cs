@@ -130,28 +130,76 @@ file sealed class MenuButtonJsonConverter : JsonConverter<MenuButton>
             throw new JsonException("Unable to deserialize MenuButton: unexpected JSON token.");
         }
 
-        using var document = JsonDocument.ParseValue(ref reader);
+        var objectReader = reader;
+        ReadObjectMetadata(
+            ref objectReader,
+            out var typeDiscriminator);
 
-        if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
+        if (typeDiscriminator is not null)
         {
-            var discriminator = typeElement.GetString();
-            switch (discriminator)
+            switch (typeDiscriminator)
             {
                 case "commands":
-                    return MenuButton.From(document.RootElement.Deserialize<MenuButtonCommands>(options)
+                    return MenuButton.From(JsonSerializer.Deserialize<MenuButtonCommands>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize MenuButton as MenuButtonCommands."));
                 case "default":
-                    return MenuButton.From(document.RootElement.Deserialize<MenuButtonDefault>(options)
+                    return MenuButton.From(JsonSerializer.Deserialize<MenuButtonDefault>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize MenuButton as MenuButtonDefault."));
                 case "web_app":
-                    return MenuButton.From(document.RootElement.Deserialize<MenuButtonWebApp>(options)
+                    return MenuButton.From(JsonSerializer.Deserialize<MenuButtonWebApp>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize MenuButton as MenuButtonWebApp."));
                 default:
-                    throw new JsonException($"Unknown discriminator value '{discriminator}' for MenuButton.");
+                    throw new JsonException($"Unknown discriminator value '{typeDiscriminator}' for MenuButton.");
             }
         }
 
         throw new JsonException("Unable to deserialize MenuButton from the provided Telegram payload.");
+    }
+
+    private static void ReadObjectMetadata(
+        ref Utf8JsonReader reader,
+        out string? typeDiscriminator)
+    {
+        typeDiscriminator = null;
+
+        while (reader.Read())
+        {
+            if (reader.TokenType == JsonTokenType.EndObject)
+            {
+                return;
+            }
+
+            if (reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException("Unable to scan union object metadata: expected a JSON property name.");
+            }
+
+            if (reader.ValueTextEquals("type"u8))
+            {
+                if (!reader.Read())
+                {
+                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
+                }
+
+                typeDiscriminator = null;
+                if (reader.TokenType == JsonTokenType.String)
+                {
+                    typeDiscriminator = reader.GetString();
+                }
+
+                reader.Skip();
+                continue;
+            }
+
+            if (!reader.Read())
+            {
+                throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
+            }
+
+            reader.Skip();
+        }
+
+        throw new JsonException("Unable to scan union object metadata: object was not closed.");
     }
 
     public override void Write(Utf8JsonWriter writer, MenuButton value, JsonSerializerOptions options)

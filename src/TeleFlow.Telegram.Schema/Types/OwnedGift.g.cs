@@ -98,25 +98,73 @@ file sealed class OwnedGiftJsonConverter : JsonConverter<OwnedGift>
             throw new JsonException("Unable to deserialize OwnedGift: unexpected JSON token.");
         }
 
-        using var document = JsonDocument.ParseValue(ref reader);
+        var objectReader = reader;
+        ReadObjectMetadata(
+            ref objectReader,
+            out var typeDiscriminator);
 
-        if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
+        if (typeDiscriminator is not null)
         {
-            var discriminator = typeElement.GetString();
-            switch (discriminator)
+            switch (typeDiscriminator)
             {
                 case "regular":
-                    return OwnedGift.From(document.RootElement.Deserialize<OwnedGiftRegular>(options)
+                    return OwnedGift.From(JsonSerializer.Deserialize<OwnedGiftRegular>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize OwnedGift as OwnedGiftRegular."));
                 case "unique":
-                    return OwnedGift.From(document.RootElement.Deserialize<OwnedGiftUnique>(options)
+                    return OwnedGift.From(JsonSerializer.Deserialize<OwnedGiftUnique>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize OwnedGift as OwnedGiftUnique."));
                 default:
-                    throw new JsonException($"Unknown discriminator value '{discriminator}' for OwnedGift.");
+                    throw new JsonException($"Unknown discriminator value '{typeDiscriminator}' for OwnedGift.");
             }
         }
 
         throw new JsonException("Unable to deserialize OwnedGift from the provided Telegram payload.");
+    }
+
+    private static void ReadObjectMetadata(
+        ref Utf8JsonReader reader,
+        out string? typeDiscriminator)
+    {
+        typeDiscriminator = null;
+
+        while (reader.Read())
+        {
+            if (reader.TokenType == JsonTokenType.EndObject)
+            {
+                return;
+            }
+
+            if (reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException("Unable to scan union object metadata: expected a JSON property name.");
+            }
+
+            if (reader.ValueTextEquals("type"u8))
+            {
+                if (!reader.Read())
+                {
+                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
+                }
+
+                typeDiscriminator = null;
+                if (reader.TokenType == JsonTokenType.String)
+                {
+                    typeDiscriminator = reader.GetString();
+                }
+
+                reader.Skip();
+                continue;
+            }
+
+            if (!reader.Read())
+            {
+                throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
+            }
+
+            reader.Skip();
+        }
+
+        throw new JsonException("Unable to scan union object metadata: object was not closed.");
     }
 
     public override void Write(Utf8JsonWriter writer, OwnedGift value, JsonSerializerOptions options)

@@ -315,46 +315,94 @@ file sealed class PassportElementErrorJsonConverter : JsonConverter<PassportElem
             throw new JsonException("Unable to deserialize PassportElementError: unexpected JSON token.");
         }
 
-        using var document = JsonDocument.ParseValue(ref reader);
+        var objectReader = reader;
+        ReadObjectMetadata(
+            ref objectReader,
+            out var sourceDiscriminator);
 
-        if (document.RootElement.TryGetProperty("source", out var sourceElement) && sourceElement.ValueKind == JsonValueKind.String)
+        if (sourceDiscriminator is not null)
         {
-            var discriminator = sourceElement.GetString();
-            switch (discriminator)
+            switch (sourceDiscriminator)
             {
                 case "data":
-                    return PassportElementError.From(document.RootElement.Deserialize<PassportElementErrorDataField>(options)
+                    return PassportElementError.From(JsonSerializer.Deserialize<PassportElementErrorDataField>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize PassportElementError as PassportElementErrorDataField."));
                 case "file":
-                    return PassportElementError.From(document.RootElement.Deserialize<PassportElementErrorFile>(options)
+                    return PassportElementError.From(JsonSerializer.Deserialize<PassportElementErrorFile>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize PassportElementError as PassportElementErrorFile."));
                 case "files":
-                    return PassportElementError.From(document.RootElement.Deserialize<PassportElementErrorFiles>(options)
+                    return PassportElementError.From(JsonSerializer.Deserialize<PassportElementErrorFiles>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize PassportElementError as PassportElementErrorFiles."));
                 case "front_side":
-                    return PassportElementError.From(document.RootElement.Deserialize<PassportElementErrorFrontSide>(options)
+                    return PassportElementError.From(JsonSerializer.Deserialize<PassportElementErrorFrontSide>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize PassportElementError as PassportElementErrorFrontSide."));
                 case "reverse_side":
-                    return PassportElementError.From(document.RootElement.Deserialize<PassportElementErrorReverseSide>(options)
+                    return PassportElementError.From(JsonSerializer.Deserialize<PassportElementErrorReverseSide>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize PassportElementError as PassportElementErrorReverseSide."));
                 case "selfie":
-                    return PassportElementError.From(document.RootElement.Deserialize<PassportElementErrorSelfie>(options)
+                    return PassportElementError.From(JsonSerializer.Deserialize<PassportElementErrorSelfie>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize PassportElementError as PassportElementErrorSelfie."));
                 case "translation_file":
-                    return PassportElementError.From(document.RootElement.Deserialize<PassportElementErrorTranslationFile>(options)
+                    return PassportElementError.From(JsonSerializer.Deserialize<PassportElementErrorTranslationFile>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize PassportElementError as PassportElementErrorTranslationFile."));
                 case "translation_files":
-                    return PassportElementError.From(document.RootElement.Deserialize<PassportElementErrorTranslationFiles>(options)
+                    return PassportElementError.From(JsonSerializer.Deserialize<PassportElementErrorTranslationFiles>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize PassportElementError as PassportElementErrorTranslationFiles."));
                 case "unspecified":
-                    return PassportElementError.From(document.RootElement.Deserialize<PassportElementErrorUnspecified>(options)
+                    return PassportElementError.From(JsonSerializer.Deserialize<PassportElementErrorUnspecified>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize PassportElementError as PassportElementErrorUnspecified."));
                 default:
-                    throw new JsonException($"Unknown discriminator value '{discriminator}' for PassportElementError.");
+                    throw new JsonException($"Unknown discriminator value '{sourceDiscriminator}' for PassportElementError.");
             }
         }
 
         throw new JsonException("Unable to deserialize PassportElementError from the provided Telegram payload.");
+    }
+
+    private static void ReadObjectMetadata(
+        ref Utf8JsonReader reader,
+        out string? sourceDiscriminator)
+    {
+        sourceDiscriminator = null;
+
+        while (reader.Read())
+        {
+            if (reader.TokenType == JsonTokenType.EndObject)
+            {
+                return;
+            }
+
+            if (reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException("Unable to scan union object metadata: expected a JSON property name.");
+            }
+
+            if (reader.ValueTextEquals("source"u8))
+            {
+                if (!reader.Read())
+                {
+                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
+                }
+
+                sourceDiscriminator = null;
+                if (reader.TokenType == JsonTokenType.String)
+                {
+                    sourceDiscriminator = reader.GetString();
+                }
+
+                reader.Skip();
+                continue;
+            }
+
+            if (!reader.Read())
+            {
+                throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
+            }
+
+            reader.Skip();
+        }
+
+        throw new JsonException("Unable to scan union object metadata: object was not closed.");
     }
 
     public override void Write(Utf8JsonWriter writer, PassportElementError value, JsonSerializerOptions options)

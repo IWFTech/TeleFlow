@@ -687,82 +687,130 @@ file sealed class RichBlockJsonConverter : JsonConverter<RichBlock>
             throw new JsonException("Unable to deserialize RichBlock: unexpected JSON token.");
         }
 
-        using var document = JsonDocument.ParseValue(ref reader);
+        var objectReader = reader;
+        ReadObjectMetadata(
+            ref objectReader,
+            out var typeDiscriminator);
 
-        if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
+        if (typeDiscriminator is not null)
         {
-            var discriminator = typeElement.GetString();
-            switch (discriminator)
+            switch (typeDiscriminator)
             {
                 case "anchor":
-                    return RichBlock.From(document.RootElement.Deserialize<RichBlockAnchor>(options)
+                    return RichBlock.From(JsonSerializer.Deserialize<RichBlockAnchor>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize RichBlock as RichBlockAnchor."));
                 case "animation":
-                    return RichBlock.From(document.RootElement.Deserialize<RichBlockAnimation>(options)
+                    return RichBlock.From(JsonSerializer.Deserialize<RichBlockAnimation>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize RichBlock as RichBlockAnimation."));
                 case "audio":
-                    return RichBlock.From(document.RootElement.Deserialize<RichBlockAudio>(options)
+                    return RichBlock.From(JsonSerializer.Deserialize<RichBlockAudio>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize RichBlock as RichBlockAudio."));
                 case "blockquote":
-                    return RichBlock.From(document.RootElement.Deserialize<RichBlockBlockQuotation>(options)
+                    return RichBlock.From(JsonSerializer.Deserialize<RichBlockBlockQuotation>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize RichBlock as RichBlockBlockQuotation."));
                 case "collage":
-                    return RichBlock.From(document.RootElement.Deserialize<RichBlockCollage>(options)
+                    return RichBlock.From(JsonSerializer.Deserialize<RichBlockCollage>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize RichBlock as RichBlockCollage."));
                 case "details":
-                    return RichBlock.From(document.RootElement.Deserialize<RichBlockDetails>(options)
+                    return RichBlock.From(JsonSerializer.Deserialize<RichBlockDetails>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize RichBlock as RichBlockDetails."));
                 case "divider":
-                    return RichBlock.From(document.RootElement.Deserialize<RichBlockDivider>(options)
+                    return RichBlock.From(JsonSerializer.Deserialize<RichBlockDivider>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize RichBlock as RichBlockDivider."));
                 case "footer":
-                    return RichBlock.From(document.RootElement.Deserialize<RichBlockFooter>(options)
+                    return RichBlock.From(JsonSerializer.Deserialize<RichBlockFooter>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize RichBlock as RichBlockFooter."));
                 case "heading":
-                    return RichBlock.From(document.RootElement.Deserialize<RichBlockSectionHeading>(options)
+                    return RichBlock.From(JsonSerializer.Deserialize<RichBlockSectionHeading>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize RichBlock as RichBlockSectionHeading."));
                 case "list":
-                    return RichBlock.From(document.RootElement.Deserialize<RichBlockList>(options)
+                    return RichBlock.From(JsonSerializer.Deserialize<RichBlockList>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize RichBlock as RichBlockList."));
                 case "map":
-                    return RichBlock.From(document.RootElement.Deserialize<RichBlockMap>(options)
+                    return RichBlock.From(JsonSerializer.Deserialize<RichBlockMap>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize RichBlock as RichBlockMap."));
                 case "mathematical_expression":
-                    return RichBlock.From(document.RootElement.Deserialize<RichBlockMathematicalExpression>(options)
+                    return RichBlock.From(JsonSerializer.Deserialize<RichBlockMathematicalExpression>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize RichBlock as RichBlockMathematicalExpression."));
                 case "paragraph":
-                    return RichBlock.From(document.RootElement.Deserialize<RichBlockParagraph>(options)
+                    return RichBlock.From(JsonSerializer.Deserialize<RichBlockParagraph>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize RichBlock as RichBlockParagraph."));
                 case "photo":
-                    return RichBlock.From(document.RootElement.Deserialize<RichBlockPhoto>(options)
+                    return RichBlock.From(JsonSerializer.Deserialize<RichBlockPhoto>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize RichBlock as RichBlockPhoto."));
                 case "pre":
-                    return RichBlock.From(document.RootElement.Deserialize<RichBlockPreformatted>(options)
+                    return RichBlock.From(JsonSerializer.Deserialize<RichBlockPreformatted>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize RichBlock as RichBlockPreformatted."));
                 case "pullquote":
-                    return RichBlock.From(document.RootElement.Deserialize<RichBlockPullQuotation>(options)
+                    return RichBlock.From(JsonSerializer.Deserialize<RichBlockPullQuotation>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize RichBlock as RichBlockPullQuotation."));
                 case "slideshow":
-                    return RichBlock.From(document.RootElement.Deserialize<RichBlockSlideshow>(options)
+                    return RichBlock.From(JsonSerializer.Deserialize<RichBlockSlideshow>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize RichBlock as RichBlockSlideshow."));
                 case "table":
-                    return RichBlock.From(document.RootElement.Deserialize<RichBlockTable>(options)
+                    return RichBlock.From(JsonSerializer.Deserialize<RichBlockTable>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize RichBlock as RichBlockTable."));
                 case "thinking":
-                    return RichBlock.From(document.RootElement.Deserialize<RichBlockThinking>(options)
+                    return RichBlock.From(JsonSerializer.Deserialize<RichBlockThinking>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize RichBlock as RichBlockThinking."));
                 case "video":
-                    return RichBlock.From(document.RootElement.Deserialize<RichBlockVideo>(options)
+                    return RichBlock.From(JsonSerializer.Deserialize<RichBlockVideo>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize RichBlock as RichBlockVideo."));
                 case "voice_note":
-                    return RichBlock.From(document.RootElement.Deserialize<RichBlockVoiceNote>(options)
+                    return RichBlock.From(JsonSerializer.Deserialize<RichBlockVoiceNote>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize RichBlock as RichBlockVoiceNote."));
                 default:
-                    throw new JsonException($"Unknown discriminator value '{discriminator}' for RichBlock.");
+                    throw new JsonException($"Unknown discriminator value '{typeDiscriminator}' for RichBlock.");
             }
         }
 
         throw new JsonException("Unable to deserialize RichBlock from the provided Telegram payload.");
+    }
+
+    private static void ReadObjectMetadata(
+        ref Utf8JsonReader reader,
+        out string? typeDiscriminator)
+    {
+        typeDiscriminator = null;
+
+        while (reader.Read())
+        {
+            if (reader.TokenType == JsonTokenType.EndObject)
+            {
+                return;
+            }
+
+            if (reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException("Unable to scan union object metadata: expected a JSON property name.");
+            }
+
+            if (reader.ValueTextEquals("type"u8))
+            {
+                if (!reader.Read())
+                {
+                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
+                }
+
+                typeDiscriminator = null;
+                if (reader.TokenType == JsonTokenType.String)
+                {
+                    typeDiscriminator = reader.GetString();
+                }
+
+                reader.Skip();
+                continue;
+            }
+
+            if (!reader.Read())
+            {
+                throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
+            }
+
+            reader.Skip();
+        }
+
+        throw new JsonException("Unable to scan union object metadata: object was not closed.");
     }
 
     public override void Write(Utf8JsonWriter writer, RichBlock value, JsonSerializerOptions options)

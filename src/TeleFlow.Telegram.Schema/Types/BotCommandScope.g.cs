@@ -253,40 +253,88 @@ file sealed class BotCommandScopeJsonConverter : JsonConverter<BotCommandScope>
             throw new JsonException("Unable to deserialize BotCommandScope: unexpected JSON token.");
         }
 
-        using var document = JsonDocument.ParseValue(ref reader);
+        var objectReader = reader;
+        ReadObjectMetadata(
+            ref objectReader,
+            out var typeDiscriminator);
 
-        if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
+        if (typeDiscriminator is not null)
         {
-            var discriminator = typeElement.GetString();
-            switch (discriminator)
+            switch (typeDiscriminator)
             {
                 case "all_chat_administrators":
-                    return BotCommandScope.From(document.RootElement.Deserialize<BotCommandScopeAllChatAdministrators>(options)
+                    return BotCommandScope.From(JsonSerializer.Deserialize<BotCommandScopeAllChatAdministrators>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize BotCommandScope as BotCommandScopeAllChatAdministrators."));
                 case "all_group_chats":
-                    return BotCommandScope.From(document.RootElement.Deserialize<BotCommandScopeAllGroupChats>(options)
+                    return BotCommandScope.From(JsonSerializer.Deserialize<BotCommandScopeAllGroupChats>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize BotCommandScope as BotCommandScopeAllGroupChats."));
                 case "all_private_chats":
-                    return BotCommandScope.From(document.RootElement.Deserialize<BotCommandScopeAllPrivateChats>(options)
+                    return BotCommandScope.From(JsonSerializer.Deserialize<BotCommandScopeAllPrivateChats>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize BotCommandScope as BotCommandScopeAllPrivateChats."));
                 case "chat":
-                    return BotCommandScope.From(document.RootElement.Deserialize<BotCommandScopeChat>(options)
+                    return BotCommandScope.From(JsonSerializer.Deserialize<BotCommandScopeChat>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize BotCommandScope as BotCommandScopeChat."));
                 case "chat_administrators":
-                    return BotCommandScope.From(document.RootElement.Deserialize<BotCommandScopeChatAdministrators>(options)
+                    return BotCommandScope.From(JsonSerializer.Deserialize<BotCommandScopeChatAdministrators>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize BotCommandScope as BotCommandScopeChatAdministrators."));
                 case "chat_member":
-                    return BotCommandScope.From(document.RootElement.Deserialize<BotCommandScopeChatMember>(options)
+                    return BotCommandScope.From(JsonSerializer.Deserialize<BotCommandScopeChatMember>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize BotCommandScope as BotCommandScopeChatMember."));
                 case "default":
-                    return BotCommandScope.From(document.RootElement.Deserialize<BotCommandScopeDefault>(options)
+                    return BotCommandScope.From(JsonSerializer.Deserialize<BotCommandScopeDefault>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize BotCommandScope as BotCommandScopeDefault."));
                 default:
-                    throw new JsonException($"Unknown discriminator value '{discriminator}' for BotCommandScope.");
+                    throw new JsonException($"Unknown discriminator value '{typeDiscriminator}' for BotCommandScope.");
             }
         }
 
         throw new JsonException("Unable to deserialize BotCommandScope from the provided Telegram payload.");
+    }
+
+    private static void ReadObjectMetadata(
+        ref Utf8JsonReader reader,
+        out string? typeDiscriminator)
+    {
+        typeDiscriminator = null;
+
+        while (reader.Read())
+        {
+            if (reader.TokenType == JsonTokenType.EndObject)
+            {
+                return;
+            }
+
+            if (reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException("Unable to scan union object metadata: expected a JSON property name.");
+            }
+
+            if (reader.ValueTextEquals("type"u8))
+            {
+                if (!reader.Read())
+                {
+                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
+                }
+
+                typeDiscriminator = null;
+                if (reader.TokenType == JsonTokenType.String)
+                {
+                    typeDiscriminator = reader.GetString();
+                }
+
+                reader.Skip();
+                continue;
+            }
+
+            if (!reader.Read())
+            {
+                throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
+            }
+
+            reader.Skip();
+        }
+
+        throw new JsonException("Unable to scan union object metadata: object was not closed.");
     }
 
     public override void Write(Utf8JsonWriter writer, BotCommandScope value, JsonSerializerOptions options)

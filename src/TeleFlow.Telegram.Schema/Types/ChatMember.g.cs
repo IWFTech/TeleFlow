@@ -222,37 +222,85 @@ file sealed class ChatMemberJsonConverter : JsonConverter<ChatMember>
             throw new JsonException("Unable to deserialize ChatMember: unexpected JSON token.");
         }
 
-        using var document = JsonDocument.ParseValue(ref reader);
+        var objectReader = reader;
+        ReadObjectMetadata(
+            ref objectReader,
+            out var statusDiscriminator);
 
-        if (document.RootElement.TryGetProperty("status", out var statusElement) && statusElement.ValueKind == JsonValueKind.String)
+        if (statusDiscriminator is not null)
         {
-            var discriminator = statusElement.GetString();
-            switch (discriminator)
+            switch (statusDiscriminator)
             {
                 case "administrator":
-                    return ChatMember.From(document.RootElement.Deserialize<ChatMemberAdministrator>(options)
+                    return ChatMember.From(JsonSerializer.Deserialize<ChatMemberAdministrator>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize ChatMember as ChatMemberAdministrator."));
                 case "creator":
-                    return ChatMember.From(document.RootElement.Deserialize<ChatMemberOwner>(options)
+                    return ChatMember.From(JsonSerializer.Deserialize<ChatMemberOwner>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize ChatMember as ChatMemberOwner."));
                 case "kicked":
-                    return ChatMember.From(document.RootElement.Deserialize<ChatMemberBanned>(options)
+                    return ChatMember.From(JsonSerializer.Deserialize<ChatMemberBanned>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize ChatMember as ChatMemberBanned."));
                 case "left":
-                    return ChatMember.From(document.RootElement.Deserialize<ChatMemberLeft>(options)
+                    return ChatMember.From(JsonSerializer.Deserialize<ChatMemberLeft>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize ChatMember as ChatMemberLeft."));
                 case "member":
-                    return ChatMember.From(document.RootElement.Deserialize<ChatMemberMember>(options)
+                    return ChatMember.From(JsonSerializer.Deserialize<ChatMemberMember>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize ChatMember as ChatMemberMember."));
                 case "restricted":
-                    return ChatMember.From(document.RootElement.Deserialize<ChatMemberRestricted>(options)
+                    return ChatMember.From(JsonSerializer.Deserialize<ChatMemberRestricted>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize ChatMember as ChatMemberRestricted."));
                 default:
-                    throw new JsonException($"Unknown discriminator value '{discriminator}' for ChatMember.");
+                    throw new JsonException($"Unknown discriminator value '{statusDiscriminator}' for ChatMember.");
             }
         }
 
         throw new JsonException("Unable to deserialize ChatMember from the provided Telegram payload.");
+    }
+
+    private static void ReadObjectMetadata(
+        ref Utf8JsonReader reader,
+        out string? statusDiscriminator)
+    {
+        statusDiscriminator = null;
+
+        while (reader.Read())
+        {
+            if (reader.TokenType == JsonTokenType.EndObject)
+            {
+                return;
+            }
+
+            if (reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException("Unable to scan union object metadata: expected a JSON property name.");
+            }
+
+            if (reader.ValueTextEquals("status"u8))
+            {
+                if (!reader.Read())
+                {
+                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
+                }
+
+                statusDiscriminator = null;
+                if (reader.TokenType == JsonTokenType.String)
+                {
+                    statusDiscriminator = reader.GetString();
+                }
+
+                reader.Skip();
+                continue;
+            }
+
+            if (!reader.Read())
+            {
+                throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
+            }
+
+            reader.Skip();
+        }
+
+        throw new JsonException("Unable to scan union object metadata: object was not closed.");
     }
 
     public override void Write(Utf8JsonWriter writer, ChatMember value, JsonSerializerOptions options)

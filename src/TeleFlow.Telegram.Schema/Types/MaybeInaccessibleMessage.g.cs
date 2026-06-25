@@ -98,20 +98,65 @@ file sealed class MaybeInaccessibleMessageJsonConverter : JsonConverter<MaybeIna
             throw new JsonException("Unable to deserialize MaybeInaccessibleMessage: unexpected JSON token.");
         }
 
-        using var document = JsonDocument.ParseValue(ref reader);
+        var objectReader = reader;
+        ReadObjectMetadata(
+            ref objectReader,
+            out var dateValue);
 
-        if (document.RootElement.TryGetProperty("date", out var dateElement) &&
-            dateElement.ValueKind == JsonValueKind.Number &&
-            dateElement.TryGetInt64(out var date) &&
-            date == 0)
+        if (dateValue == 0)
         {
-            return MaybeInaccessibleMessage.From(document.RootElement.Deserialize<InaccessibleMessage>(options)
+            return MaybeInaccessibleMessage.From(JsonSerializer.Deserialize<InaccessibleMessage>(ref reader, options)
                 ?? throw new JsonException("Unable to deserialize MaybeInaccessibleMessage as InaccessibleMessage."));
         }
 
-        return MaybeInaccessibleMessage.From(document.RootElement.Deserialize<Message>(options)
+        return MaybeInaccessibleMessage.From(JsonSerializer.Deserialize<Message>(ref reader, options)
             ?? throw new JsonException("Unable to deserialize MaybeInaccessibleMessage as Message."));
-        throw new JsonException("Unable to deserialize MaybeInaccessibleMessage from the provided Telegram payload.");
+    }
+
+    private static void ReadObjectMetadata(
+        ref Utf8JsonReader reader,
+        out long? dateValue)
+    {
+        dateValue = null;
+
+        while (reader.Read())
+        {
+            if (reader.TokenType == JsonTokenType.EndObject)
+            {
+                return;
+            }
+
+            if (reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException("Unable to scan union object metadata: expected a JSON property name.");
+            }
+
+            if (reader.ValueTextEquals("date"u8))
+            {
+                if (!reader.Read())
+                {
+                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
+                }
+
+                dateValue = null;
+                if (reader.TokenType == JsonTokenType.Number && reader.TryGetInt64(out var currentDateValue))
+                {
+                    dateValue = currentDateValue;
+                }
+
+                reader.Skip();
+                continue;
+            }
+
+            if (!reader.Read())
+            {
+                throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
+            }
+
+            reader.Skip();
+        }
+
+        throw new JsonException("Unable to scan union object metadata: object was not closed.");
     }
 
     public override void Write(Utf8JsonWriter writer, MaybeInaccessibleMessage value, JsonSerializerOptions options)

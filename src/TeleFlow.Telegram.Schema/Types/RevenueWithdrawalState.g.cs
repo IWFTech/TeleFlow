@@ -129,28 +129,76 @@ file sealed class RevenueWithdrawalStateJsonConverter : JsonConverter<RevenueWit
             throw new JsonException("Unable to deserialize RevenueWithdrawalState: unexpected JSON token.");
         }
 
-        using var document = JsonDocument.ParseValue(ref reader);
+        var objectReader = reader;
+        ReadObjectMetadata(
+            ref objectReader,
+            out var typeDiscriminator);
 
-        if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
+        if (typeDiscriminator is not null)
         {
-            var discriminator = typeElement.GetString();
-            switch (discriminator)
+            switch (typeDiscriminator)
             {
                 case "failed":
-                    return RevenueWithdrawalState.From(document.RootElement.Deserialize<RevenueWithdrawalStateFailed>(options)
+                    return RevenueWithdrawalState.From(JsonSerializer.Deserialize<RevenueWithdrawalStateFailed>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize RevenueWithdrawalState as RevenueWithdrawalStateFailed."));
                 case "pending":
-                    return RevenueWithdrawalState.From(document.RootElement.Deserialize<RevenueWithdrawalStatePending>(options)
+                    return RevenueWithdrawalState.From(JsonSerializer.Deserialize<RevenueWithdrawalStatePending>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize RevenueWithdrawalState as RevenueWithdrawalStatePending."));
                 case "succeeded":
-                    return RevenueWithdrawalState.From(document.RootElement.Deserialize<RevenueWithdrawalStateSucceeded>(options)
+                    return RevenueWithdrawalState.From(JsonSerializer.Deserialize<RevenueWithdrawalStateSucceeded>(ref reader, options)
                         ?? throw new JsonException("Unable to deserialize RevenueWithdrawalState as RevenueWithdrawalStateSucceeded."));
                 default:
-                    throw new JsonException($"Unknown discriminator value '{discriminator}' for RevenueWithdrawalState.");
+                    throw new JsonException($"Unknown discriminator value '{typeDiscriminator}' for RevenueWithdrawalState.");
             }
         }
 
         throw new JsonException("Unable to deserialize RevenueWithdrawalState from the provided Telegram payload.");
+    }
+
+    private static void ReadObjectMetadata(
+        ref Utf8JsonReader reader,
+        out string? typeDiscriminator)
+    {
+        typeDiscriminator = null;
+
+        while (reader.Read())
+        {
+            if (reader.TokenType == JsonTokenType.EndObject)
+            {
+                return;
+            }
+
+            if (reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException("Unable to scan union object metadata: expected a JSON property name.");
+            }
+
+            if (reader.ValueTextEquals("type"u8))
+            {
+                if (!reader.Read())
+                {
+                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
+                }
+
+                typeDiscriminator = null;
+                if (reader.TokenType == JsonTokenType.String)
+                {
+                    typeDiscriminator = reader.GetString();
+                }
+
+                reader.Skip();
+                continue;
+            }
+
+            if (!reader.Read())
+            {
+                throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
+            }
+
+            reader.Skip();
+        }
+
+        throw new JsonException("Unable to scan union object metadata: object was not closed.");
     }
 
     public override void Write(Utf8JsonWriter writer, RevenueWithdrawalState value, JsonSerializerOptions options)
