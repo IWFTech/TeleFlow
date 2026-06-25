@@ -23,6 +23,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: nuget-publish-${{ github.event.inputs.packageVersion }}
@@ -61,16 +62,17 @@ jobs:
           retention-days: 30
           compression-level: 0
 
+      - name: NuGet login
+        if: ${{ github.event.inputs.publishToNuGet == 'true' }}
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: iriswolf
+
       - name: Publish packages to nuget.org
         if: ${{ github.event.inputs.publishToNuGet == 'true' }}
         shell: pwsh
-        env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: |
-          if ([string]::IsNullOrWhiteSpace($env:NUGET_API_KEY)) {
-              throw "NUGET_API_KEY secret is required to publish packages."
-          }
-
           $packageDirectory = Join-Path $env:GITHUB_WORKSPACE "artifacts\release-packages\${{ github.event.inputs.packageVersion }}"
           $packages = @(Get-ChildItem -LiteralPath $packageDirectory -Filter "*.nupkg" -File |
               Where-Object { -not $_.Name.EndsWith(".symbols.nupkg", [System.StringComparison]::OrdinalIgnoreCase) })
@@ -81,7 +83,7 @@ jobs:
 
           foreach ($package in $packages) {
               dotnet nuget push $package.FullName `
-                  --api-key $env:NUGET_API_KEY `
+                  --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" `
                   --source "https://api.nuget.org/v3/index.json" `
                   --skip-duplicate
 
@@ -94,7 +96,7 @@ jobs:
 
           foreach ($symbolPackage in $symbolPackages) {
               dotnet nuget push $symbolPackage.FullName `
-                  --api-key $env:NUGET_API_KEY `
+                  --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" `
                   --source "https://api.nuget.org/v3/index.json" `
                   --skip-duplicate
 

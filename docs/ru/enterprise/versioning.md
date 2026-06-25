@@ -37,7 +37,9 @@ Release verification и NuGet publishing намеренно разделены:
 1. Укажи `packageVersion` в SemVer prerelease формате, например `0.1.0-alpha.1`.
 2. Оставь `publishToNuGet` выключенным для dry verification run.
 3. Включай `publishToNuGet` только когда packages реально нужно отправить на nuget.org.
-4. Перед публикацией добавь repository secret `NUGET_API_KEY`.
+4. Настрой NuGet Trusted Publishing policy для owner `iriswolf`, repository `IWFTech/TeleFlow` и workflow file `nuget-publish.yml`.
+
+Publish workflow использует `NuGet/login@v1` через GitHub OIDC. Long-lived NuGet API key в GitHub Secrets не нужен.
 
 Publish workflow использует `eng/verify-release.ps1`, поэтому package не будет опубликован, пока не пройдут restore, format verification, build, strict analyzer verification, tests, pack и package metadata checks.
 
