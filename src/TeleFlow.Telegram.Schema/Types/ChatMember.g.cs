@@ -227,7 +227,6 @@ file sealed class ChatMemberJsonConverter : JsonConverter<ChatMember>
         }
 
         using var document = JsonDocument.ParseValue(ref reader);
-        var json = document.RootElement.GetRawText();
 
         if (document.RootElement.TryGetProperty("status", out var statusElement) && statusElement.ValueKind == JsonValueKind.String)
         {
@@ -235,22 +234,22 @@ file sealed class ChatMemberJsonConverter : JsonConverter<ChatMember>
             switch (discriminator)
             {
                 case "administrator":
-                    return ChatMember.From(JsonSerializer.Deserialize<ChatMemberAdministrator>(json, options)
+                    return ChatMember.From(document.RootElement.Deserialize<ChatMemberAdministrator>(options)
                         ?? throw new JsonException("Unable to deserialize ChatMember as ChatMemberAdministrator."));
                 case "creator":
-                    return ChatMember.From(JsonSerializer.Deserialize<ChatMemberOwner>(json, options)
+                    return ChatMember.From(document.RootElement.Deserialize<ChatMemberOwner>(options)
                         ?? throw new JsonException("Unable to deserialize ChatMember as ChatMemberOwner."));
                 case "kicked":
-                    return ChatMember.From(JsonSerializer.Deserialize<ChatMemberBanned>(json, options)
+                    return ChatMember.From(document.RootElement.Deserialize<ChatMemberBanned>(options)
                         ?? throw new JsonException("Unable to deserialize ChatMember as ChatMemberBanned."));
                 case "left":
-                    return ChatMember.From(JsonSerializer.Deserialize<ChatMemberLeft>(json, options)
+                    return ChatMember.From(document.RootElement.Deserialize<ChatMemberLeft>(options)
                         ?? throw new JsonException("Unable to deserialize ChatMember as ChatMemberLeft."));
                 case "member":
-                    return ChatMember.From(JsonSerializer.Deserialize<ChatMemberMember>(json, options)
+                    return ChatMember.From(document.RootElement.Deserialize<ChatMemberMember>(options)
                         ?? throw new JsonException("Unable to deserialize ChatMember as ChatMemberMember."));
                 case "restricted":
-                    return ChatMember.From(JsonSerializer.Deserialize<ChatMemberRestricted>(json, options)
+                    return ChatMember.From(document.RootElement.Deserialize<ChatMemberRestricted>(options)
                         ?? throw new JsonException("Unable to deserialize ChatMember as ChatMemberRestricted."));
                 default:
                     throw new JsonException($"Unknown discriminator value '{discriminator}' for ChatMember.");

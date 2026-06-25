@@ -22,6 +22,8 @@ internal sealed class TelegramHandlerRequestTimingScope : IDisposable
         return scope;
     }
 
+    public static bool HasCurrent => CurrentSlot.Value is not null;
+
     public static void Record(long startTimestamp, long endTimestamp)
     {
         if (endTimestamp < startTimestamp)

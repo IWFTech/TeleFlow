@@ -134,7 +134,6 @@ file sealed class ReactionTypeJsonConverter : JsonConverter<ReactionType>
         }
 
         using var document = JsonDocument.ParseValue(ref reader);
-        var json = document.RootElement.GetRawText();
 
         if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
         {
@@ -142,13 +141,13 @@ file sealed class ReactionTypeJsonConverter : JsonConverter<ReactionType>
             switch (discriminator)
             {
                 case "custom_emoji":
-                    return ReactionType.From(JsonSerializer.Deserialize<ReactionTypeCustomEmoji>(json, options)
+                    return ReactionType.From(document.RootElement.Deserialize<ReactionTypeCustomEmoji>(options)
                         ?? throw new JsonException("Unable to deserialize ReactionType as ReactionTypeCustomEmoji."));
                 case "emoji":
-                    return ReactionType.From(JsonSerializer.Deserialize<ReactionTypeEmoji>(json, options)
+                    return ReactionType.From(document.RootElement.Deserialize<ReactionTypeEmoji>(options)
                         ?? throw new JsonException("Unable to deserialize ReactionType as ReactionTypeEmoji."));
                 case "paid":
-                    return ReactionType.From(JsonSerializer.Deserialize<ReactionTypePaid>(json, options)
+                    return ReactionType.From(document.RootElement.Deserialize<ReactionTypePaid>(options)
                         ?? throw new JsonException("Unable to deserialize ReactionType as ReactionTypePaid."));
                 default:
                     throw new JsonException($"Unknown discriminator value '{discriminator}' for ReactionType.");

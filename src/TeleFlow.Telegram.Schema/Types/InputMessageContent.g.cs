@@ -227,41 +227,40 @@ file sealed class InputMessageContentJsonConverter : JsonConverter<InputMessageC
         }
 
         using var document = JsonDocument.ParseValue(ref reader);
-        var json = document.RootElement.GetRawText();
 
         if (document.RootElement.TryGetProperty("currency", out _) && document.RootElement.TryGetProperty("description", out _) && document.RootElement.TryGetProperty("payload", out _) && document.RootElement.TryGetProperty("prices", out _) && document.RootElement.TryGetProperty("title", out _))
         {
-            return InputMessageContent.From(JsonSerializer.Deserialize<InputInvoiceMessageContent>(json, options)
+            return InputMessageContent.From(document.RootElement.Deserialize<InputInvoiceMessageContent>(options)
                 ?? throw new JsonException("Unable to deserialize InputMessageContent as InputInvoiceMessageContent."));
         }
 
         if (document.RootElement.TryGetProperty("address", out _) && document.RootElement.TryGetProperty("latitude", out _) && document.RootElement.TryGetProperty("longitude", out _) && document.RootElement.TryGetProperty("title", out _))
         {
-            return InputMessageContent.From(JsonSerializer.Deserialize<InputVenueMessageContent>(json, options)
+            return InputMessageContent.From(document.RootElement.Deserialize<InputVenueMessageContent>(options)
                 ?? throw new JsonException("Unable to deserialize InputMessageContent as InputVenueMessageContent."));
         }
 
         if (document.RootElement.TryGetProperty("first_name", out _) && document.RootElement.TryGetProperty("phone_number", out _))
         {
-            return InputMessageContent.From(JsonSerializer.Deserialize<InputContactMessageContent>(json, options)
+            return InputMessageContent.From(document.RootElement.Deserialize<InputContactMessageContent>(options)
                 ?? throw new JsonException("Unable to deserialize InputMessageContent as InputContactMessageContent."));
         }
 
         if (document.RootElement.TryGetProperty("latitude", out _) && document.RootElement.TryGetProperty("longitude", out _))
         {
-            return InputMessageContent.From(JsonSerializer.Deserialize<InputLocationMessageContent>(json, options)
+            return InputMessageContent.From(document.RootElement.Deserialize<InputLocationMessageContent>(options)
                 ?? throw new JsonException("Unable to deserialize InputMessageContent as InputLocationMessageContent."));
         }
 
         if (document.RootElement.TryGetProperty("rich_message", out _))
         {
-            return InputMessageContent.From(JsonSerializer.Deserialize<InputRichMessageContent>(json, options)
+            return InputMessageContent.From(document.RootElement.Deserialize<InputRichMessageContent>(options)
                 ?? throw new JsonException("Unable to deserialize InputMessageContent as InputRichMessageContent."));
         }
 
         if (document.RootElement.TryGetProperty("message_text", out _))
         {
-            return InputMessageContent.From(JsonSerializer.Deserialize<InputTextMessageContent>(json, options)
+            return InputMessageContent.From(document.RootElement.Deserialize<InputTextMessageContent>(options)
                 ?? throw new JsonException("Unable to deserialize InputMessageContent as InputTextMessageContent."));
         }
 

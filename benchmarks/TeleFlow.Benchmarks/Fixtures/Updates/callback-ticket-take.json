@@ -1,0 +1,28 @@
+{
+  "update_id": 1000003,
+  "callback_query": {
+    "id": "callback-1000003",
+    "from": {
+      "id": 3000001,
+      "is_bot": false,
+      "first_name": "Benchmark"
+    },
+    "message": {
+      "message_id": 4000003,
+      "date": 1710000002,
+      "chat": {
+        "id": 2000001,
+        "type": "private",
+        "first_name": "Benchmark"
+      },
+      "from": {
+        "id": 9000001,
+        "is_bot": true,
+        "first_name": "TeleFlow Bench Bot"
+      },
+      "text": "Ticket #42"
+    },
+    "chat_instance": "benchmark-chat-instance",
+    "data": "ticket:take:42"
+  }
+}

@@ -131,3 +131,4 @@ Useful benchmark groups:
 
 Do not optimize by guessing. Keep the first benchmark simple and repeatable.
 
+The repository benchmark suite lives in [benchmarks/README.md](../../../benchmarks/README.md). It currently includes a fair `Scenarios/Vs` comparison set for TeleFlow vs Telegram.Bot low-level client calls, TeleFlow raw long polling vs a handwritten Telegram.Bot polling loop, TeleFlow vs Telegram.Bot update deserialization, and TeleFlow vs Telegrator command/callback framework dispatch. Competitor adapters are only accepted when they can prove that the benchmarked path actually executed without network I/O.

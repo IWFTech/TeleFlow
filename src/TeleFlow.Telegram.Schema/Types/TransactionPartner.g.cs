@@ -258,7 +258,6 @@ file sealed class TransactionPartnerJsonConverter : JsonConverter<TransactionPar
         }
 
         using var document = JsonDocument.ParseValue(ref reader);
-        var json = document.RootElement.GetRawText();
 
         if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
         {
@@ -266,25 +265,25 @@ file sealed class TransactionPartnerJsonConverter : JsonConverter<TransactionPar
             switch (discriminator)
             {
                 case "affiliate_program":
-                    return TransactionPartner.From(JsonSerializer.Deserialize<TransactionPartnerAffiliateProgram>(json, options)
+                    return TransactionPartner.From(document.RootElement.Deserialize<TransactionPartnerAffiliateProgram>(options)
                         ?? throw new JsonException("Unable to deserialize TransactionPartner as TransactionPartnerAffiliateProgram."));
                 case "chat":
-                    return TransactionPartner.From(JsonSerializer.Deserialize<TransactionPartnerChat>(json, options)
+                    return TransactionPartner.From(document.RootElement.Deserialize<TransactionPartnerChat>(options)
                         ?? throw new JsonException("Unable to deserialize TransactionPartner as TransactionPartnerChat."));
                 case "fragment":
-                    return TransactionPartner.From(JsonSerializer.Deserialize<TransactionPartnerFragment>(json, options)
+                    return TransactionPartner.From(document.RootElement.Deserialize<TransactionPartnerFragment>(options)
                         ?? throw new JsonException("Unable to deserialize TransactionPartner as TransactionPartnerFragment."));
                 case "other":
-                    return TransactionPartner.From(JsonSerializer.Deserialize<TransactionPartnerOther>(json, options)
+                    return TransactionPartner.From(document.RootElement.Deserialize<TransactionPartnerOther>(options)
                         ?? throw new JsonException("Unable to deserialize TransactionPartner as TransactionPartnerOther."));
                 case "telegram_ads":
-                    return TransactionPartner.From(JsonSerializer.Deserialize<TransactionPartnerTelegramAds>(json, options)
+                    return TransactionPartner.From(document.RootElement.Deserialize<TransactionPartnerTelegramAds>(options)
                         ?? throw new JsonException("Unable to deserialize TransactionPartner as TransactionPartnerTelegramAds."));
                 case "telegram_api":
-                    return TransactionPartner.From(JsonSerializer.Deserialize<TransactionPartnerTelegramApi>(json, options)
+                    return TransactionPartner.From(document.RootElement.Deserialize<TransactionPartnerTelegramApi>(options)
                         ?? throw new JsonException("Unable to deserialize TransactionPartner as TransactionPartnerTelegramApi."));
                 case "user":
-                    return TransactionPartner.From(JsonSerializer.Deserialize<TransactionPartnerUser>(json, options)
+                    return TransactionPartner.From(document.RootElement.Deserialize<TransactionPartnerUser>(options)
                         ?? throw new JsonException("Unable to deserialize TransactionPartner as TransactionPartnerUser."));
                 default:
                     throw new JsonException($"Unknown discriminator value '{discriminator}' for TransactionPartner.");

@@ -103,18 +103,17 @@ file sealed class MaybeInaccessibleMessageJsonConverter : JsonConverter<MaybeIna
         }
 
         using var document = JsonDocument.ParseValue(ref reader);
-        var json = document.RootElement.GetRawText();
 
         if (document.RootElement.TryGetProperty("date", out var dateElement) &&
             dateElement.ValueKind == JsonValueKind.Number &&
             dateElement.TryGetInt64(out var date) &&
             date == 0)
         {
-            return MaybeInaccessibleMessage.From(JsonSerializer.Deserialize<InaccessibleMessage>(json, options)
+            return MaybeInaccessibleMessage.From(document.RootElement.Deserialize<InaccessibleMessage>(options)
                 ?? throw new JsonException("Unable to deserialize MaybeInaccessibleMessage as InaccessibleMessage."));
         }
 
-        return MaybeInaccessibleMessage.From(JsonSerializer.Deserialize<Message>(json, options)
+        return MaybeInaccessibleMessage.From(document.RootElement.Deserialize<Message>(options)
             ?? throw new JsonException("Unable to deserialize MaybeInaccessibleMessage as Message."));
         throw new JsonException("Unable to deserialize MaybeInaccessibleMessage from the provided Telegram payload.");
     }

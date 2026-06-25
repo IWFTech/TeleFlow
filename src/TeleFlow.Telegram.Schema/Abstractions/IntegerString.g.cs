@@ -108,7 +108,6 @@ file sealed class IntegerStringJsonConverter : JsonConverter<IntegerString>
         }
 
         using var document = JsonDocument.ParseValue(ref reader);
-        var json = document.RootElement.GetRawText();
 
         throw new JsonException("Unable to deserialize IntegerString from the provided Telegram payload.");
     }

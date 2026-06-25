@@ -196,7 +196,6 @@ file sealed class StoryAreaTypeJsonConverter : JsonConverter<StoryAreaType>
         }
 
         using var document = JsonDocument.ParseValue(ref reader);
-        var json = document.RootElement.GetRawText();
 
         if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
         {
@@ -204,19 +203,19 @@ file sealed class StoryAreaTypeJsonConverter : JsonConverter<StoryAreaType>
             switch (discriminator)
             {
                 case "link":
-                    return StoryAreaType.From(JsonSerializer.Deserialize<StoryAreaTypeLink>(json, options)
+                    return StoryAreaType.From(document.RootElement.Deserialize<StoryAreaTypeLink>(options)
                         ?? throw new JsonException("Unable to deserialize StoryAreaType as StoryAreaTypeLink."));
                 case "location":
-                    return StoryAreaType.From(JsonSerializer.Deserialize<StoryAreaTypeLocation>(json, options)
+                    return StoryAreaType.From(document.RootElement.Deserialize<StoryAreaTypeLocation>(options)
                         ?? throw new JsonException("Unable to deserialize StoryAreaType as StoryAreaTypeLocation."));
                 case "suggested_reaction":
-                    return StoryAreaType.From(JsonSerializer.Deserialize<StoryAreaTypeSuggestedReaction>(json, options)
+                    return StoryAreaType.From(document.RootElement.Deserialize<StoryAreaTypeSuggestedReaction>(options)
                         ?? throw new JsonException("Unable to deserialize StoryAreaType as StoryAreaTypeSuggestedReaction."));
                 case "unique_gift":
-                    return StoryAreaType.From(JsonSerializer.Deserialize<StoryAreaTypeUniqueGift>(json, options)
+                    return StoryAreaType.From(document.RootElement.Deserialize<StoryAreaTypeUniqueGift>(options)
                         ?? throw new JsonException("Unable to deserialize StoryAreaType as StoryAreaTypeUniqueGift."));
                 case "weather":
-                    return StoryAreaType.From(JsonSerializer.Deserialize<StoryAreaTypeWeather>(json, options)
+                    return StoryAreaType.From(document.RootElement.Deserialize<StoryAreaTypeWeather>(options)
                         ?? throw new JsonException("Unable to deserialize StoryAreaType as StoryAreaTypeWeather."));
                 default:
                     throw new JsonException($"Unknown discriminator value '{discriminator}' for StoryAreaType.");

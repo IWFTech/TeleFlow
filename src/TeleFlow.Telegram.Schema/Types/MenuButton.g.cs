@@ -135,7 +135,6 @@ file sealed class MenuButtonJsonConverter : JsonConverter<MenuButton>
         }
 
         using var document = JsonDocument.ParseValue(ref reader);
-        var json = document.RootElement.GetRawText();
 
         if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
         {
@@ -143,13 +142,13 @@ file sealed class MenuButtonJsonConverter : JsonConverter<MenuButton>
             switch (discriminator)
             {
                 case "commands":
-                    return MenuButton.From(JsonSerializer.Deserialize<MenuButtonCommands>(json, options)
+                    return MenuButton.From(document.RootElement.Deserialize<MenuButtonCommands>(options)
                         ?? throw new JsonException("Unable to deserialize MenuButton as MenuButtonCommands."));
                 case "default":
-                    return MenuButton.From(JsonSerializer.Deserialize<MenuButtonDefault>(json, options)
+                    return MenuButton.From(document.RootElement.Deserialize<MenuButtonDefault>(options)
                         ?? throw new JsonException("Unable to deserialize MenuButton as MenuButtonDefault."));
                 case "web_app":
-                    return MenuButton.From(JsonSerializer.Deserialize<MenuButtonWebApp>(json, options)
+                    return MenuButton.From(document.RootElement.Deserialize<MenuButtonWebApp>(options)
                         ?? throw new JsonException("Unable to deserialize MenuButton as MenuButtonWebApp."));
                 default:
                     throw new JsonException($"Unknown discriminator value '{discriminator}' for MenuButton.");

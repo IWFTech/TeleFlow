@@ -103,7 +103,6 @@ file sealed class InputStoryContentJsonConverter : JsonConverter<InputStoryConte
         }
 
         using var document = JsonDocument.ParseValue(ref reader);
-        var json = document.RootElement.GetRawText();
 
         if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
         {
@@ -111,10 +110,10 @@ file sealed class InputStoryContentJsonConverter : JsonConverter<InputStoryConte
             switch (discriminator)
             {
                 case "photo":
-                    return InputStoryContent.From(JsonSerializer.Deserialize<InputStoryContentPhoto>(json, options)
+                    return InputStoryContent.From(document.RootElement.Deserialize<InputStoryContentPhoto>(options)
                         ?? throw new JsonException("Unable to deserialize InputStoryContent as InputStoryContentPhoto."));
                 case "video":
-                    return InputStoryContent.From(JsonSerializer.Deserialize<InputStoryContentVideo>(json, options)
+                    return InputStoryContent.From(document.RootElement.Deserialize<InputStoryContentVideo>(options)
                         ?? throw new JsonException("Unable to deserialize InputStoryContent as InputStoryContentVideo."));
                 default:
                     throw new JsonException($"Unknown discriminator value '{discriminator}' for InputStoryContent.");

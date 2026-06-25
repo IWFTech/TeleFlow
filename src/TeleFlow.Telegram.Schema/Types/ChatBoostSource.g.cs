@@ -134,7 +134,6 @@ file sealed class ChatBoostSourceJsonConverter : JsonConverter<ChatBoostSource>
         }
 
         using var document = JsonDocument.ParseValue(ref reader);
-        var json = document.RootElement.GetRawText();
 
         if (document.RootElement.TryGetProperty("source", out var sourceElement) && sourceElement.ValueKind == JsonValueKind.String)
         {
@@ -142,13 +141,13 @@ file sealed class ChatBoostSourceJsonConverter : JsonConverter<ChatBoostSource>
             switch (discriminator)
             {
                 case "gift_code":
-                    return ChatBoostSource.From(JsonSerializer.Deserialize<ChatBoostSourceGiftCode>(json, options)
+                    return ChatBoostSource.From(document.RootElement.Deserialize<ChatBoostSourceGiftCode>(options)
                         ?? throw new JsonException("Unable to deserialize ChatBoostSource as ChatBoostSourceGiftCode."));
                 case "giveaway":
-                    return ChatBoostSource.From(JsonSerializer.Deserialize<ChatBoostSourceGiveaway>(json, options)
+                    return ChatBoostSource.From(document.RootElement.Deserialize<ChatBoostSourceGiveaway>(options)
                         ?? throw new JsonException("Unable to deserialize ChatBoostSource as ChatBoostSourceGiveaway."));
                 case "premium":
-                    return ChatBoostSource.From(JsonSerializer.Deserialize<ChatBoostSourcePremium>(json, options)
+                    return ChatBoostSource.From(document.RootElement.Deserialize<ChatBoostSourcePremium>(options)
                         ?? throw new JsonException("Unable to deserialize ChatBoostSource as ChatBoostSourcePremium."));
                 default:
                     throw new JsonException($"Unknown discriminator value '{discriminator}' for ChatBoostSource.");

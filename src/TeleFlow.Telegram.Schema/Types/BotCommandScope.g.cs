@@ -258,7 +258,6 @@ file sealed class BotCommandScopeJsonConverter : JsonConverter<BotCommandScope>
         }
 
         using var document = JsonDocument.ParseValue(ref reader);
-        var json = document.RootElement.GetRawText();
 
         if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
         {
@@ -266,25 +265,25 @@ file sealed class BotCommandScopeJsonConverter : JsonConverter<BotCommandScope>
             switch (discriminator)
             {
                 case "all_chat_administrators":
-                    return BotCommandScope.From(JsonSerializer.Deserialize<BotCommandScopeAllChatAdministrators>(json, options)
+                    return BotCommandScope.From(document.RootElement.Deserialize<BotCommandScopeAllChatAdministrators>(options)
                         ?? throw new JsonException("Unable to deserialize BotCommandScope as BotCommandScopeAllChatAdministrators."));
                 case "all_group_chats":
-                    return BotCommandScope.From(JsonSerializer.Deserialize<BotCommandScopeAllGroupChats>(json, options)
+                    return BotCommandScope.From(document.RootElement.Deserialize<BotCommandScopeAllGroupChats>(options)
                         ?? throw new JsonException("Unable to deserialize BotCommandScope as BotCommandScopeAllGroupChats."));
                 case "all_private_chats":
-                    return BotCommandScope.From(JsonSerializer.Deserialize<BotCommandScopeAllPrivateChats>(json, options)
+                    return BotCommandScope.From(document.RootElement.Deserialize<BotCommandScopeAllPrivateChats>(options)
                         ?? throw new JsonException("Unable to deserialize BotCommandScope as BotCommandScopeAllPrivateChats."));
                 case "chat":
-                    return BotCommandScope.From(JsonSerializer.Deserialize<BotCommandScopeChat>(json, options)
+                    return BotCommandScope.From(document.RootElement.Deserialize<BotCommandScopeChat>(options)
                         ?? throw new JsonException("Unable to deserialize BotCommandScope as BotCommandScopeChat."));
                 case "chat_administrators":
-                    return BotCommandScope.From(JsonSerializer.Deserialize<BotCommandScopeChatAdministrators>(json, options)
+                    return BotCommandScope.From(document.RootElement.Deserialize<BotCommandScopeChatAdministrators>(options)
                         ?? throw new JsonException("Unable to deserialize BotCommandScope as BotCommandScopeChatAdministrators."));
                 case "chat_member":
-                    return BotCommandScope.From(JsonSerializer.Deserialize<BotCommandScopeChatMember>(json, options)
+                    return BotCommandScope.From(document.RootElement.Deserialize<BotCommandScopeChatMember>(options)
                         ?? throw new JsonException("Unable to deserialize BotCommandScope as BotCommandScopeChatMember."));
                 case "default":
-                    return BotCommandScope.From(JsonSerializer.Deserialize<BotCommandScopeDefault>(json, options)
+                    return BotCommandScope.From(document.RootElement.Deserialize<BotCommandScopeDefault>(options)
                         ?? throw new JsonException("Unable to deserialize BotCommandScope as BotCommandScopeDefault."));
                 default:
                     throw new JsonException($"Unknown discriminator value '{discriminator}' for BotCommandScope.");

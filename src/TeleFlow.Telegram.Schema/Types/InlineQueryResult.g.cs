@@ -662,7 +662,6 @@ file sealed class InlineQueryResultJsonConverter : JsonConverter<InlineQueryResu
         }
 
         using var document = JsonDocument.ParseValue(ref reader);
-        var json = document.RootElement.GetRawText();
 
         if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
         {
@@ -670,104 +669,104 @@ file sealed class InlineQueryResultJsonConverter : JsonConverter<InlineQueryResu
             switch (discriminator)
             {
                 case "article":
-                    return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultArticle>(json, options)
+                    return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultArticle>(options)
                         ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultArticle."));
                 case "audio":
                     if (document.RootElement.TryGetProperty("audio_url", out _) && document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("title", out _) && document.RootElement.TryGetProperty("type", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultAudio>(json, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultAudio>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultAudio."));
                     }
                     if (document.RootElement.TryGetProperty("audio_file_id", out _) && document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("type", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultCachedAudio>(json, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultCachedAudio>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultCachedAudio."));
                     }
                     throw new JsonException("Unable to refine discriminator value 'audio' for InlineQueryResult using required properties.");
                 case "contact":
-                    return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultContact>(json, options)
+                    return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultContact>(options)
                         ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultContact."));
                 case "document":
                     if (document.RootElement.TryGetProperty("document_url", out _) && document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("mime_type", out _) && document.RootElement.TryGetProperty("title", out _) && document.RootElement.TryGetProperty("type", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultDocument>(json, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultDocument>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultDocument."));
                     }
                     if (document.RootElement.TryGetProperty("document_file_id", out _) && document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("title", out _) && document.RootElement.TryGetProperty("type", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultCachedDocument>(json, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultCachedDocument>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultCachedDocument."));
                     }
                     throw new JsonException("Unable to refine discriminator value 'document' for InlineQueryResult using required properties.");
                 case "game":
-                    return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultGame>(json, options)
+                    return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultGame>(options)
                         ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultGame."));
                 case "gif":
                     if (document.RootElement.TryGetProperty("gif_url", out _) && document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("thumbnail_url", out _) && document.RootElement.TryGetProperty("type", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultGif>(json, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultGif>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultGif."));
                     }
                     if (document.RootElement.TryGetProperty("gif_file_id", out _) && document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("type", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultCachedGif>(json, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultCachedGif>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultCachedGif."));
                     }
                     throw new JsonException("Unable to refine discriminator value 'gif' for InlineQueryResult using required properties.");
                 case "location":
-                    return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultLocation>(json, options)
+                    return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultLocation>(options)
                         ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultLocation."));
                 case "mpeg4_gif":
                     if (document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("mpeg4_url", out _) && document.RootElement.TryGetProperty("thumbnail_url", out _) && document.RootElement.TryGetProperty("type", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultMpeg4Gif>(json, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultMpeg4Gif>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultMpeg4Gif."));
                     }
                     if (document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("mpeg4_file_id", out _) && document.RootElement.TryGetProperty("type", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultCachedMpeg4Gif>(json, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultCachedMpeg4Gif>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultCachedMpeg4Gif."));
                     }
                     throw new JsonException("Unable to refine discriminator value 'mpeg4_gif' for InlineQueryResult using required properties.");
                 case "photo":
                     if (document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("photo_url", out _) && document.RootElement.TryGetProperty("thumbnail_url", out _) && document.RootElement.TryGetProperty("type", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultPhoto>(json, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultPhoto>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultPhoto."));
                     }
                     if (document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("photo_file_id", out _) && document.RootElement.TryGetProperty("type", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultCachedPhoto>(json, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultCachedPhoto>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultCachedPhoto."));
                     }
                     throw new JsonException("Unable to refine discriminator value 'photo' for InlineQueryResult using required properties.");
                 case "sticker":
-                    return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultCachedSticker>(json, options)
+                    return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultCachedSticker>(options)
                         ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultCachedSticker."));
                 case "venue":
-                    return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultVenue>(json, options)
+                    return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultVenue>(options)
                         ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultVenue."));
                 case "video":
                     if (document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("mime_type", out _) && document.RootElement.TryGetProperty("thumbnail_url", out _) && document.RootElement.TryGetProperty("title", out _) && document.RootElement.TryGetProperty("type", out _) && document.RootElement.TryGetProperty("video_url", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultVideo>(json, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultVideo>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultVideo."));
                     }
                     if (document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("title", out _) && document.RootElement.TryGetProperty("type", out _) && document.RootElement.TryGetProperty("video_file_id", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultCachedVideo>(json, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultCachedVideo>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultCachedVideo."));
                     }
                     throw new JsonException("Unable to refine discriminator value 'video' for InlineQueryResult using required properties.");
                 case "voice":
                     if (document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("title", out _) && document.RootElement.TryGetProperty("type", out _) && document.RootElement.TryGetProperty("voice_file_id", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultCachedVoice>(json, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultCachedVoice>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultCachedVoice."));
                     }
                     if (document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("title", out _) && document.RootElement.TryGetProperty("type", out _) && document.RootElement.TryGetProperty("voice_url", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultVoice>(json, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultVoice>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultVoice."));
                     }
                     throw new JsonException("Unable to refine discriminator value 'voice' for InlineQueryResult using required properties.");

@@ -320,7 +320,6 @@ file sealed class PassportElementErrorJsonConverter : JsonConverter<PassportElem
         }
 
         using var document = JsonDocument.ParseValue(ref reader);
-        var json = document.RootElement.GetRawText();
 
         if (document.RootElement.TryGetProperty("source", out var sourceElement) && sourceElement.ValueKind == JsonValueKind.String)
         {
@@ -328,31 +327,31 @@ file sealed class PassportElementErrorJsonConverter : JsonConverter<PassportElem
             switch (discriminator)
             {
                 case "data":
-                    return PassportElementError.From(JsonSerializer.Deserialize<PassportElementErrorDataField>(json, options)
+                    return PassportElementError.From(document.RootElement.Deserialize<PassportElementErrorDataField>(options)
                         ?? throw new JsonException("Unable to deserialize PassportElementError as PassportElementErrorDataField."));
                 case "file":
-                    return PassportElementError.From(JsonSerializer.Deserialize<PassportElementErrorFile>(json, options)
+                    return PassportElementError.From(document.RootElement.Deserialize<PassportElementErrorFile>(options)
                         ?? throw new JsonException("Unable to deserialize PassportElementError as PassportElementErrorFile."));
                 case "files":
-                    return PassportElementError.From(JsonSerializer.Deserialize<PassportElementErrorFiles>(json, options)
+                    return PassportElementError.From(document.RootElement.Deserialize<PassportElementErrorFiles>(options)
                         ?? throw new JsonException("Unable to deserialize PassportElementError as PassportElementErrorFiles."));
                 case "front_side":
-                    return PassportElementError.From(JsonSerializer.Deserialize<PassportElementErrorFrontSide>(json, options)
+                    return PassportElementError.From(document.RootElement.Deserialize<PassportElementErrorFrontSide>(options)
                         ?? throw new JsonException("Unable to deserialize PassportElementError as PassportElementErrorFrontSide."));
                 case "reverse_side":
-                    return PassportElementError.From(JsonSerializer.Deserialize<PassportElementErrorReverseSide>(json, options)
+                    return PassportElementError.From(document.RootElement.Deserialize<PassportElementErrorReverseSide>(options)
                         ?? throw new JsonException("Unable to deserialize PassportElementError as PassportElementErrorReverseSide."));
                 case "selfie":
-                    return PassportElementError.From(JsonSerializer.Deserialize<PassportElementErrorSelfie>(json, options)
+                    return PassportElementError.From(document.RootElement.Deserialize<PassportElementErrorSelfie>(options)
                         ?? throw new JsonException("Unable to deserialize PassportElementError as PassportElementErrorSelfie."));
                 case "translation_file":
-                    return PassportElementError.From(JsonSerializer.Deserialize<PassportElementErrorTranslationFile>(json, options)
+                    return PassportElementError.From(document.RootElement.Deserialize<PassportElementErrorTranslationFile>(options)
                         ?? throw new JsonException("Unable to deserialize PassportElementError as PassportElementErrorTranslationFile."));
                 case "translation_files":
-                    return PassportElementError.From(JsonSerializer.Deserialize<PassportElementErrorTranslationFiles>(json, options)
+                    return PassportElementError.From(document.RootElement.Deserialize<PassportElementErrorTranslationFiles>(options)
                         ?? throw new JsonException("Unable to deserialize PassportElementError as PassportElementErrorTranslationFiles."));
                 case "unspecified":
-                    return PassportElementError.From(JsonSerializer.Deserialize<PassportElementErrorUnspecified>(json, options)
+                    return PassportElementError.From(document.RootElement.Deserialize<PassportElementErrorUnspecified>(options)
                         ?? throw new JsonException("Unable to deserialize PassportElementError as PassportElementErrorUnspecified."));
                 default:
                     throw new JsonException($"Unknown discriminator value '{discriminator}' for PassportElementError.");

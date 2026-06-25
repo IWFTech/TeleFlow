@@ -134,7 +134,6 @@ file sealed class InputPaidMediaJsonConverter : JsonConverter<InputPaidMedia>
         }
 
         using var document = JsonDocument.ParseValue(ref reader);
-        var json = document.RootElement.GetRawText();
 
         if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
         {
@@ -142,13 +141,13 @@ file sealed class InputPaidMediaJsonConverter : JsonConverter<InputPaidMedia>
             switch (discriminator)
             {
                 case "live_photo":
-                    return InputPaidMedia.From(JsonSerializer.Deserialize<InputPaidMediaLivePhoto>(json, options)
+                    return InputPaidMedia.From(document.RootElement.Deserialize<InputPaidMediaLivePhoto>(options)
                         ?? throw new JsonException("Unable to deserialize InputPaidMedia as InputPaidMediaLivePhoto."));
                 case "photo":
-                    return InputPaidMedia.From(JsonSerializer.Deserialize<InputPaidMediaPhoto>(json, options)
+                    return InputPaidMedia.From(document.RootElement.Deserialize<InputPaidMediaPhoto>(options)
                         ?? throw new JsonException("Unable to deserialize InputPaidMedia as InputPaidMediaPhoto."));
                 case "video":
-                    return InputPaidMedia.From(JsonSerializer.Deserialize<InputPaidMediaVideo>(json, options)
+                    return InputPaidMedia.From(document.RootElement.Deserialize<InputPaidMediaVideo>(options)
                         ?? throw new JsonException("Unable to deserialize InputPaidMedia as InputPaidMediaVideo."));
                 default:
                     throw new JsonException($"Unknown discriminator value '{discriminator}' for InputPaidMedia.");

@@ -1,0 +1,18 @@
+{
+  "update_id": 1000002,
+  "message": {
+    "message_id": 4000002,
+    "date": 1710000001,
+    "chat": {
+      "id": 2000001,
+      "type": "private",
+      "first_name": "Benchmark"
+    },
+    "from": {
+      "id": 3000001,
+      "is_bot": false,
+      "first_name": "Benchmark"
+    },
+    "text": "Ada Lovelace"
+  }
+}

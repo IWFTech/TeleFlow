@@ -103,11 +103,10 @@ file sealed class MessageBooleanJsonConverter : JsonConverter<MessageBoolean>
         }
 
         using var document = JsonDocument.ParseValue(ref reader);
-        var json = document.RootElement.GetRawText();
 
         if (document.RootElement.TryGetProperty("chat", out _) && document.RootElement.TryGetProperty("date", out _) && document.RootElement.TryGetProperty("message_id", out _))
         {
-            return MessageBoolean.From(JsonSerializer.Deserialize<Message>(json, options)
+            return MessageBoolean.From(document.RootElement.Deserialize<Message>(options)
                 ?? throw new JsonException("Unable to deserialize MessageBoolean as Message."));
         }
 

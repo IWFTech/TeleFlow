@@ -289,7 +289,6 @@ file sealed class InputPollOptionMediaJsonConverter : JsonConverter<InputPollOpt
         }
 
         using var document = JsonDocument.ParseValue(ref reader);
-        var json = document.RootElement.GetRawText();
 
         if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
         {
@@ -297,28 +296,28 @@ file sealed class InputPollOptionMediaJsonConverter : JsonConverter<InputPollOpt
             switch (discriminator)
             {
                 case "animation":
-                    return InputPollOptionMedia.From(JsonSerializer.Deserialize<InputMediaAnimation>(json, options)
+                    return InputPollOptionMedia.From(document.RootElement.Deserialize<InputMediaAnimation>(options)
                         ?? throw new JsonException("Unable to deserialize InputPollOptionMedia as InputMediaAnimation."));
                 case "link":
-                    return InputPollOptionMedia.From(JsonSerializer.Deserialize<InputMediaLink>(json, options)
+                    return InputPollOptionMedia.From(document.RootElement.Deserialize<InputMediaLink>(options)
                         ?? throw new JsonException("Unable to deserialize InputPollOptionMedia as InputMediaLink."));
                 case "live_photo":
-                    return InputPollOptionMedia.From(JsonSerializer.Deserialize<InputMediaLivePhoto>(json, options)
+                    return InputPollOptionMedia.From(document.RootElement.Deserialize<InputMediaLivePhoto>(options)
                         ?? throw new JsonException("Unable to deserialize InputPollOptionMedia as InputMediaLivePhoto."));
                 case "location":
-                    return InputPollOptionMedia.From(JsonSerializer.Deserialize<InputMediaLocation>(json, options)
+                    return InputPollOptionMedia.From(document.RootElement.Deserialize<InputMediaLocation>(options)
                         ?? throw new JsonException("Unable to deserialize InputPollOptionMedia as InputMediaLocation."));
                 case "photo":
-                    return InputPollOptionMedia.From(JsonSerializer.Deserialize<InputMediaPhoto>(json, options)
+                    return InputPollOptionMedia.From(document.RootElement.Deserialize<InputMediaPhoto>(options)
                         ?? throw new JsonException("Unable to deserialize InputPollOptionMedia as InputMediaPhoto."));
                 case "sticker":
-                    return InputPollOptionMedia.From(JsonSerializer.Deserialize<InputMediaSticker>(json, options)
+                    return InputPollOptionMedia.From(document.RootElement.Deserialize<InputMediaSticker>(options)
                         ?? throw new JsonException("Unable to deserialize InputPollOptionMedia as InputMediaSticker."));
                 case "venue":
-                    return InputPollOptionMedia.From(JsonSerializer.Deserialize<InputMediaVenue>(json, options)
+                    return InputPollOptionMedia.From(document.RootElement.Deserialize<InputMediaVenue>(options)
                         ?? throw new JsonException("Unable to deserialize InputPollOptionMedia as InputMediaVenue."));
                 case "video":
-                    return InputPollOptionMedia.From(JsonSerializer.Deserialize<InputMediaVideo>(json, options)
+                    return InputPollOptionMedia.From(document.RootElement.Deserialize<InputMediaVideo>(options)
                         ?? throw new JsonException("Unable to deserialize InputPollOptionMedia as InputMediaVideo."));
                 default:
                     throw new JsonException($"Unknown discriminator value '{discriminator}' for InputPollOptionMedia.");

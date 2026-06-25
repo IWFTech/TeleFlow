@@ -131,3 +131,4 @@ Memory storage process-local. Это не scaling strategy.
 
 Не оптимизируй на догадках. Первый benchmark должен быть simple и repeatable.
 
+Репозиторный benchmark suite находится в [benchmarks/README.md](../../../benchmarks/README.md). Сейчас он включает честный набор `Scenarios/Vs`: TeleFlow vs Telegram.Bot low-level client calls, TeleFlow raw long polling vs handwritten Telegram.Bot polling loop, TeleFlow vs Telegram.Bot update deserialization и TeleFlow vs Telegrator command/callback framework dispatch. Adapter для конкурента добавляется только тогда, когда можно доказать, что benchmark реально исполнил измеряемый path без network I/O.

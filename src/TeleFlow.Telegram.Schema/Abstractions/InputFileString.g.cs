@@ -104,7 +104,6 @@ file sealed class InputFileStringJsonConverter : JsonConverter<InputFileString>
         }
 
         using var document = JsonDocument.ParseValue(ref reader);
-        var json = document.RootElement.GetRawText();
 
         throw new JsonException("Unable to deserialize InputFileString from the provided Telegram payload.");
     }

@@ -52,35 +52,45 @@ internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
         {
             attempt++;
             TelegramTransportResponse response;
-            var attemptStarted = _timeProvider.GetTimestamp();
+            var requestDebugEnabled = !isPollingRequest && _logger.IsEnabled(LogLevel.Debug);
+            var requestErrorEnabled = !isPollingRequest && _logger.IsEnabled(LogLevel.Error);
+            var requestTimingEnabled = !isPollingRequest && TelegramHandlerRequestTimingScope.HasCurrent;
+            var requestDiagnosticsEnabled = requestDebugEnabled || requestErrorEnabled || requestTimingEnabled;
+            var attemptStarted = requestDiagnosticsEnabled ? _timeProvider.GetTimestamp() : 0;
 
             try
             {
                 var transportRequest = _sender.CreateRequest(executableRequest);
-                var contentKind = GetContentKind(transportRequest.Content);
 
-                if (!isPollingRequest)
+                if (requestDebugEnabled)
                 {
                     LogRequestStarted(
                         _logger,
                         executableRequest.MethodName,
                         attempt,
-                        contentKind);
+                        GetContentKind(transportRequest.Content));
                 }
 
                 response = await _sender.SendAsync(transportRequest, cancellationToken).ConfigureAwait(false);
-                var attemptEnded = _timeProvider.GetTimestamp();
 
-                if (!isPollingRequest)
+                if (requestDiagnosticsEnabled)
                 {
-                    TelegramHandlerRequestTimingScope.Record(attemptStarted, attemptEnded);
+                    var attemptEnded = _timeProvider.GetTimestamp();
 
-                    LogRequestCompleted(
-                        _logger,
-                        executableRequest.MethodName,
-                        attempt,
-                        response.StatusCode,
-                        GetElapsedMilliseconds(attemptStarted, attemptEnded));
+                    if (requestTimingEnabled)
+                    {
+                        TelegramHandlerRequestTimingScope.Record(attemptStarted, attemptEnded);
+                    }
+
+                    if (requestDebugEnabled)
+                    {
+                        LogRequestCompleted(
+                            _logger,
+                            executableRequest.MethodName,
+                            attempt,
+                            response.StatusCode,
+                            GetElapsedMilliseconds(attemptStarted, attemptEnded));
+                    }
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -92,17 +102,25 @@ internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
                 var httpStatusCode = exception is TelegramRequestException requestException
                     ? requestException.HttpStatusCode
                     : null;
-                if (!isPollingRequest)
+                if (requestDiagnosticsEnabled)
                 {
                     var attemptEnded = _timeProvider.GetTimestamp();
-                    TelegramHandlerRequestTimingScope.Record(attemptStarted, attemptEnded);
-                    LogRequestFailure(
-                        executableRequest.MethodName,
-                        attempt,
-                        httpStatusCode,
-                        attemptStarted,
-                        attemptEnded,
-                        exception);
+
+                    if (requestTimingEnabled)
+                    {
+                        TelegramHandlerRequestTimingScope.Record(attemptStarted, attemptEnded);
+                    }
+
+                    if (requestErrorEnabled)
+                    {
+                        LogRequestFailure(
+                            executableRequest.MethodName,
+                            attempt,
+                            httpStatusCode,
+                            attemptStarted,
+                            attemptEnded,
+                            exception);
+                    }
                 }
 
                 throw;
@@ -119,7 +137,7 @@ internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
                 {
                     if (retryAfterHeaderDelay is not null)
                     {
-                        if (!isPollingRequest)
+                        if (!isPollingRequest && _logger.IsEnabled(LogLevel.Warning))
                         {
                             LogRequestThrottled(executableRequest.MethodName, attempt, retryAfterHeaderDelay.Value);
                         }
@@ -136,7 +154,7 @@ internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
                         executableRequest.MethodName,
                         httpStatusCode: response.StatusCode,
                         description: "Telegram throttling response did not provide retry timing metadata.");
-                    if (!isPollingRequest)
+                    if (requestErrorEnabled)
                     {
                         LogRequestFailure(
                             executableRequest.MethodName,
@@ -156,7 +174,7 @@ internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
                     executableRequest.MethodName,
                     httpStatusCode: response.StatusCode,
                     retryAfterHeaderDelay?.Seconds);
-                if (!isPollingRequest)
+                if (requestErrorEnabled)
                 {
                     LogRequestFailure(
                         executableRequest.MethodName,
@@ -178,7 +196,7 @@ internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
                         $"Telegram response for method '{executableRequest.MethodName}' did not contain a result payload.",
                         methodName: executableRequest.MethodName,
                         httpStatusCode: response.StatusCode);
-                    if (!isPollingRequest)
+                    if (requestErrorEnabled)
                     {
                         LogRequestFailure(
                             executableRequest.MethodName,
@@ -207,7 +225,7 @@ internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
                         exception,
                         executableRequest.MethodName,
                         httpStatusCode: response.StatusCode);
-                    if (!isPollingRequest)
+                    if (requestErrorEnabled)
                     {
                         LogRequestFailure(
                             executableRequest.MethodName,
@@ -225,7 +243,7 @@ internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
             var retryAfterDelay = TelegramRetryAfterPolicy.ResolveDelay(response, envelope, _timeProvider);
             if (TelegramApiExceptionFactory.IsThrottling(response.StatusCode, envelope) && retryAfterDelay is not null)
             {
-                if (!isPollingRequest)
+                if (!isPollingRequest && _logger.IsEnabled(LogLevel.Warning))
                 {
                     LogRequestThrottled(executableRequest.MethodName, attempt, retryAfterDelay.Value);
                 }
@@ -244,7 +262,7 @@ internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
                     response.StatusCode,
                     envelope,
                     "Telegram throttling response did not provide retry timing metadata.");
-                if (!isPollingRequest)
+                if (requestErrorEnabled)
                 {
                     LogRequestFailure(
                         executableRequest.MethodName,
@@ -262,7 +280,7 @@ internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
                 executableRequest.MethodName,
                 response.StatusCode,
                 envelope);
-            if (!isPollingRequest)
+            if (requestErrorEnabled)
             {
                 LogRequestFailure(
                     executableRequest.MethodName,

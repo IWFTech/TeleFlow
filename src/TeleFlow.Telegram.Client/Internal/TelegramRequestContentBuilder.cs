@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
@@ -10,6 +11,8 @@ namespace TeleFlow.Telegram.Internal;
 
 internal sealed class TelegramRequestContentBuilder
 {
+    private static readonly ConcurrentDictionary<Type, TypeMetadata> TypeMetadataCache = new();
+
     private readonly JsonSerializerOptions _serializerOptions;
 
     public TelegramRequestContentBuilder(JsonSerializerOptions serializerOptions)
@@ -22,7 +25,7 @@ internal sealed class TelegramRequestContentBuilder
     {
         ArgumentNullException.ThrowIfNull(payload);
 
-        if (!ContainsInputFile(payload, []))
+        if (!ContainsInputFile(payload, new HashSet<object>(ReferenceEqualityComparer.Instance)))
         {
             var json = JsonSerializer.Serialize(payload, payload.GetType(), _serializerOptions);
             return new TelegramJsonTransportContent(json);
@@ -35,7 +38,7 @@ internal sealed class TelegramRequestContentBuilder
     {
         var context = new MultipartBuildContext(_serializerOptions);
 
-        foreach (var property in GetTelegramProperties(payload.GetType()))
+        foreach (var property in GetTypeMetadata(payload.GetType()).TelegramProperties)
         {
             var value = property.GetValue(payload);
             if (value is null)
@@ -43,7 +46,7 @@ internal sealed class TelegramRequestContentBuilder
                 continue;
             }
 
-            var fieldName = GetTelegramName(property);
+            var fieldName = property.TelegramName;
             if (TryGetDirectInputFile(value, out var inputFile))
             {
                 context.AddFile(fieldName, inputFile);
@@ -74,12 +77,15 @@ internal sealed class TelegramRequestContentBuilder
             return true;
         }
 
-        if (IsScalar(value.GetType()) || value is Stream)
+        var type = value.GetType();
+        var metadata = GetTypeMetadata(type);
+
+        if (metadata.IsScalar || value is Stream)
         {
             return false;
         }
 
-        if (!value.GetType().IsValueType && !visited.Add(value))
+        if (!type.IsValueType && !visited.Add(value))
         {
             return false;
         }
@@ -97,7 +103,7 @@ internal sealed class TelegramRequestContentBuilder
             return false;
         }
 
-        foreach (var property in GetReadableProperties(value.GetType()))
+        foreach (var property in metadata.ReadableProperties)
         {
             if (ContainsInputFile(property.GetValue(value), visited))
             {
@@ -129,13 +135,13 @@ internal sealed class TelegramRequestContentBuilder
 
     private static ActiveUnionCase? GetActiveUnionCase(object value)
     {
-        var type = value.GetType();
-        if (GetTelegramProperties(type).Length > 0)
+        var metadata = GetTypeMetadata(value.GetType());
+        if (metadata.TelegramProperties.Length > 0)
         {
             return null;
         }
 
-        var activeCases = GetReadableProperties(type)
+        var activeCases = metadata.ReadableProperties
             .Select(property => new ActiveUnionCase(property.Name, property.GetValue(value)))
             .Where(static item => item.Value is not null)
             .ToArray();
@@ -143,38 +149,34 @@ internal sealed class TelegramRequestContentBuilder
         return activeCases.Length == 1 ? activeCases[0] : null;
     }
 
-    private static PropertyInfo[] GetTelegramProperties(Type type)
+    private static TypeMetadata GetTypeMetadata(Type type)
     {
-        return GetReadableProperties(type)
-            .Where(static property => property.GetCustomAttribute<JsonPropertyNameAttribute>() is not null)
-            .ToArray();
+        return TypeMetadataCache.GetOrAdd(type, CreateTypeMetadata);
     }
 
-    private static PropertyInfo[] GetReadableProperties(Type type)
+    private static TypeMetadata CreateTypeMetadata(Type type)
     {
-        return type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
+        var readableProperties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
             .Where(static property => property.CanRead && property.GetIndexParameters().Length == 0)
+            .Select(static property => new PropertyMetadata(
+                property,
+                property.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name))
             .ToArray();
-    }
 
-    private static string GetTelegramName(PropertyInfo property)
-    {
-        return property.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name
-               ?? throw new InvalidOperationException(
-                   $"Telegram payload property '{property.DeclaringType?.FullName}.{property.Name}' is missing JsonPropertyName metadata.");
-    }
+        var telegramProperties = readableProperties
+            .Where(static property => property.JsonPropertyName is not null)
+            .ToArray();
 
-    private static bool IsScalar(Type type)
-    {
-        type = Nullable.GetUnderlyingType(type) ?? type;
+        var scalarType = Nullable.GetUnderlyingType(type) ?? type;
+        var isScalar = scalarType.IsPrimitive ||
+                       scalarType.IsEnum ||
+                       scalarType == typeof(string) ||
+                       scalarType == typeof(decimal) ||
+                       scalarType == typeof(DateTime) ||
+                       scalarType == typeof(DateTimeOffset) ||
+                       scalarType == typeof(Guid);
 
-        return type.IsPrimitive ||
-               type.IsEnum ||
-               type == typeof(string) ||
-               type == typeof(decimal) ||
-               type == typeof(DateTime) ||
-               type == typeof(DateTimeOffset) ||
-               type == typeof(Guid);
+        return new TypeMetadata(isScalar, readableProperties, telegramProperties);
     }
 
     private sealed class MultipartBuildContext
@@ -241,14 +243,14 @@ internal sealed class TelegramRequestContentBuilder
                 return ToJsonNode(unionCase.Value);
             }
 
-            var telegramProperties = GetTelegramProperties(value.GetType());
-            if (telegramProperties.Length == 0)
+            var metadata = GetTypeMetadata(value.GetType());
+            if (metadata.TelegramProperties.Length == 0)
             {
                 return JsonSerializer.SerializeToNode(value, value.GetType(), _serializerOptions);
             }
 
             var jsonObject = new JsonObject();
-            foreach (var property in telegramProperties)
+            foreach (var property in metadata.TelegramProperties)
             {
                 var propertyValue = property.GetValue(value);
                 if (propertyValue is null)
@@ -259,7 +261,7 @@ internal sealed class TelegramRequestContentBuilder
                 var node = ToJsonNode(propertyValue);
                 if (node is not null)
                 {
-                    jsonObject[GetTelegramName(property)] = node;
+                    jsonObject[property.TelegramName] = node;
                 }
             }
 
@@ -298,4 +300,24 @@ internal sealed class TelegramRequestContentBuilder
     }
 
     private sealed record ActiveUnionCase(string Name, object? Value);
+
+    private sealed record TypeMetadata(
+        bool IsScalar,
+        PropertyMetadata[] ReadableProperties,
+        PropertyMetadata[] TelegramProperties);
+
+    private sealed record PropertyMetadata(PropertyInfo Property, string? JsonPropertyName)
+    {
+        public string Name => Property.Name;
+
+        public string TelegramName =>
+            JsonPropertyName ??
+            throw new InvalidOperationException(
+                $"Telegram payload property '{Property.DeclaringType?.FullName}.{Property.Name}' is missing JsonPropertyName metadata.");
+
+        public object? GetValue(object value)
+        {
+            return Property.GetValue(value);
+        }
+    }
 }

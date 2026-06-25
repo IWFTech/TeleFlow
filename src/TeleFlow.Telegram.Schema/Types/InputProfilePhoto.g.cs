@@ -103,7 +103,6 @@ file sealed class InputProfilePhotoJsonConverter : JsonConverter<InputProfilePho
         }
 
         using var document = JsonDocument.ParseValue(ref reader);
-        var json = document.RootElement.GetRawText();
 
         if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
         {
@@ -111,10 +110,10 @@ file sealed class InputProfilePhotoJsonConverter : JsonConverter<InputProfilePho
             switch (discriminator)
             {
                 case "animated":
-                    return InputProfilePhoto.From(JsonSerializer.Deserialize<InputProfilePhotoAnimated>(json, options)
+                    return InputProfilePhoto.From(document.RootElement.Deserialize<InputProfilePhotoAnimated>(options)
                         ?? throw new JsonException("Unable to deserialize InputProfilePhoto as InputProfilePhotoAnimated."));
                 case "static":
-                    return InputProfilePhoto.From(JsonSerializer.Deserialize<InputProfilePhotoStatic>(json, options)
+                    return InputProfilePhoto.From(document.RootElement.Deserialize<InputProfilePhotoStatic>(options)
                         ?? throw new JsonException("Unable to deserialize InputProfilePhoto as InputProfilePhotoStatic."));
                 default:
                     throw new JsonException($"Unknown discriminator value '{discriminator}' for InputProfilePhoto.");
