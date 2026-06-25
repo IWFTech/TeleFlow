@@ -5,6 +5,7 @@
 [![Telegram Bot API](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FIWFTech%2FTeleFlow%2Fmain%2Fdocs%2Fbadges%2Ftelegram-bot-api.json)](https://core.telegram.org/bots/api-changelog)
 [![NuGet](https://img.shields.io/nuget/vpre/IWF.TeleFlow.Telegram.Framework.LongPolling?label=NuGet)](https://www.nuget.org/packages/IWF.TeleFlow.Telegram.Framework.LongPolling/)
 [![Downloads](https://img.shields.io/nuget/dt/IWF.TeleFlow.Telegram.Framework.LongPolling?label=downloads)](https://www.nuget.org/packages/IWF.TeleFlow.Telegram.Framework.LongPolling/)
+[![Telegram Chat](https://img.shields.io/badge/Telegram-chat-26A5E4?logo=telegram&logoColor=white)](https://t.me/teleflow_chat)
 [![License](https://img.shields.io/github/license/IWFTech/TeleFlow)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 
@@ -29,6 +30,11 @@ The repository documentation is split like a small product site and is ready to 
 - [Enterprise guide](docs/en/enterprise/index.md)
 - [Feature reference](docs/en/reference/attributes.md)
 - [Roadmap](docs/en/roadmap.md)
+
+## Community
+
+- [Telegram chat](https://t.me/teleflow_chat) for quick questions, ideas, and alpha feedback.
+- [GitHub Issues](https://github.com/IWFTech/TeleFlow/issues) for reproducible bugs and tracked feature requests.
 
 ## What TeleFlow Gives You
 

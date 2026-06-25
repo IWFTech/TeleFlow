@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Telegram chat
+    url: https://t.me/teleflow_chat
+    about: Ask quick questions, discuss ideas, and get alpha feedback without opening a tracked issue.
   - name: Documentation
     url: https://github.com/IWFTech/TeleFlow/tree/main/docs
     about: Start here for setup, package selection, examples, and architecture notes.

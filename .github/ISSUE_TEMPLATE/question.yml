@@ -4,6 +4,9 @@ title: "[Question]: "
 labels:
   - question
 body:
+  - type: markdown
+    attributes:
+      value: For quick questions and informal discussion, you can also use the Telegram chat: https://t.me/teleflow_chat
   - type: textarea
     id: question
     attributes:

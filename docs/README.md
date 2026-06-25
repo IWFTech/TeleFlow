@@ -2,6 +2,11 @@
 
 TeleFlow documentation is available in English and Russian.
 
+## Community
+
+- [Telegram chat](https://t.me/teleflow_chat) for quick questions, ideas, and alpha feedback.
+- [GitHub Issues](https://github.com/IWFTech/TeleFlow/issues) for reproducible bugs and tracked feature requests.
+
 ## English
 
 - [Documentation home](en/index.md)
