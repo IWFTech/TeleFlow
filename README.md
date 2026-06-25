@@ -10,7 +10,7 @@ It is built for the normal lifecycle of a Telegram bot: a first command, then ca
 
 The repository documentation is split like a small product site and is ready to be moved to GitHub Pages later.
 
-- [Documentation home](docs/index.md)
+- [Documentation home](docs/README.md)
 - [English documentation](docs/en/index.md)
 - [Russian documentation](docs/ru/index.md)
 - [Quickstart](docs/en/getting-started/quickstart.md)
