@@ -103,7 +103,6 @@ file sealed class OwnedGiftJsonConverter : JsonConverter<OwnedGift>
         }
 
         using var document = JsonDocument.ParseValue(ref reader);
-        var json = document.RootElement.GetRawText();
 
         if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
         {
@@ -111,10 +110,10 @@ file sealed class OwnedGiftJsonConverter : JsonConverter<OwnedGift>
             switch (discriminator)
             {
                 case "regular":
-                    return OwnedGift.From(JsonSerializer.Deserialize<OwnedGiftRegular>(json, options)
+                    return OwnedGift.From(document.RootElement.Deserialize<OwnedGiftRegular>(options)
                         ?? throw new JsonException("Unable to deserialize OwnedGift as OwnedGiftRegular."));
                 case "unique":
-                    return OwnedGift.From(JsonSerializer.Deserialize<OwnedGiftUnique>(json, options)
+                    return OwnedGift.From(document.RootElement.Deserialize<OwnedGiftUnique>(options)
                         ?? throw new JsonException("Unable to deserialize OwnedGift as OwnedGiftUnique."));
                 default:
                     throw new JsonException($"Unknown discriminator value '{discriminator}' for OwnedGift.");

@@ -134,7 +134,6 @@ file sealed class RevenueWithdrawalStateJsonConverter : JsonConverter<RevenueWit
         }
 
         using var document = JsonDocument.ParseValue(ref reader);
-        var json = document.RootElement.GetRawText();
 
         if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
         {
@@ -142,13 +141,13 @@ file sealed class RevenueWithdrawalStateJsonConverter : JsonConverter<RevenueWit
             switch (discriminator)
             {
                 case "failed":
-                    return RevenueWithdrawalState.From(JsonSerializer.Deserialize<RevenueWithdrawalStateFailed>(json, options)
+                    return RevenueWithdrawalState.From(document.RootElement.Deserialize<RevenueWithdrawalStateFailed>(options)
                         ?? throw new JsonException("Unable to deserialize RevenueWithdrawalState as RevenueWithdrawalStateFailed."));
                 case "pending":
-                    return RevenueWithdrawalState.From(JsonSerializer.Deserialize<RevenueWithdrawalStatePending>(json, options)
+                    return RevenueWithdrawalState.From(document.RootElement.Deserialize<RevenueWithdrawalStatePending>(options)
                         ?? throw new JsonException("Unable to deserialize RevenueWithdrawalState as RevenueWithdrawalStatePending."));
                 case "succeeded":
-                    return RevenueWithdrawalState.From(JsonSerializer.Deserialize<RevenueWithdrawalStateSucceeded>(json, options)
+                    return RevenueWithdrawalState.From(document.RootElement.Deserialize<RevenueWithdrawalStateSucceeded>(options)
                         ?? throw new JsonException("Unable to deserialize RevenueWithdrawalState as RevenueWithdrawalStateSucceeded."));
                 default:
                     throw new JsonException($"Unknown discriminator value '{discriminator}' for RevenueWithdrawalState.");

@@ -227,7 +227,6 @@ file sealed class InputMediaJsonConverter : JsonConverter<InputMedia>
         }
 
         using var document = JsonDocument.ParseValue(ref reader);
-        var json = document.RootElement.GetRawText();
 
         if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
         {
@@ -235,22 +234,22 @@ file sealed class InputMediaJsonConverter : JsonConverter<InputMedia>
             switch (discriminator)
             {
                 case "animation":
-                    return InputMedia.From(JsonSerializer.Deserialize<InputMediaAnimation>(json, options)
+                    return InputMedia.From(document.RootElement.Deserialize<InputMediaAnimation>(options)
                         ?? throw new JsonException("Unable to deserialize InputMedia as InputMediaAnimation."));
                 case "audio":
-                    return InputMedia.From(JsonSerializer.Deserialize<InputMediaAudio>(json, options)
+                    return InputMedia.From(document.RootElement.Deserialize<InputMediaAudio>(options)
                         ?? throw new JsonException("Unable to deserialize InputMedia as InputMediaAudio."));
                 case "document":
-                    return InputMedia.From(JsonSerializer.Deserialize<InputMediaDocument>(json, options)
+                    return InputMedia.From(document.RootElement.Deserialize<InputMediaDocument>(options)
                         ?? throw new JsonException("Unable to deserialize InputMedia as InputMediaDocument."));
                 case "live_photo":
-                    return InputMedia.From(JsonSerializer.Deserialize<InputMediaLivePhoto>(json, options)
+                    return InputMedia.From(document.RootElement.Deserialize<InputMediaLivePhoto>(options)
                         ?? throw new JsonException("Unable to deserialize InputMedia as InputMediaLivePhoto."));
                 case "photo":
-                    return InputMedia.From(JsonSerializer.Deserialize<InputMediaPhoto>(json, options)
+                    return InputMedia.From(document.RootElement.Deserialize<InputMediaPhoto>(options)
                         ?? throw new JsonException("Unable to deserialize InputMedia as InputMediaPhoto."));
                 case "video":
-                    return InputMedia.From(JsonSerializer.Deserialize<InputMediaVideo>(json, options)
+                    return InputMedia.From(document.RootElement.Deserialize<InputMediaVideo>(options)
                         ?? throw new JsonException("Unable to deserialize InputMedia as InputMediaVideo."));
                 default:
                     throw new JsonException($"Unknown discriminator value '{discriminator}' for InputMedia.");

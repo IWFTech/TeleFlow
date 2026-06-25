@@ -159,29 +159,28 @@ file sealed class ReplyMarkupJsonConverter : JsonConverter<ReplyMarkup>
         }
 
         using var document = JsonDocument.ParseValue(ref reader);
-        var json = document.RootElement.GetRawText();
 
         if (document.RootElement.TryGetProperty("force_reply", out _))
         {
-            return ReplyMarkup.From(JsonSerializer.Deserialize<ForceReply>(json, options)
+            return ReplyMarkup.From(document.RootElement.Deserialize<ForceReply>(options)
                 ?? throw new JsonException("Unable to deserialize ReplyMarkup as ForceReply."));
         }
 
         if (document.RootElement.TryGetProperty("inline_keyboard", out _))
         {
-            return ReplyMarkup.From(JsonSerializer.Deserialize<InlineKeyboardMarkup>(json, options)
+            return ReplyMarkup.From(document.RootElement.Deserialize<InlineKeyboardMarkup>(options)
                 ?? throw new JsonException("Unable to deserialize ReplyMarkup as InlineKeyboardMarkup."));
         }
 
         if (document.RootElement.TryGetProperty("keyboard", out _))
         {
-            return ReplyMarkup.From(JsonSerializer.Deserialize<ReplyKeyboardMarkup>(json, options)
+            return ReplyMarkup.From(document.RootElement.Deserialize<ReplyKeyboardMarkup>(options)
                 ?? throw new JsonException("Unable to deserialize ReplyMarkup as ReplyKeyboardMarkup."));
         }
 
         if (document.RootElement.TryGetProperty("remove_keyboard", out _))
         {
-            return ReplyMarkup.From(JsonSerializer.Deserialize<ReplyKeyboardRemove>(json, options)
+            return ReplyMarkup.From(document.RootElement.Deserialize<ReplyKeyboardRemove>(options)
                 ?? throw new JsonException("Unable to deserialize ReplyMarkup as ReplyKeyboardRemove."));
         }
 

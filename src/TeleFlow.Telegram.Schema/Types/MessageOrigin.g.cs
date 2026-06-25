@@ -165,7 +165,6 @@ file sealed class MessageOriginJsonConverter : JsonConverter<MessageOrigin>
         }
 
         using var document = JsonDocument.ParseValue(ref reader);
-        var json = document.RootElement.GetRawText();
 
         if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
         {
@@ -173,16 +172,16 @@ file sealed class MessageOriginJsonConverter : JsonConverter<MessageOrigin>
             switch (discriminator)
             {
                 case "channel":
-                    return MessageOrigin.From(JsonSerializer.Deserialize<MessageOriginChannel>(json, options)
+                    return MessageOrigin.From(document.RootElement.Deserialize<MessageOriginChannel>(options)
                         ?? throw new JsonException("Unable to deserialize MessageOrigin as MessageOriginChannel."));
                 case "chat":
-                    return MessageOrigin.From(JsonSerializer.Deserialize<MessageOriginChat>(json, options)
+                    return MessageOrigin.From(document.RootElement.Deserialize<MessageOriginChat>(options)
                         ?? throw new JsonException("Unable to deserialize MessageOrigin as MessageOriginChat."));
                 case "hidden_user":
-                    return MessageOrigin.From(JsonSerializer.Deserialize<MessageOriginHiddenUser>(json, options)
+                    return MessageOrigin.From(document.RootElement.Deserialize<MessageOriginHiddenUser>(options)
                         ?? throw new JsonException("Unable to deserialize MessageOrigin as MessageOriginHiddenUser."));
                 case "user":
-                    return MessageOrigin.From(JsonSerializer.Deserialize<MessageOriginUser>(json, options)
+                    return MessageOrigin.From(document.RootElement.Deserialize<MessageOriginUser>(options)
                         ?? throw new JsonException("Unable to deserialize MessageOrigin as MessageOriginUser."));
                 default:
                     throw new JsonException($"Unknown discriminator value '{discriminator}' for MessageOrigin.");

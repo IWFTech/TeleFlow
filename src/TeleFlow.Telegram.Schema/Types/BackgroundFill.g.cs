@@ -134,7 +134,6 @@ file sealed class BackgroundFillJsonConverter : JsonConverter<BackgroundFill>
         }
 
         using var document = JsonDocument.ParseValue(ref reader);
-        var json = document.RootElement.GetRawText();
 
         if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
         {
@@ -142,13 +141,13 @@ file sealed class BackgroundFillJsonConverter : JsonConverter<BackgroundFill>
             switch (discriminator)
             {
                 case "freeform_gradient":
-                    return BackgroundFill.From(JsonSerializer.Deserialize<BackgroundFillFreeformGradient>(json, options)
+                    return BackgroundFill.From(document.RootElement.Deserialize<BackgroundFillFreeformGradient>(options)
                         ?? throw new JsonException("Unable to deserialize BackgroundFill as BackgroundFillFreeformGradient."));
                 case "gradient":
-                    return BackgroundFill.From(JsonSerializer.Deserialize<BackgroundFillGradient>(json, options)
+                    return BackgroundFill.From(document.RootElement.Deserialize<BackgroundFillGradient>(options)
                         ?? throw new JsonException("Unable to deserialize BackgroundFill as BackgroundFillGradient."));
                 case "solid":
-                    return BackgroundFill.From(JsonSerializer.Deserialize<BackgroundFillSolid>(json, options)
+                    return BackgroundFill.From(document.RootElement.Deserialize<BackgroundFillSolid>(options)
                         ?? throw new JsonException("Unable to deserialize BackgroundFill as BackgroundFillSolid."));
                 default:
                     throw new JsonException($"Unknown discriminator value '{discriminator}' for BackgroundFill.");

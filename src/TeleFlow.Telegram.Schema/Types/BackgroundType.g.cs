@@ -165,7 +165,6 @@ file sealed class BackgroundTypeJsonConverter : JsonConverter<BackgroundType>
         }
 
         using var document = JsonDocument.ParseValue(ref reader);
-        var json = document.RootElement.GetRawText();
 
         if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
         {
@@ -173,16 +172,16 @@ file sealed class BackgroundTypeJsonConverter : JsonConverter<BackgroundType>
             switch (discriminator)
             {
                 case "chat_theme":
-                    return BackgroundType.From(JsonSerializer.Deserialize<BackgroundTypeChatTheme>(json, options)
+                    return BackgroundType.From(document.RootElement.Deserialize<BackgroundTypeChatTheme>(options)
                         ?? throw new JsonException("Unable to deserialize BackgroundType as BackgroundTypeChatTheme."));
                 case "fill":
-                    return BackgroundType.From(JsonSerializer.Deserialize<BackgroundTypeFill>(json, options)
+                    return BackgroundType.From(document.RootElement.Deserialize<BackgroundTypeFill>(options)
                         ?? throw new JsonException("Unable to deserialize BackgroundType as BackgroundTypeFill."));
                 case "pattern":
-                    return BackgroundType.From(JsonSerializer.Deserialize<BackgroundTypePattern>(json, options)
+                    return BackgroundType.From(document.RootElement.Deserialize<BackgroundTypePattern>(options)
                         ?? throw new JsonException("Unable to deserialize BackgroundType as BackgroundTypePattern."));
                 case "wallpaper":
-                    return BackgroundType.From(JsonSerializer.Deserialize<BackgroundTypeWallpaper>(json, options)
+                    return BackgroundType.From(document.RootElement.Deserialize<BackgroundTypeWallpaper>(options)
                         ?? throw new JsonException("Unable to deserialize BackgroundType as BackgroundTypeWallpaper."));
                 default:
                     throw new JsonException($"Unknown discriminator value '{discriminator}' for BackgroundType.");
