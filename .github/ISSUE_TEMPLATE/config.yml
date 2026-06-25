@@ -1,1 +1,8 @@
 blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/IWFTech/TeleFlow/tree/main/docs
+    about: Start here for setup, package selection, examples, and architecture notes.
+  - name: Security reports
+    url: https://github.com/IWFTech/TeleFlow/security/policy
+    about: Report vulnerabilities, tokens, private bot data, or exploit details privately.
