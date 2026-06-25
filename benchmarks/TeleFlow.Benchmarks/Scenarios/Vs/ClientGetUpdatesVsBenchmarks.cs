@@ -1,6 +1,9 @@
 using BenchmarkDotNet.Attributes;
 using Telegram.Bot;
 using Telegram.Bot.Types.Enums;
+using Telegram.BotAPI.GettingUpdates;
+using TelegramBotApiClient = Telegram.BotAPI.TelegramBotClient;
+using TelegramBotApiUpdate = Telegram.BotAPI.GettingUpdates.Update;
 using TelegramBotUpdate = Telegram.Bot.Types.Update;
 using TeleFlow.Benchmarks.Fixtures;
 using TeleFlow.Benchmarks.Infrastructure;
@@ -18,8 +21,10 @@ public class ClientGetUpdatesVsBenchmarks
 
     private TeleFlowNativeClientBenchmarkRuntime _teleFlowRuntime = null!;
     private TelegramBotBenchmarkRuntime _telegramBotRuntime = null!;
+    private TelegramBotApiBenchmarkRuntime _telegramBotApiRuntime = null!;
     private ITelegramClient _teleFlowBot = null!;
     private TelegramBotClient _telegramBot = null!;
+    private TelegramBotApiClient _telegramBotApi = null!;
 
     [GlobalSetup]
     public void Setup()
@@ -29,9 +34,11 @@ public class ClientGetUpdatesVsBenchmarks
 
         _teleFlowRuntime = TeleFlowNativeClientBenchmarkRuntime.Create(new TelegramTransportResponse(200, responseJson));
         _telegramBotRuntime = TelegramBotBenchmarkRuntime.Create(responseJson);
+        _telegramBotApiRuntime = TelegramBotApiBenchmarkRuntime.Create(responseJson);
 
         _teleFlowBot = _teleFlowRuntime.Bot;
         _telegramBot = _telegramBotRuntime.Bot;
+        _telegramBotApi = _telegramBotApiRuntime.Bot;
     }
 
     [GlobalCleanup]
@@ -39,6 +46,7 @@ public class ClientGetUpdatesVsBenchmarks
     {
         _teleFlowRuntime.Dispose();
         _telegramBotRuntime.Dispose();
+        _telegramBotApiRuntime.Dispose();
     }
 
     [Benchmark(Baseline = true)]
@@ -59,5 +67,20 @@ public class ClientGetUpdatesVsBenchmarks
             limit: 1,
             timeout: 0,
             allowedUpdates: TelegramBotAllowedUpdates);
+    }
+
+    [Benchmark]
+    public async Task<TelegramBotApiUpdate[]> TelegramBotApi_GetUpdates()
+    {
+        var updates = await _telegramBotApi
+            .GetUpdatesAsync(
+                offset: 1000001,
+                limit: 1,
+                timeout: 0,
+                allowedUpdates: TeleFlowAllowedUpdates,
+                cancellationToken: CancellationToken.None)
+            .ConfigureAwait(false);
+
+        return updates.ToArray();
     }
 }

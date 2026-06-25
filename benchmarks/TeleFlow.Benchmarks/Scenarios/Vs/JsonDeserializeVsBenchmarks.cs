@@ -1,4 +1,5 @@
 using BenchmarkDotNet.Attributes;
+using TelegramBotApiUpdate = Telegram.BotAPI.GettingUpdates.Update;
 using TelegramBotUpdate = Telegram.Bot.Types.Update;
 using TeleFlow.Benchmarks.Fixtures;
 using TeleFlowUpdate = TeleFlow.Telegram.Schema.Types.Update;
@@ -33,5 +34,11 @@ public class JsonDeserializeVsBenchmarks
     public TelegramBotUpdate TelegramBot_DeserializeUpdate()
     {
         return TelegramBotJson.DeserializeUpdate(_json);
+    }
+
+    [Benchmark]
+    public TelegramBotApiUpdate TelegramBotApi_DeserializeUpdate()
+    {
+        return TelegramBotApiJson.DeserializeUpdate(_json);
     }
 }
