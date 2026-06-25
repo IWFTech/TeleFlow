@@ -35,8 +35,8 @@ env:
   NUGET_PACKAGES: ${{ github.workspace }}\.nuget\packages
 
 jobs:
-  publish:
-    name: Build and publish NuGet packages
+  verify:
+    name: Build and verify NuGet packages
     runs-on: windows-latest
     timeout-minutes: 60
 
@@ -62,15 +62,33 @@ jobs:
           retention-days: 30
           compression-level: 0
 
+  publish:
+    name: Publish NuGet packages
+    if: ${{ github.event.inputs.publishToNuGet == 'true' }}
+    needs: verify
+    runs-on: windows-latest
+    environment: nuget-production
+    timeout-minutes: 20
+
+    steps:
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Download verified packages
+        uses: actions/download-artifact@v7
+        with:
+          name: teleflow-nuget-packages-${{ github.event.inputs.packageVersion }}
+          path: artifacts/release-packages/${{ github.event.inputs.packageVersion }}
+
       - name: NuGet login
-        if: ${{ github.event.inputs.publishToNuGet == 'true' }}
         id: nuget-login
         uses: NuGet/login@v1
         with:
           user: iriswolf
 
       - name: Publish packages to nuget.org
-        if: ${{ github.event.inputs.publishToNuGet == 'true' }}
         shell: pwsh
         run: |
           $packageDirectory = Join-Path $env:GITHUB_WORKSPACE "artifacts\release-packages\${{ github.event.inputs.packageVersion }}"

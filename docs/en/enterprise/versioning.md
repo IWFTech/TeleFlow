@@ -37,9 +37,10 @@ Use the `NuGet Publish` workflow for alpha releases:
 1. Set `packageVersion` to a SemVer prerelease version such as `0.1.0-alpha.1`.
 2. Keep `publishToNuGet` disabled for a dry verification run.
 3. Enable `publishToNuGet` only when the packages should be pushed to nuget.org.
-4. Configure a NuGet Trusted Publishing policy for owner `iriswolf`, repository `IWFTech/TeleFlow`, and workflow file `nuget-publish.yml`.
+4. Configure a NuGet Trusted Publishing policy for owner `iriswolf`, repository `IWFTech/TeleFlow`, workflow file `nuget-publish.yml`, and environment `nuget-production`.
 
 The publish workflow uses `NuGet/login@v1` with GitHub OIDC. It does not require a long-lived NuGet API key in GitHub Secrets.
+The `nuget-production` GitHub environment is the release boundary for real package publishing and should allow deployments from `main` only.
 
 The publish workflow uses `eng/verify-release.ps1`, so a package is not pushed unless restore, format verification, build, strict analyzer verification, tests, pack, and package metadata checks complete first.
 
