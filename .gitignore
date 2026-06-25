@@ -8,6 +8,7 @@ x86/
 arm/
 arm64/
 artifacts/
+BenchmarkDotNet.Artifacts/
 
 # NuGet
 packages/

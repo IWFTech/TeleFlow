@@ -130,6 +130,14 @@ Planned framework work is tracked in the [roadmap](docs/en/roadmap.md).
 
 Runtime packages currently target `net10.0`. The `IWF.TeleFlow.Generators` package targets `netstandard2.0` because analyzers and source generators run inside the compiler.
 
+## Benchmarks
+
+The repository includes an isolated BenchmarkDotNet project for no-network runtime measurements:
+
+- [Benchmark methodology and commands](benchmarks/README.md)
+
+Benchmark dependencies are intentionally kept outside `TeleFlow.sln` and do not affect normal library builds or package graphs.
+
 ## License
 
 TeleFlow is released under the MIT License.
