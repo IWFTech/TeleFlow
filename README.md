@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/IWFTech/TeleFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/IWFTech/TeleFlow/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/IWFTech/TeleFlow/actions/workflows/codeql.yml/badge.svg)](https://github.com/IWFTech/TeleFlow/actions/workflows/codeql.yml)
+[![Telegram Bot API](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FIWFTech%2FTeleFlow%2Fmain%2Fdocs%2Fbadges%2Ftelegram-bot-api.json)](https://core.telegram.org/bots/api-changelog)
 [![NuGet](https://img.shields.io/nuget/vpre/IWF.TeleFlow.Telegram.Framework.LongPolling?label=NuGet)](https://www.nuget.org/packages/IWF.TeleFlow.Telegram.Framework.LongPolling/)
 [![Downloads](https://img.shields.io/nuget/dt/IWF.TeleFlow.Telegram.Framework.LongPolling?label=downloads)](https://www.nuget.org/packages/IWF.TeleFlow.Telegram.Framework.LongPolling/)
 [![License](https://img.shields.io/github/license/IWFTech/TeleFlow)](LICENSE)
