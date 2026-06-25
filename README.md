@@ -1,5 +1,12 @@
 # TeleFlow
 
+[![CI](https://github.com/IWFTech/TeleFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/IWFTech/TeleFlow/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/IWFTech/TeleFlow/actions/workflows/codeql.yml/badge.svg)](https://github.com/IWFTech/TeleFlow/actions/workflows/codeql.yml)
+[![NuGet](https://img.shields.io/nuget/vpre/IWF.TeleFlow.Telegram.Framework.LongPolling?label=NuGet)](https://www.nuget.org/packages/IWF.TeleFlow.Telegram.Framework.LongPolling/)
+[![Downloads](https://img.shields.io/nuget/dt/IWF.TeleFlow.Telegram.Framework.LongPolling?label=downloads)](https://www.nuget.org/packages/IWF.TeleFlow.Telegram.Framework.LongPolling/)
+[![License](https://img.shields.io/github/license/IWFTech/TeleFlow)](LICENSE)
+[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
+
 TeleFlow is an explicit Telegram bot framework for .NET.
 
 It is built for the normal lifecycle of a Telegram bot: a first command, then callbacks, state, role checks, background services, retries, storage, diagnostics, deployment, and a codebase that still needs to be readable after it grows.
