@@ -11,6 +11,7 @@
     <PackageReference Include="Telegrator" Version="18.7.2" />
     <PackageReference Include="Telegram.Bot" Version="22.10.1" />
     <PackageReference Include="Telegram.BotAPI" Version="10.1.0" />
+    <PackageReference Include="TelegramBotBase" Version="7.1.1" />
   </ItemGroup>
 
   <ItemGroup>

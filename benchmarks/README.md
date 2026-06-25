@@ -20,6 +20,7 @@ Current benchmark suites:
 - TeleFlow raw long polling diagnostics split into response deserialization, native `getUpdates`, streaming polling, and `RunAsync` polling.
 - TeleFlow vs Telegrator command handler dispatch through public framework routing APIs.
 - TeleFlow vs Telegrator callback handler dispatch through public framework routing APIs.
+- TeleFlow vs TelegramBotBase text/state dispatch through public framework APIs.
 
 Planned benchmark suites:
 
@@ -28,7 +29,8 @@ Planned benchmark suites:
 - Callback payload serialization and deserialization.
 - State data and wizard navigation scenarios.
 - Telegrator state-like routing benchmarks after an equivalent public API path is pinned down.
-- TelegramBotBase form, text, button, and state navigation benchmarks after an equivalent public API path is pinned down.
+- TelegramBotBase button and navigation benchmarks after an equivalent public API path is pinned down.
+- WTelegramBot benchmarks after a deterministic no-network adapter is pinned down.
 
 ## Fairness Rules
 
@@ -109,7 +111,8 @@ Do not commit generated benchmark reports unless a release note or article inten
 | Telegram.Bot | `Telegram.Bot` `22.10.1` | Active baseline | Used for low-level native client, raw polling loop, and update model deserialization comparisons. |
 | Telegram.BotAPI | `Telegram.BotAPI` `10.1.0` | Active baseline | Used for low-level native client, raw polling loop, and update model deserialization comparisons. |
 | Telegrator | `Telegrator` `18.7.2` | Active partial | Command and callback dispatch are measured through public routing APIs. Setup verifies that benchmark handlers actually execute. State-like scenarios are not covered yet. |
-| TelegramBotBase | `TelegramBotBase` | Planned | Candidate framework/form baseline for forms, controls, navigation, and state-like flows. It is intentionally not compared to native client benchmarks. |
+| TelegramBotBase | `TelegramBotBase` `7.1.1` | Active partial | Text/state dispatch is measured through `BotBase.InvokeMessageLoop` with `MinimalMessageLoop` and a no-network form. Button and navigation scenarios are not covered yet. |
+| WTelegramBot | `WTelegramBot` `10.0.1` | Gap | The package is MTProto/WTelegramClient based. It is not referenced by this project and is not included in fixed HTTP transport benchmarks until a deterministic no-network adapter is available. |
 
 ## Cross-Library Matrix
 
@@ -122,6 +125,7 @@ Use `Scenarios/Vs` when publishing or discussing comparisons. These benchmarks c
 | `RawPollingBatchVsBenchmarks` | `ITelegramLongPollingClient.RunAsync` | Handwritten Telegram.Bot and Telegram.BotAPI polling loops | Cost of raw polling control flow over the same update batch. |
 | `FrameworkCommandDispatchVsBenchmarks` | TeleFlow dispatcher command route | Telegrator `UpdateRouter` command route | Framework command routing overhead. |
 | `FrameworkCallbackDispatchVsBenchmarks` | TeleFlow dispatcher callback route | Telegrator callback route | Framework callback routing overhead. |
+| `FrameworkTextDispatchVsBenchmarks` | TeleFlow dispatcher state text route | TelegramBotBase `MinimalMessageLoop` form load | Framework text/state routing overhead. This is a form/message-loop comparison, not a native client comparison. |
 | `JsonDeserializeVsBenchmarks` | TeleFlow schema model deserialization | Telegram.Bot and Telegram.BotAPI model deserialization | Update JSON parsing and model materialization cost. |
 
 ## TeleFlow Diagnostics
