@@ -10,18 +10,19 @@ internal sealed class TelegramHandlerTable
             .OrderBy(static descriptor => descriptor.RegistrationOrder)
             .ToArray();
 
-        CommandHandlers = orderedDescriptors
+        CommandHandlers = OrderForRouteSelection(orderedDescriptors
             .Where(static descriptor => descriptor.Kind == TelegramHandlerKind.Command)
-            .ToArray();
-        MessageHandlers = orderedDescriptors
+            .ToArray());
+        MessageHandlers = OrderForRouteSelection(orderedDescriptors
             .Where(static descriptor => descriptor.Kind == TelegramHandlerKind.Message)
-            .ToArray();
+            .ToArray());
         CallbackHandlers = orderedDescriptors
             .Where(static descriptor => descriptor.Kind == TelegramHandlerKind.Callback)
             .ToArray();
-        ChatMemberHandlers = orderedDescriptors
+        ChatMemberHandlers = OrderForRouteSelection(orderedDescriptors
             .Where(static descriptor => descriptor.Kind == TelegramHandlerKind.ChatMember)
-            .ToArray();
+            .ToArray());
+        HasStatefulHandlers = orderedDescriptors.Any(static descriptor => descriptor.States.Count > 0);
 
         EnsureNoDuplicateCallbackPrefixes(CallbackHandlers);
     }
@@ -33,6 +34,8 @@ internal sealed class TelegramHandlerTable
     public IReadOnlyList<TelegramHandlerDescriptor> CallbackHandlers { get; }
 
     public IReadOnlyList<TelegramHandlerDescriptor> ChatMemberHandlers { get; }
+
+    public bool HasStatefulHandlers { get; }
 
     private static void EnsureNoDuplicateCallbackPrefixes(IReadOnlyList<TelegramHandlerDescriptor> callbackHandlers)
     {
@@ -59,5 +62,34 @@ internal sealed class TelegramHandlerTable
 
         throw new InvalidOperationException(
             $"Duplicate Telegram callback data prefix '{duplicatePrefix.Key}' is used by multiple handlers: {handlers}.");
+    }
+
+    private static TelegramHandlerDescriptor[] OrderForRouteSelection(IEnumerable<TelegramHandlerDescriptor> handlers)
+    {
+        return handlers
+            .OrderBy(static handler => GetRoutePriority(handler.Route))
+            .ThenByDescending(static handler => handler.Route.Specificity)
+            .ThenBy(static handler => handler.RegistrationOrder)
+            .ToArray();
+    }
+
+    private static int GetRoutePriority(TelegramRouteDescriptor route)
+    {
+        return route.RouteKind switch
+        {
+            TelegramRouteKind.CommandExact => 0,
+            TelegramRouteKind.CommandTemplate => 1,
+            TelegramRouteKind.CommandRegex => 2,
+            TelegramRouteKind.TextExact => 10,
+            TelegramRouteKind.MessageAny when route.TextFilters.Count > 0 => 10,
+            TelegramRouteKind.TextTemplate => 11,
+            TelegramRouteKind.TextRegex => 12,
+            TelegramRouteKind.MessageAny => 13,
+            TelegramRouteKind.ChatMemberUpdated or
+                TelegramRouteKind.MyChatMemberUpdated when route.ChatMemberTransitions.Count > 0 => 0,
+            TelegramRouteKind.ChatMemberUpdated or
+                TelegramRouteKind.MyChatMemberUpdated => 1,
+            _ => 100
+        };
     }
 }

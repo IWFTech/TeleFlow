@@ -2293,6 +2293,24 @@ public sealed class TelegramHandlerDispatcherTests
     }
 
     [Fact]
+    public async Task Dispatcher_DoesNotReadStateStoreForStatelessHandlers()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.AddSingleton<IStateStore, ThrowingStateStore>();
+                services.AddMemoryStateStorage();
+                services.AddTelegramHandler<AnyMessageHandler>();
+            });
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchThroughMiddlewareAsync(serviceProvider, CreateMessageUpdate("stateless"));
+
+        Assert.Equal(["message:stateless"], probe.Events);
+    }
+
+    [Fact]
     public async Task TypedStateAttribute_DispatchesUsingStateGroupProperty()
     {
         using var serviceProvider = CreateServiceProvider(
@@ -3790,6 +3808,24 @@ public sealed class TelegramHandlerDispatcherTests
         public Task Handle(CallbackQueryContext context)
         {
             return Task.CompletedTask;
+        }
+    }
+
+    private sealed class ThrowingStateStore : IStateStore
+    {
+        public ValueTask<string?> GetStateAsync(StateKey key, CancellationToken cancellationToken = default)
+        {
+            throw new InvalidOperationException("State store should not be read for stateless handlers.");
+        }
+
+        public ValueTask SetStateAsync(StateKey key, string state, CancellationToken cancellationToken = default)
+        {
+            throw new InvalidOperationException("State store should not be written for stateless handlers.");
+        }
+
+        public ValueTask ClearStateAsync(StateKey key, CancellationToken cancellationToken = default)
+        {
+            throw new InvalidOperationException("State store should not be cleared for stateless handlers.");
         }
     }
 

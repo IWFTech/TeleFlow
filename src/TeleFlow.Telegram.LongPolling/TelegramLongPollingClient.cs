@@ -71,24 +71,32 @@ public sealed partial class TelegramLongPollingClient : ITelegramLongPollingClie
             for (var index = 0; index < updates.Count; index++)
             {
                 var update = updates[index];
-                var updateType = TelegramRawLongPollingLogFormatter.GetUpdateType(update);
-                var processingStarted = _timeProvider.GetTimestamp();
 
-                LogUpdateReceived(
-                    _logger,
-                    update.UpdateId,
-                    updateType,
-                    index + 1,
-                    updates.Count);
+                if (_logger.IsEnabled(LogLevel.Debug))
+                {
+                    var updateType = TelegramRawLongPollingLogFormatter.GetUpdateType(update);
+                    var processingStarted = _timeProvider.GetTimestamp();
+
+                    LogUpdateReceived(
+                        _logger,
+                        update.UpdateId,
+                        updateType,
+                        index + 1,
+                        updates.Count);
+
+                    await updateHandler(update, cancellationToken).ConfigureAwait(false);
+                    offset = update.UpdateId + 1;
+
+                    LogUpdateAcknowledgedByHandler(
+                        _logger,
+                        update.UpdateId,
+                        updateType,
+                        GetElapsedMilliseconds(processingStarted));
+                    continue;
+                }
 
                 await updateHandler(update, cancellationToken).ConfigureAwait(false);
                 offset = update.UpdateId + 1;
-
-                LogUpdateAcknowledgedByHandler(
-                    _logger,
-                    update.UpdateId,
-                    updateType,
-                    GetElapsedMilliseconds(processingStarted));
             }
         }
     }
@@ -137,10 +145,18 @@ public sealed partial class TelegramLongPollingClient : ITelegramLongPollingClie
                 var update = updates[index];
                 var polledUpdate = new TelegramPolledUpdate(update, index + 1, updates.Count);
 
-                LogStreamUpdateReceived(
-                    _logger,
-                    update.UpdateId,
-                    TelegramRawLongPollingLogFormatter.GetUpdateType(update));
+                var debugEnabled = _logger.IsEnabled(LogLevel.Debug);
+                var updateType = debugEnabled
+                    ? TelegramRawLongPollingLogFormatter.GetUpdateType(update)
+                    : string.Empty;
+
+                if (debugEnabled)
+                {
+                    LogStreamUpdateReceived(
+                        _logger,
+                        update.UpdateId,
+                        updateType);
+                }
 
                 yield return polledUpdate;
 
@@ -152,10 +168,13 @@ public sealed partial class TelegramLongPollingClient : ITelegramLongPollingClie
 
                 offset = update.UpdateId + 1;
 
-                LogStreamUpdateAcknowledged(
-                    _logger,
-                    update.UpdateId,
-                    TelegramRawLongPollingLogFormatter.GetUpdateType(update));
+                if (debugEnabled)
+                {
+                    LogStreamUpdateAcknowledged(
+                        _logger,
+                        update.UpdateId,
+                        updateType);
+                }
             }
         }
     }
@@ -206,6 +225,11 @@ public sealed partial class TelegramLongPollingClient : ITelegramLongPollingClie
         TelegramRawLongPollingOptions options,
         IReadOnlyList<string>? allowedUpdates)
     {
+        if (!_logger.IsEnabled(LogLevel.Information))
+        {
+            return;
+        }
+
         LogStarting(
             _logger,
             TelegramRawLongPollingLogFormatter.FormatAllowedUpdates(allowedUpdates),

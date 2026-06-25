@@ -1,7 +1,7 @@
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Reflection;
-using System.Runtime.ExceptionServices;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using TeleFlow.Core.Callbacks;
@@ -15,6 +15,7 @@ internal sealed class TelegramHandlerSelector
     private static readonly IReadOnlyDictionary<string, object?> EmptyRouteValues =
         new ReadOnlyDictionary<string, object?>(
             new Dictionary<string, object?>(StringComparer.Ordinal));
+    private static readonly ConcurrentDictionary<Type, CallbackPayloadDeserializer> CallbackPayloadDeserializers = new();
 
     private readonly TelegramHandlerTable _table;
 
@@ -23,6 +24,8 @@ internal sealed class TelegramHandlerSelector
         ArgumentNullException.ThrowIfNull(table);
         _table = table;
     }
+
+    public bool HasStatefulHandlers => _table.HasStatefulHandlers;
 
     public async ValueTask<TelegramRouteSelection?> SelectMessageHandlerAsync(
         MessageContext context,
@@ -190,7 +193,7 @@ internal sealed class TelegramHandlerSelector
     {
         if (!string.IsNullOrWhiteSpace(currentState))
         {
-            foreach (var handler in OrderForRouteSelection(handlers))
+            foreach (var handler in handlers)
             {
                 if (MatchesState(handler, currentState))
                 {
@@ -199,7 +202,7 @@ internal sealed class TelegramHandlerSelector
             }
         }
 
-        foreach (var handler in OrderForRouteSelection(handlers))
+        foreach (var handler in handlers)
         {
             if (handler.States.Count == 0)
             {
@@ -258,27 +261,12 @@ internal sealed class TelegramHandlerSelector
         Type payloadType,
         out object? payload)
     {
-        var deserializeMethod = typeof(ICallbackDataSerializer)
-            .GetMethod(nameof(ICallbackDataSerializer.Deserialize))!
-            .MakeGenericMethod(payloadType);
+        var deserializer = CallbackPayloadDeserializers.GetOrAdd(payloadType, CreateCallbackPayloadDeserializer);
 
         try
         {
-            payload = deserializeMethod.Invoke(
-                context.CallbackData,
-                [context.TelegramCallbackQuery.Data]);
+            payload = deserializer(context.CallbackData, context.TelegramCallbackQuery.Data!);
             return true;
-        }
-        catch (TargetInvocationException exception) when (exception.InnerException is not null)
-        {
-            if (IsCallbackPayloadNoMatchException(exception.InnerException))
-            {
-                payload = null;
-                return false;
-            }
-
-            ExceptionDispatchInfo.Capture(exception.InnerException).Throw();
-            throw;
         }
         catch (Exception exception) when (IsCallbackPayloadNoMatchException(exception))
         {
@@ -290,6 +278,22 @@ internal sealed class TelegramHandlerSelector
     private static bool IsCallbackPayloadNoMatchException(Exception exception)
     {
         return exception is JsonException or FormatException or OverflowException;
+    }
+
+    private static CallbackPayloadDeserializer CreateCallbackPayloadDeserializer(Type payloadType)
+    {
+        var deserializeMethod = typeof(TelegramHandlerSelector)
+            .GetMethod(nameof(DeserializeCallbackPayload), BindingFlags.NonPublic | BindingFlags.Static)!
+            .MakeGenericMethod(payloadType);
+
+        return deserializeMethod.CreateDelegate<CallbackPayloadDeserializer>();
+    }
+
+    private static object? DeserializeCallbackPayload<TPayload>(
+        ICallbackDataSerializer serializer,
+        string data)
+    {
+        return serializer.Deserialize<TPayload>(data);
     }
 
     private static bool TryGetCommandBody(
@@ -518,32 +522,5 @@ internal sealed class TelegramHandlerSelector
             (transition.NewStatus & newStatus) != 0);
     }
 
-    private static IEnumerable<TelegramHandlerDescriptor> OrderForRouteSelection(
-        IReadOnlyList<TelegramHandlerDescriptor> handlers)
-    {
-        return handlers
-            .OrderBy(static handler => GetRoutePriority(handler.Route))
-            .ThenByDescending(static handler => handler.Route.Specificity)
-            .ThenBy(static handler => handler.RegistrationOrder);
-    }
-
-    private static int GetRoutePriority(TelegramRouteDescriptor route)
-    {
-        return route.RouteKind switch
-        {
-            TelegramRouteKind.CommandExact => 0,
-            TelegramRouteKind.CommandTemplate => 1,
-            TelegramRouteKind.CommandRegex => 2,
-            TelegramRouteKind.TextExact => 10,
-            TelegramRouteKind.MessageAny when route.TextFilters.Count > 0 => 10,
-            TelegramRouteKind.TextTemplate => 11,
-            TelegramRouteKind.TextRegex => 12,
-            TelegramRouteKind.MessageAny => 13,
-            TelegramRouteKind.ChatMemberUpdated or
-                TelegramRouteKind.MyChatMemberUpdated when route.ChatMemberTransitions.Count > 0 => 0,
-            TelegramRouteKind.ChatMemberUpdated or
-                TelegramRouteKind.MyChatMemberUpdated => 1,
-            _ => 100
-        };
-    }
+    private delegate object? CallbackPayloadDeserializer(ICallbackDataSerializer serializer, string data);
 }
