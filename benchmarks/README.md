@@ -14,6 +14,7 @@ Current benchmark suites:
 - TeleFlow raw long polling vs a handwritten Telegram.Bot raw polling loop over the same fixed update batch.
 - TeleFlow handler dispatch for command, callback prefix, and state routes.
 - TeleFlow generated client method execution through a fixed in-memory `ITelegramTransport`.
+- TeleFlow raw long polling diagnostics split into response deserialization, native `getUpdates`, streaming polling, and `RunAsync` polling.
 - TeleFlow vs Telegrator command handler dispatch through public framework routing APIs.
 - TeleFlow vs Telegrator callback handler dispatch through public framework routing APIs.
 
@@ -76,6 +77,18 @@ Run a fast smoke check for the cross-library comparison set:
 dotnet run -c Release --project benchmarks/TeleFlow.Benchmarks/TeleFlow.Benchmarks.csproj -- --filter "*Vs*" --job Dry
 ```
 
+Run raw polling diagnostics:
+
+```bash
+dotnet run -c Release --project benchmarks/TeleFlow.Benchmarks/TeleFlow.Benchmarks.csproj -- --filter "*RawPollingDiagnosticsBenchmarks*"
+```
+
+Run a fast smoke check for raw polling diagnostics:
+
+```bash
+dotnet run -c Release --project benchmarks/TeleFlow.Benchmarks/TeleFlow.Benchmarks.csproj -- --filter "*RawPollingDiagnosticsBenchmarks*" --job Dry
+```
+
 When the command is run from the repository root, BenchmarkDotNet writes reports under:
 
 ```text
@@ -104,6 +117,17 @@ Use `Scenarios/Vs` when publishing or discussing comparisons. These benchmarks c
 | `FrameworkCommandDispatchVsBenchmarks` | TeleFlow dispatcher command route | Telegrator `UpdateRouter` command route | Framework command routing overhead. |
 | `FrameworkCallbackDispatchVsBenchmarks` | TeleFlow dispatcher callback route | Telegrator callback route | Framework callback routing overhead. |
 | `JsonDeserializeVsBenchmarks` | TeleFlow schema model deserialization | Telegram.Bot model deserialization | Update JSON parsing and model materialization cost. |
+
+## TeleFlow Diagnostics
+
+Use `Scenarios/TeleFlow/RawPollingDiagnosticsBenchmarks.cs` when raw polling needs investigation before changing runtime code. It intentionally stays on public TeleFlow APIs and measures these layers:
+
+| Benchmark | Layer | What it answers |
+| --- | --- | --- |
+| `DeserializeGetUpdatesResponse` | `TelegramApiResponse<IReadOnlyList<Update>>` deserialization | Lower-bound parsing cost for the same `getUpdates` response body. |
+| `NativeClientGetUpdatesBatch` | `ITelegramClient.GetUpdatesAsync` over fixed transport | Generated method, request executor, envelope parsing, and update model materialization cost. |
+| `StreamingLongPollingBatch` | `ITelegramLongPollingClient.GetUpdatesAsync` with explicit acknowledgement | Streaming raw polling overhead on top of native `getUpdates`. |
+| `RunAsyncLongPollingBatch` | `ITelegramLongPollingClient.RunAsync` with a no-op handler | Full raw polling callback loop overhead without framework dispatch. |
 
 ## Interpreting Results
 
