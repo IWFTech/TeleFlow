@@ -26,8 +26,36 @@ env:
   NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Detect code changes
+        id: filter
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            code:
+              - '.github/workflows/**'
+              - '.github/codeql/**'
+              - 'Directory.Build.props'
+              - 'Directory.Build.targets'
+              - 'global.json'
+              - 'NuGet.config'
+              - 'TeleFlow.sln'
+              - 'eng/**'
+              - 'src/**'
+              - 'tests/**'
+
   analyze:
     name: Analyze C#
+    needs: changes
     # Code scanning upload requires GitHub Advanced Security on private repositories.
     # The job should run automatically once the repository is public.
     if: ${{ github.event.repository.private == false }}
@@ -35,15 +63,23 @@ jobs:
     timeout-minutes: 45
 
     steps:
+      - name: Skip CodeQL analysis
+        if: ${{ needs.changes.outputs.code != 'true' }}
+        shell: pwsh
+        run: Write-Host "No code, project, build, test, CI, or CodeQL files changed. Skipping CodeQL analysis."
+
       - name: Checkout
+        if: ${{ needs.changes.outputs.code == 'true' }}
         uses: actions/checkout@v7
 
       - name: Setup .NET
+        if: ${{ needs.changes.outputs.code == 'true' }}
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
 
       - name: Initialize CodeQL
+        if: ${{ needs.changes.outputs.code == 'true' }}
         uses: github/codeql-action/init@v4
         with:
           languages: csharp
@@ -51,12 +87,15 @@ jobs:
           config-file: ./.github/codeql/codeql-config.yml
 
       - name: Restore solution
+        if: ${{ needs.changes.outputs.code == 'true' }}
         shell: pwsh
         run: dotnet restore ./TeleFlow.sln
 
       - name: Build solution
+        if: ${{ needs.changes.outputs.code == 'true' }}
         shell: pwsh
         run: dotnet build ./TeleFlow.sln -c Release --no-restore /nodeReuse:false
 
       - name: Analyze
+        if: ${{ needs.changes.outputs.code == 'true' }}
         uses: github/codeql-action/analyze@v4
