@@ -1,0 +1,30 @@
+name: Question
+description: Ask about TeleFlow usage, behavior, configuration, or project direction.
+title: "[Question]: "
+labels:
+  - question
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: Ask the concrete question you want answered.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Describe what you are building, what package or transport you use, and what you already tried.
+    validations:
+      required: true
+  - type: input
+    id: teleflow-version
+    attributes:
+      label: TeleFlow version
+      placeholder: 0.1.0-alpha.1
+  - type: input
+    id: dotnet-version
+    attributes:
+      label: .NET SDK/runtime version
+      placeholder: 10.0.100

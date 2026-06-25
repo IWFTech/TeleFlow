@@ -51,7 +51,7 @@ Run before changing `TeleFlow.Generators` Roslyn dependencies:
 
 Generated Telegram schema and client output is checked into the repository. Do not hand-edit generated files as a normal fix path.
 
-The Telegram schema generator is maintained separately in `IWFTech/TeleFlow.Telegram.SchemaGenerator`.
+The Telegram schema generator is maintained separately in `IWFTech/TelegramSchemaGenerator`.
 
 When generated output changes, the change should include enough context to review:
 - Telegram Bot API source/version;
