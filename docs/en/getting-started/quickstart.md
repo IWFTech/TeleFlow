@@ -67,6 +67,17 @@ var token = Environment.GetEnvironmentVariable("TELEFLOW_BOT_TOKEN")
 
 var builder = TeleFlowApplication.CreateBuilder(args);
 
+// Enable logging
+builder.Services.AddLogging(logging =>
+{
+    logging.SetMinimumLevel(LogLevel.Debug);
+    logging.AddSimpleConsole(options =>
+    {
+        options.SingleLine = true;
+        options.TimestampFormat = "HH:mm:ss ";
+    });
+});
+
 builder.Services.AddTelegramBot(options => options.Token = token);
 builder.Services.AddMemoryStateStorage();
 builder.Services.AddTelegramHandlersFromAssembly(typeof(Program).Assembly);
@@ -86,6 +97,7 @@ public sealed class StartHandler
 
 public sealed class EchoHandler
 {
+    [Message]
     [HasText]
     public Task Handle(MessageContext ctx, CancellationToken ct)
     {
