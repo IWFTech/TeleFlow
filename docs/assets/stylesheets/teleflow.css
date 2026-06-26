@@ -2,19 +2,56 @@
   --md-primary-fg-color: #101a23;
   --md-primary-fg-color--light: #172735;
   --md-primary-fg-color--dark: #0b1218;
-  --md-accent-fg-color: #21b7a5;
-  --tf-header-bg: linear-gradient(90deg, #0d151d 0%, #112331 62%, #10252c 100%);
-  --tf-hero-bg: linear-gradient(135deg, #f8fbfd 0%, #edf7f3 58%, #ffffff 100%);
+  --md-accent-fg-color: #256fd4;
+  --tf-header-bg: linear-gradient(90deg, #0b121a 0%, #102337 60%, #0d1a29 100%);
+  --tf-hero-bg: radial-gradient(circle at 88% 12%, rgba(76, 157, 255, 0.22), transparent 34%),
+    linear-gradient(135deg, #f8fbff 0%, #eef6ff 56%, #ffffff 100%);
+  --tf-hero-title: #101820;
   --tf-card-bg: rgba(255, 255, 255, 0.86);
   --tf-card-border: rgba(17, 31, 43, 0.1);
+  --tf-card-hover-border: rgba(37, 111, 212, 0.42);
+  --tf-card-hover-shadow: 0 14px 32px rgba(24, 80, 148, 0.12);
   --tf-muted: #5a6b7a;
+  --tf-kicker-color: #1c68cf;
+  --tf-action-bg: rgba(37, 111, 212, 0.06);
+  --tf-action-bg-hover: rgba(37, 111, 212, 0.12);
+  --tf-action-border: rgba(37, 111, 212, 0.28);
+  --tf-action-border-hover: rgba(37, 111, 212, 0.5);
+  --tf-action-fg: #124a91;
+  --tf-action-fg-hover: #071b33;
+  --tf-action-primary-bg: linear-gradient(135deg, #4b9dff 0%, #84c5ff 100%);
+  --tf-action-primary-bg-hover: linear-gradient(135deg, #5aa8ff 0%, #9bd0ff 100%);
+  --tf-action-primary-border: #66b4ff;
+  --tf-action-primary-fg: #061522;
+  --tf-action-primary-shadow: 0 12px 32px rgba(76, 157, 255, 0.24);
+  --tf-terminal-bg: #0b1320;
+  --tf-terminal-bar-bg: #101f31;
+  --tf-terminal-border: rgba(122, 190, 255, 0.28);
+  --tf-terminal-fg: #deefff;
+  --tf-terminal-muted: #96b7d6;
+  --tf-terminal-shadow: 0 24px 64px rgba(24, 80, 148, 0.18);
 }
 
 [data-md-color-scheme="slate"] {
-  --tf-hero-bg: linear-gradient(135deg, #101820 0%, #10232d 58%, #15191d 100%);
-  --tf-card-bg: rgba(22, 32, 41, 0.92);
-  --tf-card-border: rgba(117, 204, 232, 0.18);
-  --tf-muted: #a9b6c1;
+  --md-accent-fg-color: #7bbcff;
+  --tf-hero-bg: radial-gradient(circle at 88% 12%, rgba(76, 157, 255, 0.2), transparent 36%),
+    linear-gradient(135deg, #0b1119 0%, #0d1b2c 58%, #12171f 100%);
+  --tf-hero-title: #f5f9ff;
+  --tf-card-bg: rgba(15, 25, 37, 0.94);
+  --tf-card-border: rgba(122, 190, 255, 0.16);
+  --tf-card-hover-border: rgba(123, 188, 255, 0.48);
+  --tf-card-hover-shadow: 0 16px 36px rgba(5, 16, 30, 0.38);
+  --tf-muted: #aebdcc;
+  --tf-kicker-color: #8fcbff;
+  --tf-action-bg: rgba(255, 255, 255, 0.045);
+  --tf-action-bg-hover: rgba(76, 157, 255, 0.14);
+  --tf-action-border: rgba(122, 190, 255, 0.42);
+  --tf-action-border-hover: rgba(145, 205, 255, 0.76);
+  --tf-action-fg: #d7ecff;
+  --tf-action-fg-hover: #ffffff;
+  --tf-action-primary-shadow: 0 14px 36px rgba(76, 157, 255, 0.28);
+  --tf-terminal-border: rgba(122, 190, 255, 0.24);
+  --tf-terminal-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
 }
 
 .md-header {
@@ -58,27 +95,28 @@
 }
 
 .md-typeset .tf-actions .md-button {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(33, 183, 165, 0.46);
-  color: #d9f8f3;
+  background: var(--tf-action-bg);
+  border-color: var(--tf-action-border);
+  color: var(--tf-action-fg);
 }
 
 .md-typeset .tf-actions .md-button:hover {
-  background: rgba(33, 183, 165, 0.12);
-  border-color: rgba(33, 183, 165, 0.78);
-  color: #ffffff;
+  background: var(--tf-action-bg-hover);
+  border-color: var(--tf-action-border-hover);
+  color: var(--tf-action-fg-hover);
 }
 
 .md-typeset .tf-actions .md-button--primary {
-  background: var(--md-accent-fg-color);
-  border-color: var(--md-accent-fg-color);
-  color: #071316;
+  background: var(--tf-action-primary-bg);
+  border-color: var(--tf-action-primary-border);
+  box-shadow: var(--tf-action-primary-shadow);
+  color: var(--tf-action-primary-fg);
 }
 
 .md-typeset .tf-actions .md-button--primary:hover {
-  background: #2bd0bc;
-  border-color: #2bd0bc;
-  color: #071316;
+  background: var(--tf-action-primary-bg-hover);
+  border-color: var(--tf-action-primary-border);
+  color: var(--tf-action-primary-fg);
 }
 
 .md-typeset .tf-hero {
@@ -95,7 +133,7 @@
 }
 
 .md-typeset .tf-kicker {
-  color: var(--md-accent-fg-color);
+  color: var(--tf-kicker-color);
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0;
@@ -104,6 +142,7 @@
 }
 
 .md-typeset .tf-hero h1 {
+  color: var(--tf-hero-title);
   font-size: clamp(1.9rem, 4.1vw, 3.15rem);
   font-weight: 850;
   letter-spacing: 0;
@@ -126,17 +165,17 @@
 }
 
 .md-typeset .tf-terminal {
-  background: #101820;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--tf-terminal-bg);
+  border: 1px solid var(--tf-terminal-border);
   border-radius: 18px;
-  box-shadow: 0 22px 60px rgba(16, 26, 35, 0.24);
-  color: #d7f4ff;
+  box-shadow: var(--tf-terminal-shadow);
+  color: var(--tf-terminal-fg);
   overflow: hidden;
 }
 
 .md-typeset .tf-terminal__bar {
   align-items: center;
-  background: #152331;
+  background: var(--tf-terminal-bar-bg);
   display: flex;
   gap: 0.45rem;
   min-height: 2.1rem;
@@ -159,24 +198,32 @@
 }
 
 .md-typeset .tf-terminal__bar span:nth-child(3) {
-  background: #2ed3a5;
+  background: #6fb7ff;
 }
 
 .md-typeset .tf-terminal__bar strong {
-  color: #9eb7c8;
+  color: var(--tf-terminal-muted);
   font-size: 0.68rem;
   font-weight: 700;
   margin-left: 0.45rem;
 }
 
+.md-typeset .tf-terminal .highlight,
+.md-typeset .tf-terminal .highlighttable,
+.md-typeset .tf-terminal .highlight pre,
 .md-typeset .tf-terminal pre {
-  background: transparent;
+  background: transparent !important;
   margin: 0;
+}
+
+.md-typeset .tf-terminal pre {
   padding: 1.25rem;
 }
 
+.md-typeset .tf-terminal .highlight code,
 .md-typeset .tf-terminal code {
-  color: #d7f4ff;
+  background: transparent;
+  color: var(--tf-terminal-fg);
   font-size: 0.64rem;
   white-space: pre-wrap;
 }
@@ -209,8 +256,8 @@
 .md-typeset .tf-card:hover,
 .md-typeset .tf-strip a:hover,
 .md-typeset .tf-feature-list a:hover {
-  border-color: var(--md-accent-fg-color);
-  box-shadow: 0 14px 32px rgba(16, 26, 35, 0.1);
+  border-color: var(--tf-card-hover-border);
+  box-shadow: var(--tf-card-hover-shadow);
   transform: translateY(-1px);
 }
 
@@ -245,7 +292,7 @@
 }
 
 .md-typeset .tf-card__icon {
-  color: var(--md-accent-fg-color);
+  color: var(--tf-kicker-color);
   display: block;
   font-size: 0.75rem;
   font-weight: 850;
