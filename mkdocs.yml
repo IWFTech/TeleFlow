@@ -3,7 +3,7 @@ site_description: Explicit Telegram bot framework for .NET.
 site_url: https://iwftech.github.io/TeleFlow/
 repo_name: IWFTech/TeleFlow
 repo_url: https://github.com/IWFTech/TeleFlow
-edit_uri: edit/main/docs/
+edit_uri: ""
 
 docs_dir: docs
 site_dir: site
@@ -31,7 +31,6 @@ theme:
         icon: material/weather-sunny
         name: Switch to light mode
   features:
-    - content.action.edit
     - content.code.copy
     - navigation.footer
     - navigation.indexes

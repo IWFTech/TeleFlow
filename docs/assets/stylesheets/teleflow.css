@@ -13,6 +13,10 @@
   --tf-card-hover-shadow: 0 14px 32px rgba(24, 80, 148, 0.12);
   --tf-muted: #5a6b7a;
   --tf-kicker-color: #1c68cf;
+  --tf-link-fg: #155fb8;
+  --tf-link-hover-fg: #0b3f86;
+  --tf-link-decoration: rgba(37, 111, 212, 0.24);
+  --tf-link-hover-decoration: rgba(37, 111, 212, 0.58);
   --tf-action-bg: rgba(37, 111, 212, 0.06);
   --tf-action-bg-hover: rgba(37, 111, 212, 0.12);
   --tf-action-border: rgba(37, 111, 212, 0.28);
@@ -43,6 +47,10 @@
   --tf-card-hover-shadow: 0 16px 36px rgba(5, 16, 30, 0.38);
   --tf-muted: #aebdcc;
   --tf-kicker-color: #8fcbff;
+  --tf-link-fg: #9bd0ff;
+  --tf-link-hover-fg: #c8e7ff;
+  --tf-link-decoration: rgba(155, 208, 255, 0.28);
+  --tf-link-hover-decoration: rgba(155, 208, 255, 0.68);
   --tf-action-bg: rgba(255, 255, 255, 0.045);
   --tf-action-bg-hover: rgba(76, 157, 255, 0.14);
   --tf-action-border: rgba(122, 190, 255, 0.42);
@@ -88,6 +96,26 @@
 
 .md-search__input::placeholder {
   color: rgba(255, 255, 255, 0.68);
+}
+
+.md-typeset a:not(.md-button) {
+  color: var(--tf-link-fg);
+  text-decoration-color: var(--tf-link-decoration);
+}
+
+.md-typeset a:not(.md-button):hover {
+  color: var(--tf-link-hover-fg);
+  text-decoration-color: var(--tf-link-hover-decoration);
+}
+
+.md-typeset .headerlink {
+  color: var(--tf-link-fg);
+  opacity: 0.58;
+}
+
+.md-typeset .headerlink:hover {
+  color: var(--tf-link-hover-fg);
+  opacity: 1;
 }
 
 .md-typeset .md-button {
@@ -258,6 +286,7 @@
 .md-typeset .tf-feature-list a:hover {
   border-color: var(--tf-card-hover-border);
   box-shadow: var(--tf-card-hover-shadow);
+  color: var(--md-default-fg-color);
   transform: translateY(-1px);
 }
 
