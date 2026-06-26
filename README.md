@@ -125,7 +125,7 @@ public sealed class Handlers
 }
 ```
 
-![Bot example](https://github.com/IWFTech/TeleFlow/tree/main/docs/assets/images%2Fbot_preview.png)
+![Bot example](https://github.com/IWFTech/TeleFlow/blob/main/docs/assets/images%2Fbot_preview.png)
 
 This example uses generated assembly registration. If the `IWF.TeleFlow.Generators` package is not referenced by the application project, `AddTelegramHandlersFromAssembly(...)` fails during startup with a clear configuration error.
 
