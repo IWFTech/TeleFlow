@@ -98,17 +98,14 @@
 }
 
 .md-tabs__link {
-  border-radius: 999px;
   color: rgba(255, 255, 255, 0.72);
   opacity: 1;
-  padding: 0 0.68rem;
-  transition: background-color 140ms ease, color 140ms ease;
+  transition: color 140ms ease;
 }
 
 .md-tabs__link--active,
 .md-tabs__item--active .md-tabs__link,
 .md-tabs__link:hover {
-  background: rgba(76, 157, 255, 0.12);
   color: #ffffff;
 }
 
@@ -137,6 +134,7 @@ body:has(.tf-hero) .md-main {
 
 .md-nav__link {
   color: var(--tf-nav-link-fg);
+  transition: background-color 140ms ease, color 140ms ease, transform 140ms ease;
 }
 
 .md-nav__link:hover,
@@ -151,6 +149,8 @@ body:has(.tf-hero) .md-main {
   border-radius: 0.4rem;
   color: var(--tf-nav-active-fg) !important;
   font-weight: 700;
+  padding-inline: 0.45rem 0.6rem;
+  transform: translateX(0.16rem);
 }
 
 .md-typeset a:not(.md-button) {
@@ -376,9 +376,10 @@ body:has(.tf-hero) .md-main {
 
 .md-typeset .tf-strip {
   display: grid;
-  gap: 0.7rem;
+  gap: clamp(0.85rem, 1.5vw, 1.15rem);
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin: 1rem 0 2.6rem;
+  margin: 0 0 clamp(3rem, 5vw, 4.5rem);
+  padding-top: clamp(0.85rem, 1.8vw, 1.45rem);
 }
 
 .md-typeset .tf-strip a,
