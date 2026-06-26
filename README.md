@@ -1,14 +1,17 @@
 # TeleFlow
 
+[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
+[![Telegram Bot API](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FIWFTech%2FTeleFlow%2Fmain%2Fdocs%2Fbadges%2Ftelegram-bot-api.json)](https://core.telegram.org/bots/api-changelog)
+[![Telegram Chat](https://img.shields.io/badge/Telegram-chat-26A5E4?logo=telegram&logoColor=white)](https://t.me/teleflow_chat)
+[![NuGet](https://img.shields.io/nuget/vpre/IWF.TeleFlow.Telegram.Framework.LongPolling?label=NuGet)](https://www.nuget.org/packages/IWF.TeleFlow.Telegram.Framework.LongPolling/)
+
+[![License](https://img.shields.io/github/license/IWFTech/TeleFlow)](LICENSE)
 [![CI](https://github.com/IWFTech/TeleFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/IWFTech/TeleFlow/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/IWFTech/TeleFlow/actions/workflows/codeql.yml/badge.svg)](https://github.com/IWFTech/TeleFlow/actions/workflows/codeql.yml)
-[![Docs](https://github.com/IWFTech/TeleFlow/actions/workflows/docs-pages.yml/badge.svg)](https://github.com/IWFTech/TeleFlow/actions/workflows/docs-pages.yml)
-[![Telegram Bot API](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FIWFTech%2FTeleFlow%2Fmain%2Fdocs%2Fbadges%2Ftelegram-bot-api.json)](https://core.telegram.org/bots/api-changelog)
-[![NuGet](https://img.shields.io/nuget/vpre/IWF.TeleFlow.Telegram.Framework.LongPolling?label=NuGet)](https://www.nuget.org/packages/IWF.TeleFlow.Telegram.Framework.LongPolling/)
+![GitHub last commit](https://img.shields.io/github/last-commit/IWFTech/TeleFlow)
 [![Downloads](https://img.shields.io/nuget/dt/IWF.TeleFlow.Telegram.Framework.LongPolling?label=downloads)](https://www.nuget.org/packages/IWF.TeleFlow.Telegram.Framework.LongPolling/)
-[![Telegram Chat](https://img.shields.io/badge/Telegram-chat-26A5E4?logo=telegram&logoColor=white)](https://t.me/teleflow_chat)
-[![License](https://img.shields.io/github/license/IWFTech/TeleFlow)](LICENSE)
-[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
+
+
 
 TeleFlow is an explicit Telegram bot framework for .NET.
 
