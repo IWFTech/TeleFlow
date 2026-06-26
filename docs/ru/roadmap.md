@@ -69,7 +69,7 @@ builder.Services.AddTelegramRateLimiting(options =>
 });
 ```
 
-Acceptance criteria:
+Нужный результат:
 
 - Method-level и class-level policies работают.
 - Несколько policies на одном handler имеют детерминированный порядок.
@@ -102,3 +102,267 @@ Non-goals для первой реализации:
 - Сделать retries и throttling наблюдаемыми через logs и metrics.
 - Не допускать скрытые duplicate sends для non-idempotent операций.
 
+## Готовность к stable release
+
+Статус: запланировано до первого stable release.
+
+Текущее состояние:
+
+- У TeleFlow есть публичные alpha packages, generated Telegram client methods, handler routing, state/wizard APIs, callbacks, long polling, webhooks, error handlers, документация, release workflows и no-network benchmarks.
+- Package boundaries явные: client, schema, framework, raw transports и framework transport adapters живут в отдельных packages.
+- Public APIs ещё могут меняться до первого stable release.
+
+Целевое состояние:
+
+- Проверить и заморозить public API names, package graph, handler metadata, diagnostics и registration behavior.
+- Удалить или явно пометить transitional APIs до публикации stable packages.
+- Держать `TeleFlow.Core` transport-agnostic, generated schema DTOs свободными от framework behavior, а framework runtime behavior внутри Telegram framework packages.
+- Оставить generated assembly registration рекомендуемым production path, а explicit reflection registration - opt-in путем.
+- Синхронизировать quickstart, package guide, enterprise docs, samples и release notes с реальными packages и APIs.
+
+Нужный результат:
+
+- CI, release verification, package graph tests, analyzer tests и representative sample builds зелёные.
+- Generated registration и explicit reflection registration имеют parity для поддерживаемых framework semantics.
+- Документация описывает текущее поведение; planned features остаются только в roadmap.
+- Release notes фиксируют alpha/stable status, breaking-change rules, supported .NET versions и Telegram Bot API schema version.
+
+## Startup и delivery controls
+
+Статус: запланировано.
+
+Текущее состояние:
+
+- Long polling сохраняет at-least-once update processing: offset двигается только после успешной обработки update.
+- Public docs не заявляют `drop_pending_updates` option.
+- Deep-link URL building использует явную настройку bot username и не вызывает `getMe` лениво.
+
+Целевое состояние:
+
+- Добавить явные startup delivery controls для long polling, включая документированный аналог `drop_pending_updates` с точными offset и acknowledgement semantics.
+- Оценить opt-in startup bot identity resolver, который может один раз вызвать `getMe`, закэшировать bot identity и fail/warn по явной конфигурации.
+- Не добавлять lazy network calls в helpers вроде deep-link builders.
+
+Нужный результат:
+
+- Pending-update behavior покрыт тестами и описан для long polling startup.
+- Startup identity resolution имеет детерминированное failure behavior.
+- Bot identity lookup не происходит неявно во время handler execution или deep-link URL construction.
+
+## Handler execution policies
+
+Статус: запланировано после стабилизации handler metadata.
+
+Текущее состояние:
+
+- Filters выбирают handlers.
+- Update middleware оборачивает весь update pipeline.
+- Telegram error handlers покрывают selected-handler failures.
+- Handler-level rate limiting запланирован как first-class feature.
+
+Целевое состояние:
+
+- Добавить optional per-handler execution policies, которые оборачивают только выбранный handler.
+- Поддержать production policies: audit, idempotency, transaction boundaries, timeouts, metrics, feature flags, validation и handler-level rate limits.
+- Держать policy metadata generated и видимой для debugging.
+
+Правила:
+
+- Это не AOP, не aspects и не mediator pipeline.
+- Handler policies не выбирают другой handler, не продолжают route matching и не создают второй dispatcher.
+- Exceptions bubble unchanged, если явно подключённая policy не обработала их намеренно.
+- Policies резолвятся из per-update DI scope и выполняются в детерминированном порядке.
+
+Нужный результат:
+
+- Method-level и module/class-level policy metadata generated и покрыты тестами.
+- Policy ordering задокументирован и стабилен.
+- Handler-level rate limits используют selected handler metadata и не работают как pre-dispatch update middleware.
+
+## Observability и OpenTelemetry
+
+Статус: запланировано после стабилизации route, handler, module, scene, request и error metadata.
+
+Текущее состояние:
+
+- TeleFlow уже даёт logging и benchmark coverage.
+- Public OpenTelemetry package отсутствует.
+
+Целевое состояние:
+
+- Добавить optional `TeleFlow.Telegram.OpenTelemetry` package.
+- Дать traces для update processing, middleware, handler execution, error handling и outgoing Telegram requests.
+- Дать metrics для update counts, handler duration, Telegram request duration, retries, backoff, failures и rate-limit decisions.
+- Зафиксировать stable semantic attribute names для handler, route, module, scene, update type, Telegram method, status и exception classification.
+
+Правила:
+
+- OpenTelemetry должен остаться optional и вне core runtime packages.
+- Tokens, request bodies, response bodies, message text, callback data, file names и другие PII не экспортируются по умолчанию.
+- Microsoft.Extensions.Logging diagnostics остаются полезными без OpenTelemetry.
+
+Нужный результат:
+
+- Traces показывают связь update-to-handler-to-Telegram-request.
+- Metrics помогают находить slow handlers и slow Telegram API calls.
+- Instrumentation работает для long polling и webhooks.
+
+## Localization
+
+Статус: запланировано после стабилизации message helpers, keyboard builders, scenes и DI APIs.
+
+Текущее состояние:
+
+- Handlers могут использовать обычные application localization services через DI.
+- TeleFlow не предоставляет Telegram-context localization layer.
+
+Целевое состояние:
+
+- Добавить scoped localization boundary для Telegram contexts.
+- Дать replaceable locale resolver, который может использовать Telegram `language_code`, user profile data, state или application storage.
+- Интегрировать localization с message helpers, keyboards, scenes, validation messages и deep-link messages.
+
+Правила:
+
+- Localization не меняет dispatch behavior.
+- Missing translation behavior должно быть явным и тестируемым.
+- Telegram `language_code` - default signal, но не единственный source of truth.
+
+Нужный результат:
+
+- Handlers получают localized strings через context.
+- Keyboards и scene prompts локализуются без custom boilerplate.
+- Locale resolution заменяется через DI.
+
+## Dynamic access control
+
+Статус: запланировано как optional module.
+
+Текущее состояние:
+
+- Telegram-native role checks относятся к `RequireTelegramRole` и используют Telegram member status.
+- Bot-owned roles, ranks, permissions и per-command overrides пока не являются first-class module.
+
+Целевое состояние:
+
+- Добавить optional access-control package для runtime mutable bot-owned authorization.
+- Поддержать permissions, ranks, roles, command overrides и scopes: global, chat, topic/thread, business connection и custom application scope.
+- Дать replaceable storage, decision cache, subject resolver, scope resolver и audit sink contracts.
+
+Правила:
+
+- Dynamic ACL отделён от Telegram-native member status.
+- ACL state - bot-owned runtime data, который меняется без redeploy handlers.
+- Deny behavior явный: silent no-op, typed exception, callback answer, message reply или custom deny handler.
+- ACL не вызывает Telegram APIs, если он не объединён с explicit Telegram-native filter.
+
+Нужный результат:
+
+- Runtime permission changes влияют на следующие updates без redeploy.
+- Module-level и handler-level requirements combine deterministically.
+- Access checks тестируются без Telegram network access.
+- Generated и explicit reflection registration дают equivalent ACL metadata.
+
+## Distributed runtime
+
+Статус: запланировано для production deployments после стабилизации single-process contracts.
+
+Текущее состояние:
+
+- Applications могут заменить state keys через `IStateKeyFactory`.
+- Enterprise docs уже рекомендуют gateway/worker architectures для high-load bots.
+- First-class broker worker, distributed rate limiting и event isolation package пока нет.
+
+Целевое состояние:
+
+- Добавить optional distributed rate limiting providers для incoming updates и outgoing Telegram requests.
+- Добавить event isolation для stateful flows, чтобы updates одного logical conversation обрабатывались в детерминированном порядке.
+- Добавить broker-backed gateway/worker support для durable buffering и horizontal workers.
+- Дать custom partition key и deduplication key generation отдельно от state key generation.
+
+Правила:
+
+- Broker, queue, stream, Redis, Kafka, RabbitMQ, NATS или cloud-provider dependency не попадают в `TeleFlow.Core`.
+- Event isolation сериализует updates по key; он не должен молча drop updates.
+- Broker-backed processing использует at-least-once delivery как baseline. Exactly-once не обещается.
+- Broker messages acknowledge только после успешного `IUpdateProcessor`.
+- Cancellation не acknowledge unfinished work.
+
+Нужный результат:
+
+- Users могут собрать webhook gateway, который публикует Telegram updates в broker.
+- Users могут запускать несколько TeleFlow workers поверх broker messages.
+- Custom partition и deduplication keys заменяются через DI.
+- Существующий `IStateKeyFactory` остаётся независимым.
+- Docs объясняют ordering, deduplication, retries, dead-letter behavior и shutdown.
+
+## NativeAOT и trimming
+
+Статус: запланировано поэтапно.
+
+Текущее состояние:
+
+- Client-only AOT smoke verification существует как engineering target.
+- Full client request serialization AOT support зависит от generated JSON metadata и отказа от runtime reflection в request serialization и multipart metadata.
+- Full framework NativeAOT support - отдельный track, потому что handler reflection registration и DI invocation имеют другие constraints.
+
+Целевое состояние:
+
+- Сначала сделать low-level Telegram client package trimming-friendly и client-only NativeAOT friendly.
+- Перевести request/response JSON serialization к generated metadata.
+- Убрать `PropertyInfo` reflection из multipart request construction через generated method/property metadata.
+- Держать framework AOT отдельно от client AOT.
+
+Нужный результат:
+
+- Client-only smoke app публикуется с `PublishAot=true` без TeleFlow client trim/AOT warnings.
+- Generated JSON metadata покрывает representative simple requests, multipart requests, union wrappers и response envelopes.
+- Framework docs фиксируют, какие registration paths AOT-compatible.
+
+## Schema automation и release tooling
+
+Статус: запланировано как release hardening.
+
+Текущее состояние:
+
+- Telegram schema generation поддерживается в отдельной generator repository.
+- Schema updates должны создавать reviewable changes в main repository.
+- NuGet publishing и GitHub Releases являются разными release surfaces.
+
+Целевое состояние:
+
+- Сохранить automatic Telegram Bot API monitoring и PR creation для schema updates.
+- Поддержать manual forced schema regeneration для maintainer-triggered refresh.
+- Держать generated manifests со schema version, generator version, source hash и generation timestamp.
+- Добавить guardrails, чтобы schema или generator updates требовали intentional package version decision.
+- Держать release verification, NuGet publishing, GitHub Releases и docs deployment явными и auditable.
+
+Нужный результат:
+
+- Schema-only updates дают маленькие reviewable diffs, когда Telegram API shape не поменялся.
+- Forced regeneration доступна без имитации Telegram API change.
+- CI ловит forgotten manifest/version mismatches.
+- Release notes указывают Telegram Bot API schema version, когда это relevant.
+
+## Documentation, templates и examples
+
+Статус: постоянная работа.
+
+Текущее состояние:
+
+- English и Russian documentation существуют.
+- README ведёт на docs, community chat, NuGet, roadmap и benchmark methodology.
+- Реалистичный support-desk tutorial существует.
+
+Целевое состояние:
+
+- Добавить stable project templates для simple bots, production bots, webhook bots и large modular bots.
+- Держать docs split by audience: quickstart для beginners, deeper paths для production users и enterprise guidance для large deployments.
+- Держать generated/API reference documentation aligned with source XML comments.
+- Держать examples buildable against published packages.
+
+Нужный результат:
+
+- New users создают и запускают long-polling bot по docs за минуты.
+- Production users находят package, configuration, logging, deployment, state и versioning guidance без чтения source code.
+- Samples и templates валидируются CI или release verification.
