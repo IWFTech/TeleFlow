@@ -95,33 +95,37 @@ $env:TELEFLOW_BOT_TOKEN = "123456:token"
 Replace `Program.cs` with this:
 
 ```csharp
+using TeleFlow.Telegram;
 using TeleFlow.Annotations;
 using TeleFlow.Core.Application;
-using TeleFlow.Storage.Memory;
-using TeleFlow.Telegram;
 
-var token = Environment.GetEnvironmentVariable("TELEFLOW_BOT_TOKEN")
-    ?? throw new InvalidOperationException("TELEFLOW_BOT_TOKEN is not set.");
-
+var token = "12345:BOT_TOKEN";
 var builder = TeleFlowApplication.CreateBuilder(args);
 
 builder.Services.AddTelegramBot(options => options.Token = token);
-builder.Services.AddMemoryStateStorage();
 builder.Services.AddTelegramHandlersFromAssembly(typeof(Program).Assembly);
 builder.Services.AddLongPolling();
 
 await using var app = builder.Build();
 await app.RunAsync();
 
-public sealed class StartHandler
+public sealed class Handlers
 {
     [Command("start")]
-    public Task Handle(MessageContext ctx, CancellationToken ct)
+    public async Task Start(MessageContext ctx, CancellationToken ct)
     {
-        return ctx.Message.AnswerAsync("Hello from TeleFlow.", ct);
+        await ctx.Message.AnswerAsync("Hello from TeleFlow", ct);
+    }
+
+    [CommandTemplate("get_from {fromDate:string} {toDate:string} {count:int?}")]
+    public async Task GetFrom(MessageContext ctx, string fromDate, string toDate, int? count, CancellationToken ct)
+    {
+        await ctx.Message.AnswerAsync($"Okay. Getting from {fromDate} to {toDate} with {count ?? 0}", ct);
     }
 }
 ```
+
+![Bot example](https://github.com/IWFTech/TeleFlow/tree/main/docs/assets/images%2Fbot_preview.png)
 
 This example uses generated assembly registration. If the `IWF.TeleFlow.Generators` package is not referenced by the application project, `AddTelegramHandlersFromAssembly(...)` fails during startup with a clear configuration error.
 
