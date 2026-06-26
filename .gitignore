@@ -9,6 +9,7 @@ arm/
 arm64/
 artifacts/
 BenchmarkDotNet.Artifacts/
+site/
 
 # NuGet
 packages/

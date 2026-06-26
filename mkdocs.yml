@@ -1,0 +1,159 @@
+site_name: TeleFlow
+site_description: Explicit Telegram bot framework for .NET.
+site_url: https://iwftech.github.io/TeleFlow/
+repo_name: IWFTech/TeleFlow
+repo_url: https://github.com/IWFTech/TeleFlow
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+site_dir: site
+strict: true
+exclude_docs: README.md
+
+theme:
+  name: material
+  language: en
+  logo: assets/images/teleflow-mark.svg
+  favicon: assets/images/teleflow-mark.svg
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - content.action.edit
+    - content.code.copy
+    - navigation.footer
+    - navigation.indexes
+    - navigation.sections
+    - navigation.tabs
+    - navigation.top
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/IWFTech/TeleFlow
+    - icon: fontawesome/brands/telegram
+      link: https://t.me/teleflow_chat
+    - icon: fontawesome/solid/cube
+      link: https://www.nuget.org/packages/IWF.TeleFlow.Telegram.Framework.LongPolling/
+
+extra_css:
+  - assets/stylesheets/teleflow.css
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - Home: index.md
+  - English:
+      - Overview: en/index.md
+      - Getting Started:
+          - Quickstart: en/getting-started/quickstart.md
+          - Configuration and secrets: en/getting-started/configuration.md
+          - Recommended paths: en/getting-started/recommended-paths.md
+          - Packages: en/getting-started/packages.md
+      - Tutorials:
+          - Support desk bot: en/tutorials/support-desk.md
+      - Fundamentals:
+          - Application model: en/fundamentals/application-model.md
+          - Project structure: en/fundamentals/project-structure.md
+          - Handlers and routing: en/fundamentals/handlers-and-routing.md
+          - Filters: en/fundamentals/filters.md
+          - Dependency injection: en/fundamentals/dependency-injection.md
+          - Cancellation: en/fundamentals/cancellation.md
+      - Features:
+          - Telegram client and schema: en/features/telegram-client.md
+          - Callbacks and keyboards: en/features/callbacks-and-keyboards.md
+          - State and wizard: en/features/state-and-wizard.md
+          - Roles and chat members: en/features/roles-and-chat-members.md
+          - Errors and diagnostics: en/features/errors-and-diagnostics.md
+      - Transports:
+          - Long polling: en/transports/long-polling.md
+          - Webhooks: en/transports/webhooks.md
+          - Raw transports: en/transports/raw-transports.md
+      - Advanced:
+          - Generated registration: en/advanced/generated-registration.md
+          - Custom storage: en/advanced/custom-storage.md
+          - Middleware and rate limiting: en/advanced/middleware-and-rate-limiting.md
+          - Testing: en/advanced/testing.md
+      - Enterprise:
+          - Enterprise guide: en/enterprise/index.md
+          - Deployment: en/enterprise/deployment.md
+          - Performance and scaling: en/enterprise/performance.md
+          - Versioning and releases: en/enterprise/versioning.md
+          - Architecture notes: en/enterprise/architecture.md
+          - Production checklist: en/enterprise/production-checklist.md
+      - Reference:
+          - Attributes: en/reference/attributes.md
+          - Options and extension points: en/reference/options-and-extension-points.md
+          - Troubleshooting: en/reference/troubleshooting.md
+      - Roadmap: en/roadmap.md
+  - Русский:
+      - Обзор: ru/index.md
+      - Начало:
+          - Quickstart: ru/getting-started/quickstart.md
+          - Конфигурация и секреты: ru/getting-started/configuration.md
+          - Recommended paths: ru/getting-started/recommended-paths.md
+          - Packages: ru/getting-started/packages.md
+      - Tutorials:
+          - Support desk bot: ru/tutorials/support-desk.md
+      - Fundamentals:
+          - Application model: ru/fundamentals/application-model.md
+          - Структура проекта: ru/fundamentals/project-structure.md
+          - Handlers and routing: ru/fundamentals/handlers-and-routing.md
+          - Filters: ru/fundamentals/filters.md
+          - Dependency injection: ru/fundamentals/dependency-injection.md
+          - Cancellation: ru/fundamentals/cancellation.md
+      - Features:
+          - Telegram client and schema: ru/features/telegram-client.md
+          - Callbacks and keyboards: ru/features/callbacks-and-keyboards.md
+          - State and wizard: ru/features/state-and-wizard.md
+          - Roles and chat members: ru/features/roles-and-chat-members.md
+          - Errors and diagnostics: ru/features/errors-and-diagnostics.md
+      - Transports:
+          - Long polling: ru/transports/long-polling.md
+          - Webhooks: ru/transports/webhooks.md
+          - Raw transports: ru/transports/raw-transports.md
+      - Advanced:
+          - Generated registration: ru/advanced/generated-registration.md
+          - Custom storage: ru/advanced/custom-storage.md
+          - Middleware and rate limiting: ru/advanced/middleware-and-rate-limiting.md
+          - Testing: ru/advanced/testing.md
+      - Enterprise:
+          - Enterprise guide: ru/enterprise/index.md
+          - Deployment: ru/enterprise/deployment.md
+          - Performance and scaling: ru/enterprise/performance.md
+          - Versioning and releases: ru/enterprise/versioning.md
+          - Architecture notes: ru/enterprise/architecture.md
+          - Production checklist: ru/enterprise/production-checklist.md
+      - Reference:
+          - Attributes: ru/reference/attributes.md
+          - Options and extension points: ru/reference/options-and-extension-points.md
+          - Troubleshooting: ru/reference/troubleshooting.md
+      - Roadmap: ru/roadmap.md

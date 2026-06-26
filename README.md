@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/IWFTech/TeleFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/IWFTech/TeleFlow/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/IWFTech/TeleFlow/actions/workflows/codeql.yml/badge.svg)](https://github.com/IWFTech/TeleFlow/actions/workflows/codeql.yml)
+[![Docs](https://github.com/IWFTech/TeleFlow/actions/workflows/docs-pages.yml/badge.svg)](https://github.com/IWFTech/TeleFlow/actions/workflows/docs-pages.yml)
 [![Telegram Bot API](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FIWFTech%2FTeleFlow%2Fmain%2Fdocs%2Fbadges%2Ftelegram-bot-api.json)](https://core.telegram.org/bots/api-changelog)
 [![NuGet](https://img.shields.io/nuget/vpre/IWF.TeleFlow.Telegram.Framework.LongPolling?label=NuGet)](https://www.nuget.org/packages/IWF.TeleFlow.Telegram.Framework.LongPolling/)
 [![Downloads](https://img.shields.io/nuget/dt/IWF.TeleFlow.Telegram.Framework.LongPolling?label=downloads)](https://www.nuget.org/packages/IWF.TeleFlow.Telegram.Framework.LongPolling/)
@@ -17,9 +18,10 @@ It is built for the normal lifecycle of a Telegram bot: a first command, then ca
 
 ## Documentation
 
-The repository documentation is split like a small product site and is ready to be moved to GitHub Pages later.
+The documentation is available as a GitHub Pages site and as Markdown in this repository.
 
-- [Documentation home](docs/README.md)
+- [Documentation site](https://iwftech.github.io/TeleFlow/)
+- [Documentation home](docs/index.md)
 - [English documentation](docs/en/index.md)
 - [Russian documentation](docs/ru/index.md)
 - [Quickstart](docs/en/getting-started/quickstart.md)

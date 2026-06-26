@@ -2,6 +2,8 @@
 
 TeleFlow documentation is available in English and Russian.
 
+The GitHub Pages documentation site is published at <https://iwftech.github.io/TeleFlow/>.
+
 ## Community
 
 - [Telegram chat](https://t.me/teleflow_chat) for quick questions, ideas, and alpha feedback.
