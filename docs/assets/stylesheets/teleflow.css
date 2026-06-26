@@ -83,18 +83,25 @@
 }
 
 .md-tabs {
-  background: #0d151d;
+  background: var(--tf-header-bg);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 14px 34px rgba(4, 12, 22, 0.18);
 }
 
 .md-tabs__link {
-  opacity: 0.76;
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.72);
+  opacity: 1;
+  padding: 0 0.68rem;
+  transition: background-color 140ms ease, color 140ms ease;
 }
 
 .md-tabs__link--active,
+.md-tabs__item--active .md-tabs__link,
 .md-tabs__link:hover {
+  background: rgba(76, 157, 255, 0.12);
   color: #ffffff;
-  opacity: 1;
 }
 
 .md-search__form {
@@ -352,10 +359,11 @@ body:has(.tf-hero) .md-main {
 }
 
 .md-typeset .tf-section {
-  margin: 3rem 0;
+  margin: clamp(3.25rem, 6vw, 5.25rem) 0;
 }
 
 .md-typeset .tf-section__heading {
+  margin-bottom: clamp(1.25rem, 2.4vw, 2rem);
   max-width: 44rem;
 }
 
@@ -363,12 +371,13 @@ body:has(.tf-hero) .md-main {
   font-size: clamp(1.45rem, 3vw, 2.25rem);
   font-weight: 820;
   letter-spacing: 0;
-  margin: 0 0 1.2rem;
+  line-height: 1.12;
+  margin: 0;
 }
 
 .md-typeset .tf-card-grid {
   display: grid;
-  gap: 1rem;
+  gap: clamp(1rem, 2vw, 1.4rem);
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
