@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Client-first convenience package for direct Telegram Bot API access.</Description>
+    <Description>Direct Telegram Bot API client package for TeleFlow, including ITelegramClient, generated Bot API methods, defaults, transport customization, typed exceptions, and deep links.</Description>
   </PropertyGroup>
 
   <ItemGroup>

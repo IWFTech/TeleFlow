@@ -7,9 +7,9 @@ TeleFlow can be used as a tiny bot library or as a framework for a larger servic
 Start with the framework long polling package:
 
 ```bash
-dotnet add package IWF.TeleFlow.Telegram.Framework.LongPolling
-dotnet add package IWF.TeleFlow.Generators
-dotnet add package IWF.TeleFlow.Storage.Memory
+dotnet add package IWF.TeleFlow.Telegram.Framework.LongPolling --prerelease
+dotnet add package IWF.TeleFlow.Generators --prerelease
+dotnet add package IWF.TeleFlow.Storage.Memory --prerelease
 ```
 
 Use this shape:

@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Low-level Telegram Bot API client for TeleFlow, including generated client methods, transport contracts, defaults, JSON options, deep links, and request exceptions.</Description>
+    <Description>Low-level generated Telegram Bot API client for .NET, including ITelegramClient, generated method extensions, transport contracts, JSON options, typed exceptions, and deep links.</Description>
     <RootNamespace>TeleFlow.Telegram</RootNamespace>
   </PropertyGroup>
 

@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Compile-time attributes for TeleFlow handler, callback, filter, route, scene, and module metadata.</Description>
+    <Description>Compile-time attributes for TeleFlow Telegram handlers, including commands, text routes, callbacks, filters, state, scenes, modules, and errors.</Description>
   </PropertyGroup>
 </Project>

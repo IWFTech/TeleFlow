@@ -14,7 +14,7 @@ Raw transports нужны приложениям, которым нужны Tele
 Установка:
 
 ```bash
-dotnet add package IWF.TeleFlow.Telegram.LongPolling
+dotnet add package IWF.TeleFlow.Telegram.LongPolling --prerelease
 ```
 
 Регистрация:
@@ -60,7 +60,7 @@ await foreach (var polled in polling.GetUpdatesAsync(cancellationToken: cancella
 Установка:
 
 ```bash
-dotnet add package IWF.TeleFlow.Telegram.Webhooks
+dotnet add package IWF.TeleFlow.Telegram.Webhooks --prerelease
 ```
 
 Map endpoint:

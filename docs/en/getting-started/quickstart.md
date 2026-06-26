@@ -36,12 +36,14 @@ This quickstart uses an environment variable because it is the shortest safe exa
 
 ## Create The Project
 
+TeleFlow is currently published as a public alpha, so package installation uses `--prerelease`.
+
 ```bash
 dotnet new console -n EchoBot
 cd EchoBot
-dotnet add package IWF.TeleFlow.Telegram.Framework.LongPolling
-dotnet add package IWF.TeleFlow.Generators
-dotnet add package IWF.TeleFlow.Storage.Memory
+dotnet add package IWF.TeleFlow.Telegram.Framework.LongPolling --prerelease
+dotnet add package IWF.TeleFlow.Generators --prerelease
+dotnet add package IWF.TeleFlow.Storage.Memory --prerelease
 ```
 
 Keep the generator private in the project file:

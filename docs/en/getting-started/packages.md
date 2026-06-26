@@ -24,6 +24,18 @@ NuGet package IDs use the `IWF.TeleFlow.*` prefix. C# namespaces stay concise fo
 
 `IWF.TeleFlow.Telegram.Schema` is normally pulled in by Telegram packages. Reference it directly only when you intentionally work with generated Telegram DTOs and method models without the client or framework runtime.
 
+## Installing Alpha Packages
+
+TeleFlow is currently published as a public alpha. Use `--prerelease` with `dotnet add package`, or pin an exact alpha version in the project file.
+
+Recommended alpha install for a long polling bot:
+
+```bash
+dotnet add package IWF.TeleFlow.Telegram.Framework.LongPolling --prerelease
+dotnet add package IWF.TeleFlow.Generators --prerelease
+dotnet add package IWF.TeleFlow.Storage.Memory --prerelease
+```
+
 ## Recommended Defaults
 
 For a handler-based long polling bot:

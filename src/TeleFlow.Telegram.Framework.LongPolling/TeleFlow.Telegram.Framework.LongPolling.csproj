@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>TeleFlow Telegram framework long-polling adapter over raw long polling and IUpdateProcessor.</Description>
+    <Description>Long polling framework package for TeleFlow Telegram bots, combining handler dispatch with the raw getUpdates transport adapter.</Description>
     <RootNamespace>TeleFlow.Telegram</RootNamespace>
   </PropertyGroup>
 

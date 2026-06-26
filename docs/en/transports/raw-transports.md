@@ -14,7 +14,7 @@ Use raw transports when:
 Install:
 
 ```bash
-dotnet add package IWF.TeleFlow.Telegram.LongPolling
+dotnet add package IWF.TeleFlow.Telegram.LongPolling --prerelease
 ```
 
 Register:
@@ -60,7 +60,7 @@ await foreach (var polled in polling.GetUpdatesAsync(cancellationToken: cancella
 Install:
 
 ```bash
-dotnet add package IWF.TeleFlow.Telegram.Webhooks
+dotnet add package IWF.TeleFlow.Telegram.Webhooks --prerelease
 ```
 
 Map endpoint:

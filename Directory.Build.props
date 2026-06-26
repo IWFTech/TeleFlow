@@ -15,7 +15,8 @@
     <PackageProjectUrl>https://github.com/IWFTech/TeleFlow</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageTags>iwf;teleflow;telegram;bot;framework</PackageTags>
+    <PackageReleaseNotes>See https://github.com/IWFTech/TeleFlow/releases for release notes.</PackageReleaseNotes>
+    <PackageTags>iwf;teleflow;telegram;telegram-bot;telegram-bot-api;bot-api;bot-framework;dotnet;csharp;async;long-polling;webhooks</PackageTags>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/IWFTech/TeleFlow</RepositoryUrl>

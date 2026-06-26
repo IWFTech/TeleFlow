@@ -51,12 +51,14 @@ The repository documentation is split like a small product site and is ready to 
 
 ## Install
 
+TeleFlow is currently published as a public alpha. Use `--prerelease` or pin an exact alpha version.
+
 For a handler-based long polling bot:
 
 ```bash
-dotnet add package IWF.TeleFlow.Telegram.Framework.LongPolling
-dotnet add package IWF.TeleFlow.Generators
-dotnet add package IWF.TeleFlow.Storage.Memory
+dotnet add package IWF.TeleFlow.Telegram.Framework.LongPolling --prerelease
+dotnet add package IWF.TeleFlow.Generators --prerelease
+dotnet add package IWF.TeleFlow.Storage.Memory --prerelease
 ```
 
 Keep the generator as a private build-time dependency:
@@ -68,10 +70,24 @@ Keep the generator as a private build-time dependency:
 For direct Bot API access without the framework:
 
 ```bash
-dotnet add package IWF.TeleFlow.Telegram
+dotnet add package IWF.TeleFlow.Telegram --prerelease
 ```
 
 ## First Bot
+
+Create a console app, install the packages above, and set `TELEFLOW_BOT_TOKEN`:
+
+```bash
+export TELEFLOW_BOT_TOKEN=123456:token
+```
+
+PowerShell:
+
+```powershell
+$env:TELEFLOW_BOT_TOKEN = "123456:token"
+```
+
+Replace `Program.cs` with this:
 
 ```csharp
 using TeleFlow.Annotations;

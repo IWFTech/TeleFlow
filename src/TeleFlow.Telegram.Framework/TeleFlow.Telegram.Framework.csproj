@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Telegram handler framework runtime for TeleFlow, including contexts, dispatcher, filters, callbacks, state integration, and generated handler registration.</Description>
+    <Description>Attribute-based Telegram bot framework runtime for TeleFlow, including contexts, dispatcher, filters, callbacks, state integration, and generated handler registration.</Description>
     <RootNamespace>TeleFlow.Telegram</RootNamespace>
   </PropertyGroup>
 

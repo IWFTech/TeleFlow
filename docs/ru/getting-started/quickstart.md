@@ -36,12 +36,14 @@ $env:TELEFLOW_BOT_TOKEN = "123456:token"
 
 ## Создай проект
 
+TeleFlow сейчас опубликован как public alpha, поэтому установка packages использует `--prerelease`.
+
 ```bash
 dotnet new console -n EchoBot
 cd EchoBot
-dotnet add package IWF.TeleFlow.Telegram.Framework.LongPolling
-dotnet add package IWF.TeleFlow.Generators
-dotnet add package IWF.TeleFlow.Storage.Memory
+dotnet add package IWF.TeleFlow.Telegram.Framework.LongPolling --prerelease
+dotnet add package IWF.TeleFlow.Generators --prerelease
+dotnet add package IWF.TeleFlow.Storage.Memory --prerelease
 ```
 
 В project file держи generator приватной зависимостью:
