@@ -25,19 +25,34 @@ hide:
       <span></span><span></span><span></span>
       <strong>Program.cs</strong>
     </div>
-    <pre><code>builder.Services.AddTelegramBot(options =&gt; options.Token = token);
+    <div class="tf-terminal__code" markdown="1">
+
+```csharp
+builder.Services.AddTelegramBot(options =>
+{
+    options.Token = token;
+});
+
 builder.Services.AddMemoryStateStorage();
-builder.Services.AddTelegramHandlersFromAssembly(typeof(Program).Assembly);
+builder.Services.AddTelegramHandlersFromAssembly(
+    typeof(Program).Assembly);
 builder.Services.AddLongPolling();
 
 public sealed class StartHandler
 {
     [Command("start")]
-    public Task Handle(MessageContext ctx, CancellationToken ct)
+    public Task Handle(
+        MessageContext ctx,
+        CancellationToken ct)
     {
-        return ctx.Message.AnswerAsync("Hello from TeleFlow.", ct);
+        return ctx.Message.AnswerAsync(
+            "Hello from TeleFlow.",
+            ct);
     }
-}</code></pre>
+}
+```
+
+    </div>
   </div>
 </section>
 
