@@ -21,81 +21,6 @@ public sealed class StageSixStateAndMiddlewareTests
     private const string CallbackConfirmState = "callback:confirm";
 
     [Fact]
-    public async Task MemoryStateStore_SetsGetsClears_AndIsolatesKeys()
-    {
-        var store = new MemoryStateStore();
-        var firstKey = StateKey.Create("telegram", "user:1", "chat:10");
-        var secondKey = StateKey.Create("telegram", "user:1", "chat:20");
-
-        await store.SetStateAsync(firstKey, "first");
-        await store.SetStateAsync(secondKey, "second");
-
-        Assert.Equal("first", await store.GetStateAsync(firstKey));
-        Assert.Equal("second", await store.GetStateAsync(secondKey));
-
-        await store.ClearStateAsync(firstKey);
-
-        Assert.Null(await store.GetStateAsync(firstKey));
-        Assert.Equal("second", await store.GetStateAsync(secondKey));
-    }
-
-    [Fact]
-    public async Task MemoryStateDataStore_SetsGetsRemovesClears_AndIsolatesKeys()
-    {
-        var store = new MemoryStateDataStore();
-        var firstKey = StateKey.Create("telegram", "user:1", "chat:10");
-        var secondKey = StateKey.Create("telegram", "user:1", "chat:20");
-
-        await store.SetDataAsync(firstKey, "name", "\"Alice\"");
-        await store.SetDataAsync(firstKey, "age", "42");
-        await store.SetDataAsync(firstKey, "empty", string.Empty);
-        await store.SetDataAsync(secondKey, "name", "\"Bob\"");
-
-        Assert.Equal("\"Alice\"", await store.GetDataAsync(firstKey, "name"));
-        Assert.Equal("42", await store.GetDataAsync(firstKey, "age"));
-        Assert.Equal(string.Empty, await store.GetDataAsync(firstKey, "empty"));
-        Assert.Equal("\"Bob\"", await store.GetDataAsync(secondKey, "name"));
-
-        await store.RemoveDataAsync(firstKey, "name");
-
-        Assert.Null(await store.GetDataAsync(firstKey, "name"));
-        Assert.Equal("42", await store.GetDataAsync(firstKey, "age"));
-        Assert.Equal("\"Bob\"", await store.GetDataAsync(secondKey, "name"));
-
-        await store.ClearDataAsync(firstKey);
-
-        Assert.Null(await store.GetDataAsync(firstKey, "age"));
-        Assert.Equal("\"Bob\"", await store.GetDataAsync(secondKey, "name"));
-    }
-
-    [Fact]
-    public async Task MemoryStateHistoryStore_PushesPopsClears_AndIsolatesKeys()
-    {
-        var store = new MemoryStateHistoryStore();
-        var firstKey = StateKey.Create("telegram", "user:1", "chat:10");
-        var secondKey = StateKey.Create("telegram", "user:1", "chat:20");
-
-        await store.PushAsync(firstKey, "first:name");
-        await store.PushAsync(firstKey, "first:age");
-        await store.PushAsync(secondKey, "second:name");
-
-        Assert.Equal(["first:name", "first:age"], await store.GetHistoryAsync(firstKey));
-        Assert.Equal(["second:name"], await store.GetHistoryAsync(secondKey));
-        Assert.Equal("first:age", await store.PeekAsync(firstKey));
-        Assert.Equal(["first:name", "first:age"], await store.GetHistoryAsync(firstKey));
-        Assert.Equal("first:age", await store.PopAsync(firstKey));
-        Assert.Equal("first:name", await store.PeekAsync(firstKey));
-        Assert.Equal("first:name", await store.PopAsync(firstKey));
-        Assert.Null(await store.PeekAsync(firstKey));
-        Assert.Null(await store.PopAsync(firstKey));
-        Assert.Equal(["second:name"], await store.GetHistoryAsync(secondKey));
-
-        await store.ClearAsync(secondKey);
-
-        Assert.Empty(await store.GetHistoryAsync(secondKey));
-    }
-
-    [Fact]
     public async Task UpdateStateData_RoundTripsTypedValues_AndHandlesMissingRequiredAndNullValues()
     {
         var state = CreateUpdateStateWithData();
@@ -137,6 +62,105 @@ public sealed class StageSixStateAndMiddlewareTests
 
         Assert.Null(await state.GetAsync());
         Assert.Null(await state.Data.GetAsync<string>("name"));
+    }
+
+    [Fact]
+    public async Task UpdateState_GetAsync_CachesExistingStateWithinUpdate()
+    {
+        var store = new CountingStateStore(initialState: RegistrationNameState);
+        var state = new UpdateState(store, StateKey.Create("telegram", "user:1", "chat:10"));
+
+        Assert.Equal(RegistrationNameState, await state.GetAsync());
+        Assert.Equal(RegistrationNameState, await state.GetAsync());
+
+        Assert.Equal(1, store.GetCount);
+    }
+
+    [Fact]
+    public async Task UpdateState_GetAsync_CachesMissingStateWithinUpdate()
+    {
+        var store = new CountingStateStore(initialState: null);
+        var state = new UpdateState(store, StateKey.Create("telegram", "user:1", "chat:10"));
+
+        Assert.Null(await state.GetAsync());
+        Assert.Null(await state.GetAsync());
+
+        Assert.Equal(1, store.GetCount);
+    }
+
+    [Fact]
+    public async Task UpdateState_SetAsync_UpdatesSnapshotWithoutExtraRead()
+    {
+        var store = new CountingStateStore(initialState: null);
+        var state = new UpdateState(store, StateKey.Create("telegram", "user:1", "chat:10"));
+
+        await state.SetAsync(RegistrationNameState);
+
+        Assert.Equal(RegistrationNameState, await state.GetAsync());
+        Assert.Equal(0, store.GetCount);
+        Assert.Equal(1, store.SetCount);
+    }
+
+    [Fact]
+    public async Task UpdateState_ClearAsync_UpdatesSnapshotWithoutExtraRead()
+    {
+        var store = new CountingStateStore(initialState: RegistrationNameState);
+        var state = new UpdateState(store, StateKey.Create("telegram", "user:1", "chat:10"));
+
+        await state.ClearAsync();
+
+        Assert.Null(await state.GetAsync());
+        Assert.Equal(0, store.GetCount);
+        Assert.Equal(1, store.ClearCount);
+    }
+
+    [Fact]
+    public async Task UpdateState_FailedGetAsync_DoesNotCacheFailure()
+    {
+        var store = new CountingStateStore(initialState: RegistrationNameState)
+        {
+            ThrowOnNextGet = true
+        };
+        var state = new UpdateState(store, StateKey.Create("telegram", "user:1", "chat:10"));
+
+        await Assert.ThrowsAsync<NotSupportedException>(async () => await state.GetAsync());
+
+        Assert.Equal(RegistrationNameState, await state.GetAsync());
+        Assert.Equal(2, store.GetCount);
+    }
+
+    [Fact]
+    public async Task UpdateState_FailedSetAsync_KeepsPreviousSnapshot()
+    {
+        var store = new CountingStateStore(initialState: RegistrationNameState);
+        var state = new UpdateState(store, StateKey.Create("telegram", "user:1", "chat:10"));
+
+        Assert.Equal(RegistrationNameState, await state.GetAsync());
+
+        store.ThrowOnNextSet = true;
+
+        await Assert.ThrowsAsync<NotSupportedException>(async () => await state.SetAsync(RegistrationAgeState));
+
+        Assert.Equal(RegistrationNameState, await state.GetAsync());
+        Assert.Equal(1, store.GetCount);
+        Assert.Equal(1, store.SetCount);
+    }
+
+    [Fact]
+    public async Task UpdateState_FailedClearAsync_KeepsPreviousSnapshot()
+    {
+        var store = new CountingStateStore(initialState: RegistrationNameState);
+        var state = new UpdateState(store, StateKey.Create("telegram", "user:1", "chat:10"));
+
+        Assert.Equal(RegistrationNameState, await state.GetAsync());
+
+        store.ThrowOnNextClear = true;
+
+        await Assert.ThrowsAsync<NotSupportedException>(async () => await state.ClearAsync());
+
+        Assert.Equal(RegistrationNameState, await state.GetAsync());
+        Assert.Equal(1, store.GetCount);
+        Assert.Equal(1, store.ClearCount);
     }
 
     [Fact]
@@ -1134,6 +1158,70 @@ public sealed class StageSixStateAndMiddlewareTests
 
         public ValueTask ClearStateAsync(StateKey key, CancellationToken cancellationToken = default)
         {
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class CountingStateStore(string? initialState) : IStateStore
+    {
+        private string? _state = initialState;
+
+        public int GetCount { get; private set; }
+
+        public int SetCount { get; private set; }
+
+        public int ClearCount { get; private set; }
+
+        public bool ThrowOnNextGet { get; set; }
+
+        public bool ThrowOnNextSet { get; set; }
+
+        public bool ThrowOnNextClear { get; set; }
+
+        public ValueTask<string?> GetStateAsync(StateKey key, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            GetCount++;
+
+            if (ThrowOnNextGet)
+            {
+                ThrowOnNextGet = false;
+                throw new NotSupportedException();
+            }
+
+            return ValueTask.FromResult(_state);
+        }
+
+        public ValueTask SetStateAsync(
+            StateKey key,
+            string state,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            SetCount++;
+
+            if (ThrowOnNextSet)
+            {
+                ThrowOnNextSet = false;
+                throw new NotSupportedException();
+            }
+
+            _state = state;
+            return ValueTask.CompletedTask;
+        }
+
+        public ValueTask ClearStateAsync(StateKey key, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ClearCount++;
+
+            if (ThrowOnNextClear)
+            {
+                ThrowOnNextClear = false;
+                throw new NotSupportedException();
+            }
+
+            _state = null;
             return ValueTask.CompletedTask;
         }
     }

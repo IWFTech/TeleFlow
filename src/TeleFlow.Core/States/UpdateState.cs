@@ -6,6 +6,7 @@ public sealed class UpdateState
     private readonly UpdateStateData? _data;
     private readonly UpdateWizard? _wizard;
     private string? _currentState;
+    private bool _currentStateCached;
 
     public UpdateState(
         IStateStore stateStore,
@@ -44,7 +45,13 @@ public sealed class UpdateState
 
     public async ValueTask<string?> GetAsync(CancellationToken cancellationToken = default)
     {
+        if (_currentStateCached)
+        {
+            return _currentState;
+        }
+
         _currentState = await _stateStore.GetStateAsync(Key, cancellationToken).ConfigureAwait(false);
+        _currentStateCached = true;
         return _currentState;
     }
 
@@ -53,6 +60,7 @@ public sealed class UpdateState
         ArgumentException.ThrowIfNullOrWhiteSpace(state);
         await _stateStore.SetStateAsync(Key, state, cancellationToken).ConfigureAwait(false);
         _currentState = state;
+        _currentStateCached = true;
     }
 
     public ValueTask SetAsync(State state, CancellationToken cancellationToken = default)
@@ -70,13 +78,12 @@ public sealed class UpdateState
     {
         await _stateStore.ClearStateAsync(Key, cancellationToken).ConfigureAwait(false);
         _currentState = null;
+        _currentStateCached = true;
     }
 
     public async ValueTask ResetAsync(CancellationToken cancellationToken = default)
     {
-        var data = Data;
-
-        await data.ClearAsync(cancellationToken).ConfigureAwait(false);
+        await Data.ClearAsync(cancellationToken).ConfigureAwait(false);
         await ClearAsync(cancellationToken).ConfigureAwait(false);
     }
 }
