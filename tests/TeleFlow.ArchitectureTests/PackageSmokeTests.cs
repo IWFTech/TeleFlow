@@ -225,6 +225,13 @@ public sealed class PackageSmokeTests
 
             using var archive = ZipFile.OpenRead(packagePath);
             Assert.Contains(archive.Entries, static entry => entry.FullName == "README.md");
+
+            if (string.Equals(packageProject.PackageId, "IWF.TeleFlow.Annotations", StringComparison.Ordinal))
+            {
+                Assert.Contains(
+                    archive.Entries,
+                    static entry => entry.FullName == "lib/net10.0/TeleFlow.Annotations.xml");
+            }
         }
     }
 

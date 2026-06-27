@@ -59,6 +59,12 @@ When generated output changes, the change should include enough context to revie
 - generated diff;
 - tests or package smoke coverage affected by the generated surface.
 
+## Annotation Package Layout
+
+`TeleFlow.Annotations` is physically grouped by responsibility: routing, callbacks, filters, state, scenes, chat member events, common primitives, and error handling. Keep the public namespace as `TeleFlow.Annotations` for every public annotation type. Folder names are for maintainers; they are not part of the public C# API shape.
+
+Public annotation types must have XML documentation. The annotations project treats missing XML comments as build errors so published packages keep useful IntelliSense for application developers.
+
 ## Security
 
 Do not open public issues with exploit details, tokens, or private bot data. Follow `SECURITY.md`.
