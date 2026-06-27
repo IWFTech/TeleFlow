@@ -99,6 +99,8 @@ public sealed class UploadHandler
 
 Other media filters include audio, voice, video, video note, animation, contact, dice, location, poll, sticker, venue, caption, and message thread markers.
 
+Routes and filters both use C# attribute syntax. Route attributes such as `[CommandTemplate]` select the handler and bind values. Filter attributes such as `[HasPhoto]`, `[ChatType]`, and `[UseFilter<TFilter>]` add conditions before invocation. See [Filters](filters.md) for the full distinction.
+
 ## Class-Level Metadata
 
 Routing and filter attributes can be placed on the class when every method should share the same condition:

@@ -7,6 +7,41 @@ Filters решают, может ли handler выполниться для те
 - built-in filters через attributes;
 - custom filters через `ITelegramFilter<TContext>`.
 
+## Attributes и filters
+
+В C# и routes, и filters записываются как attributes над handler method, но роль у них разная.
+
+Route attributes решают, какой update подходит handler-у и какие route values нужно достать:
+
+```csharp
+[Command("start")]
+[CommandTemplate("ban {userId:int}")]
+[Callback<TicketAction>]
+```
+
+Filter attributes добавляют условия, которые должны быть выполнены перед вызовом handler:
+
+```csharp
+[HasPhoto]
+[ChatType(TelegramChatType.Private)]
+[UseFilter<AdminOnlyFilter>]
+```
+
+Например:
+
+```csharp
+[CommandTemplate("ban {userId:int}")]
+[UseFilter<AdminOnlyFilter>]
+public Task Ban(MessageContext ctx, int userId, CancellationToken ct)
+{
+    return ctx.Message.AnswerAsync($"Banning {userId}.", ct);
+}
+```
+
+`[CommandTemplate]` матчится на команду и bind-ит `userId`. `AdminOnlyFilter` решает, можно ли текущему user вызвать этот handler.
+
+Парсинг команды держи в routes. Filters используй для permissions, anti-spam, feature flags, checks через storage и других yes/no решений. Filter, который парсит command arguments, скорее всего переносит routing logic не в тот слой.
+
 ## Built-in filters
 
 Примеры:

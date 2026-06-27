@@ -149,6 +149,85 @@ Non-goals для первой реализации:
 - Startup identity resolution имеет детерминированное failure behavior.
 - Bot identity lookup не происходит неявно во время handler execution или deep-link URL construction.
 
+## State flow ergonomics
+
+Статус: запланировано после стабилизации текущих state и wizard contracts.
+
+Текущее состояние:
+
+- TeleFlow поддерживает явный current state через `ctx.State`.
+- TeleFlow поддерживает state data через `ctx.State.Data` и `ctx.Wizard.Data`.
+- State data сейчас достаётся по string keys вроде `"quiz"`.
+- `Wizard.GoToAsync(state)` записывает navigation history и лучше всего подходит для линейных flows и явного back navigation.
+- Dynamic loops уже можно реализовать: оставаться в том же state, обновлять state data и вручную рендерить следующий prompt.
+- First-class state enter hook и явный re-enter/self-transition API пока отсутствуют.
+
+Целевое состояние:
+
+- Добавить typed state data helpers, чтобы common flow data можно было использовать без повторения string keys.
+- Оценить явный handler parameter `StateData<T>`, который показывает, что данные пришли из state storage, а не из DI, route values или callback payload.
+- Добавить state enter hooks для prompts, которые должны выполняться при входе в state.
+- Добавить явный re-enter/self-transition API, который вызывает state enter behavior без загрязнения wizard history.
+- Описать dynamic state-loop patterns для quizzes, paginated menus, retry-until-valid-input flows и long-running support workflows.
+
+Возможная форма public API:
+
+```csharp
+[State("quiz:question")]
+[HasText]
+public async Task Answer(
+    MessageContext ctx,
+    StateData<QuizRunData> quiz,
+    IQuizEngine engine,
+    CancellationToken ct)
+{
+    var run = await quiz.GetRequiredAsync(ct);
+
+    engine.ApplyAnswer(run, ctx.Message.Text!);
+
+    if (engine.IsCompleted(run))
+    {
+        await quiz.ClearAsync(ct);
+        await ctx.State.ClearAsync(ct);
+        await ctx.Message.AnswerAsync("Опросник завершён.", ct);
+        return;
+    }
+
+    await quiz.SetAsync(run, ct);
+    await ctx.State.ReEnterAsync(ct);
+}
+```
+
+```csharp
+[StateEnter("quiz:question")]
+public async Task EnterQuestion(
+    MessageContext ctx,
+    StateData<QuizRunData> quiz,
+    IQuizQuestionRenderer renderer,
+    CancellationToken ct)
+{
+    var run = await quiz.GetRequiredAsync(ct);
+    await renderer.RenderCurrentQuestionAsync(ctx, run, ct);
+}
+```
+
+Правила:
+
+- State loops - это не recursion. Каждый update всё равно должен завершаться обычным образом.
+- Re-enter не должен класть current state в wizard history.
+- Typed state data должен быть явным; TeleFlow не должен скрыто отслеживать mutable objects и auto-save после handler execution.
+- State data - это runtime cursor для conversational progress. Durable domain history должна жить в application repositories или databases.
+- Complex question-level machines должны жить в application/domain code и храниться как typed state data, а не превращаться в тяжёлый nested FSM DSL внутри TeleFlow core.
+- Generated и reflection registration должны поддерживать одинаковое state enter и typed state data behavior.
+
+Нужный результат:
+
+- Dynamic quiz flows смогут использовать один outer state вроде `quiz:question` и typed state data для current question, draft answer, score, attempts и nested question step.
+- Combined question flows вроде "выбрать вариант + добавить комментарий" можно будет моделировать несколькими handlers в одном outer state и domain draft state внутри typed state data.
+- Prompt rendering сможет жить в state enter handlers, а не дублироваться после каждого transition.
+- Wizard history останется осмысленной для back navigation в линейных flows.
+- Documentation содержит примеры simple wizards, dynamic quizzes, retry loops, pagination и nested domain state machines.
+
 ## Handler execution policies
 
 Статус: запланировано после стабилизации handler metadata.

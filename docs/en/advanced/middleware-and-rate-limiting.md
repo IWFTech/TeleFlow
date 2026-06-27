@@ -22,6 +22,103 @@ Use middleware for:
 
 Avoid middleware for handler-specific business logic.
 
+## User Stats And Anti-Spam
+
+Update middleware runs before Telegram routing, built-in filters, custom filters, and handler invocation. This makes it a good place for global checks that apply to most updates.
+
+This example records an incoming Telegram user, increments update statistics, and stops the pipeline when the user is blocked:
+
+```csharp
+using Microsoft.Extensions.DependencyInjection;
+using TeleFlow.Core.Middleware;
+using TeleFlow.Core.Updates;
+using TeleFlow.Telegram;
+using TeleFlow.Telegram.Schema.Types;
+
+public sealed class UserGateMiddleware : IUpdateMiddleware
+{
+    public async Task InvokeAsync(UpdateContext context, UpdateDelegate next)
+    {
+        if (!context.TryGetTelegramUpdate(out var update))
+        {
+            await next(context);
+            return;
+        }
+
+        var actor = TryGetActor(update);
+        if (actor is null)
+        {
+            await next(context);
+            return;
+        }
+
+        var users = context.Services.GetRequiredService<IUserRepository>();
+        var antiSpam = context.Services.GetRequiredService<IAntiSpamService>();
+        var stats = context.Services.GetRequiredService<IUpdateStatistics>();
+
+        await users.EnsureExistsAsync(actor.UserId, context.CancellationToken);
+        await stats.RecordIncomingUpdateAsync(
+            update.UpdateId,
+            actor.UserId,
+            actor.ChatId,
+            context.CancellationToken);
+
+        if (await antiSpam.IsBlockedAsync(actor.UserId, context.CancellationToken))
+        {
+            return;
+        }
+
+        await next(context);
+    }
+
+    private static TelegramActor? TryGetActor(Update update)
+    {
+        var message = update.Message ??
+            update.EditedMessage ??
+            update.BusinessMessage ??
+            update.EditedBusinessMessage ??
+            update.ChannelPost ??
+            update.EditedChannelPost;
+
+        if (message?.From is { } sender)
+        {
+            return new TelegramActor(sender.Id, message.Chat.Id);
+        }
+
+        if (update.CallbackQuery is { } callback)
+        {
+            return new TelegramActor(callback.From.Id, ChatId: null);
+        }
+
+        var memberUpdate = update.ChatMember ?? update.MyChatMember;
+        if (memberUpdate is not null)
+        {
+            return new TelegramActor(memberUpdate.From.Id, memberUpdate.Chat.Id);
+        }
+
+        return null;
+    }
+
+    private sealed record TelegramActor(long UserId, long? ChatId);
+}
+```
+
+Register the middleware and its dependencies:
+
+```csharp
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IAntiSpamService, AntiSpamService>();
+builder.Services.AddScoped<IUpdateStatistics, UpdateStatistics>();
+
+builder.Services.AddUpdateMiddleware<UserGateMiddleware>();
+```
+
+`AddUpdateMiddleware<T>()` registers middleware as a singleton. Resolve scoped application services from `context.Services`, which is the service provider for the current update scope.
+
+If a middleware does not call `next(context)`, TeleFlow stops processing that update. Routing and handlers will not run. Use this for global gates such as ban lists, tenant shutdown, or hard rate limits.
+
+Use a filter instead when the check belongs to one handler or one handler group. Use handler services when the logic is part of one concrete user workflow.
+
 ## Rate Limiting
 
 TeleFlow exposes `IUpdateRateLimiter` and default registration helpers:
