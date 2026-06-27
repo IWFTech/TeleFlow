@@ -18,7 +18,7 @@ Application
 ## Владение пакетами
 
 - `TeleFlow.Core`: application, middleware, update processing, state contracts, replacement points.
-- `TeleFlow.Annotations`: compile-time metadata attributes.
+- `TeleFlow.Annotations`: compile-time metadata attributes. Файлы сгруппированы по ответственности, но все public annotation types остаются в стабильном namespace `TeleFlow.Annotations`.
 - `IWF.TeleFlow.Generators`: source generator and analyzer package.
 - `TeleFlow.Telegram.Schema`: generated Telegram DTOs and method models.
 - `TeleFlow.Telegram.Client`: low-level Telegram client и generated client method extensions.

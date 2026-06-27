@@ -72,6 +72,8 @@ public sealed class RegistrationHandlers
 | `ClearAsync()` | Очищает только current state value. |
 | `ResetAsync()` | Сначала очищает state data, затем current state. |
 
+`ctx.State` кэширует snapshot текущего state на время одного update. Первый `GetAsync` читает storage, следующие current-state reads в том же update используют snapshot, а успешные `SetAsync` или `ClearAsync` обновляют его. Failed storage calls snapshot не меняют. Прямые записи через `IStateStore` внутри того же update находятся вне этого synchronization path; в handlers и middleware используй `ctx.State`.
+
 `ctx.State.Data` хранит небольшие JSON-serialized values по string key:
 
 | API | Поведение |

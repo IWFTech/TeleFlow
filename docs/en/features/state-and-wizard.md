@@ -72,6 +72,8 @@ Use `ResetAsync` when both state and state data should be cleared.
 | `ClearAsync()` | Clears only the current state value. |
 | `ResetAsync()` | Clears state data first, then clears the current state. |
 
+`ctx.State` caches the current state snapshot for the duration of one update. The first `GetAsync` reads storage, later current-state reads in the same update use the snapshot, and successful `SetAsync` or `ClearAsync` calls update it. Failed storage calls do not update the snapshot. Direct writes through `IStateStore` in the same update are outside this synchronization path; use `ctx.State` inside handlers and middleware.
+
 `ctx.State.Data` stores small JSON-serialized values by string key:
 
 | API | Behavior |

@@ -6,6 +6,14 @@ namespace TeleFlow.ArchitectureTests;
 public sealed class AnnotationContractTests
 {
     [Fact]
+    public void PublicAnnotationTypes_KeepStableRootNamespace()
+    {
+        var publicTypes = typeof(CommandAttribute).Assembly.GetExportedTypes();
+
+        Assert.All(publicTypes, type => Assert.Equal("TeleFlow.Annotations", type.Namespace));
+    }
+
+    [Fact]
     public void ChatTypeAttribute_DefensivelyCopiesInputArray()
     {
         var chatTypes = new[] { TelegramChatType.Private };
