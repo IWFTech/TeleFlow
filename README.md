@@ -118,9 +118,16 @@ public sealed class Handlers
     }
 
     [CommandTemplate("get_from {fromDate:string} {toDate:string} {count:int?}")]
-    public async Task GetFrom(MessageContext ctx, string fromDate, string toDate, int? count, CancellationToken ct)
+    public async Task GetFrom(
+        MessageContext ctx,
+        string fromDate,
+        string toDate,
+        int? count,
+        CancellationToken ct)
     {
-        await ctx.Message.AnswerAsync($"Okay. Getting from {fromDate} to {toDate} with {count ?? 0}", ct);
+        await ctx.Message.AnswerAsync(
+            $"Okay. Getting from {fromDate} to {toDate} with {count ?? 0}",
+            ct);
     }
 }
 ```
