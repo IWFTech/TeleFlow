@@ -12,7 +12,7 @@ namespace TeleFlow.Telegram.Internal.Handlers;
 internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
 {
     private readonly TelegramHandlerSelector _selector;
-    private readonly TelegramErrorHandlerDescriptor[] _errorHandlers;
+    private readonly TelegramErrorHandlerIndex _errorHandlerIndex;
     private readonly TimeProvider _timeProvider;
     private readonly TelegramAutoAnswerCallbackDescriptor? _globalAutoAnswerCallback;
     private readonly ILogger<TelegramHandlerDispatcher> _logger;
@@ -36,7 +36,7 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
         var table = new TelegramHandlerTable(descriptors);
 
         _selector = new TelegramHandlerSelector(table);
-        _errorHandlers = errorHandlers.ToArray();
+        _errorHandlerIndex = new TelegramErrorHandlerIndex(errorHandlers);
         _timeProvider = timeProvider;
         _globalAutoAnswerCallback = CreateGlobalAutoAnswerDescriptor(autoAnswerCallbackOptions.LastOrDefault());
         _logger = loggerFactory.CreateLogger<TelegramHandlerDispatcher>();
@@ -176,7 +176,7 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
                     requestTimingScope);
             }
 
-            if (_errorHandlers.Length > 0 &&
+            if (_errorHandlerIndex.HasHandlers &&
                 await TryHandleErrorAsync(
                     selection,
                     telegramContext,
@@ -272,11 +272,6 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
         HandlerFailureLogContext? logContext,
         CancellationToken cancellationToken)
     {
-        if (_errorHandlers.Length == 0)
-        {
-            return false;
-        }
-
         var errorContext = new TelegramErrorContext(
             exception,
             telegramContext,
@@ -286,7 +281,7 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
             selection.Handler.SceneName,
             selection.RouteValues);
 
-        foreach (var errorHandler in GetErrorHandlerCandidates(selection, telegramContext, exception))
+        foreach (var errorHandler in _errorHandlerIndex.GetCandidates(selection, telegramContext, exception))
         {
             var result = await TelegramErrorHandlerInvoker.InvokeAsync(
                 errorHandler,
@@ -319,179 +314,6 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
         }
 
         return false;
-    }
-
-    /// <summary>
-    /// Enumerates module-scoped error handlers before global error handlers.
-    /// </summary>
-    private IEnumerable<TelegramErrorHandlerDescriptor> GetErrorHandlerCandidates(
-        TelegramRouteSelection selection,
-        TelegramUpdateContext telegramContext,
-        Exception exception)
-    {
-        if (selection.Handler.ModuleName is { } moduleName)
-        {
-            foreach (var candidate in RankErrorHandlerCandidates(
-                         selection.RouteValues,
-                         telegramContext,
-                         exception,
-                         _errorHandlers.Where(handler => string.Equals(handler.ModuleName, moduleName, StringComparison.Ordinal))))
-            {
-                yield return candidate;
-            }
-        }
-
-        foreach (var candidate in RankErrorHandlerCandidates(
-                     selection.RouteValues,
-                     telegramContext,
-                     exception,
-                     _errorHandlers.Where(static handler => handler.ModuleName is null)))
-        {
-            yield return candidate;
-        }
-    }
-
-    /// <summary>
-    /// Filters compatible error handlers and orders them from most specific to least specific.
-    /// </summary>
-    private static IEnumerable<TelegramErrorHandlerDescriptor> RankErrorHandlerCandidates(
-        IReadOnlyDictionary<string, object?> routeValues,
-        TelegramUpdateContext telegramContext,
-        Exception exception,
-        IEnumerable<TelegramErrorHandlerDescriptor> candidates)
-    {
-        return candidates
-            .Where(handler => IsCompatibleErrorHandler(handler, routeValues, telegramContext, exception))
-            .OrderBy(handler => GetExceptionDistance(handler.ExceptionType, exception.GetType()))
-            .ThenBy(static handler => handler.RegistrationOrder);
-    }
-
-    /// <summary>
-    /// Checks whether an error handler can receive the thrown exception, update context, and route values.
-    /// </summary>
-    private static bool IsCompatibleErrorHandler(
-        TelegramErrorHandlerDescriptor handler,
-        IReadOnlyDictionary<string, object?> routeValues,
-        TelegramUpdateContext telegramContext,
-        Exception exception)
-    {
-        if (handler.ExceptionType is not null &&
-            !handler.ExceptionType.IsAssignableFrom(exception.GetType()))
-        {
-            return false;
-        }
-
-        if (handler.TelegramContextType is not null &&
-            !handler.TelegramContextType.IsInstanceOfType(telegramContext))
-        {
-            return false;
-        }
-
-        if (!HasCompatibleRouteValues(handler, routeValues))
-        {
-            return false;
-        }
-
-        return true;
-    }
-
-    /// <summary>
-    /// Checks all route-value parameters required by an error handler.
-    /// </summary>
-    private static bool HasCompatibleRouteValues(
-        TelegramErrorHandlerDescriptor handler,
-        IReadOnlyDictionary<string, object?> routeValues)
-    {
-        foreach (var parameter in handler.Parameters)
-        {
-            if (parameter.Kind != TelegramErrorHandlerParameterKind.RouteValue)
-            {
-                continue;
-            }
-
-            if (!HasCompatibleRouteValue(parameter, routeValues))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /// <summary>
-    /// Checks that one route-value parameter exists and can be assigned to the handler parameter type.
-    /// </summary>
-    private static bool HasCompatibleRouteValue(
-        TelegramErrorHandlerParameterDescriptor parameter,
-        IReadOnlyDictionary<string, object?> routeValues)
-    {
-        return TryGetRouteValue(parameter, routeValues, out var value) &&
-               IsRouteValueAssignable(parameter.ParameterType, value);
-    }
-
-    /// <summary>
-    /// Gets the route value for an error-handler parameter.
-    /// </summary>
-    private static bool TryGetRouteValue(
-        TelegramErrorHandlerParameterDescriptor parameter,
-        IReadOnlyDictionary<string, object?> routeValues,
-        out object? value)
-    {
-        value = null;
-
-        return !string.IsNullOrWhiteSpace(parameter.Name) &&
-               routeValues.TryGetValue(parameter.Name, out value);
-    }
-
-    /// <summary>
-    /// Checks whether a route value can be assigned to a handler parameter, including nullable value types.
-    /// </summary>
-    private static bool IsRouteValueAssignable(Type parameterType, object? value)
-    {
-        if (value is null)
-        {
-            return IsNullableRouteValue(parameterType);
-        }
-
-        var targetType = Nullable.GetUnderlyingType(parameterType) ?? parameterType;
-
-        return targetType.IsInstanceOfType(value);
-    }
-
-    /// <summary>
-    /// Checks whether a route-value parameter type can accept a null value.
-    /// </summary>
-    private static bool IsNullableRouteValue(Type parameterType)
-    {
-        return !parameterType.IsValueType ||
-               Nullable.GetUnderlyingType(parameterType) is not null;
-    }
-
-    /// <summary>
-    /// Computes how specific an error handler exception type is for the thrown exception type.
-    /// </summary>
-    private static int GetExceptionDistance(Type? handlerExceptionType, Type thrownExceptionType)
-    {
-        if (handlerExceptionType is null)
-        {
-            return int.MaxValue;
-        }
-
-        var distance = 0;
-        var current = thrownExceptionType;
-
-        while (current is not null)
-        {
-            if (current == handlerExceptionType)
-            {
-                return distance;
-            }
-
-            distance++;
-            current = current.BaseType;
-        }
-
-        return int.MaxValue - 1;
     }
 
     /// <summary>

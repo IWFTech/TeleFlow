@@ -420,12 +420,89 @@ public sealed class TelegramHandlerDispatcherTests
     }
 
     [Fact]
+    public async Task ErrorHandler_MoreSpecificExceptionRunsBeforeBroadException()
+    {
+        ThrowingMessageHandler.Exception = new SpecificErrorHandlerFailureException();
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.AddTelegramHandler<ThrowingMessageHandler>();
+                services.AddTelegramHandler<BroadInvalidOperationErrorHandler>();
+                services.AddTelegramHandler<SpecificFailureErrorHandler>();
+            });
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("boom"));
+
+        Assert.Equal(["specific-error:specific failure"], probe.Events);
+    }
+
+    [Fact]
+    public async Task ErrorHandler_RegistrationOrderBreaksSpecificityTies()
+    {
+        ThrowingMessageHandler.Exception = new InvalidOperationException("handler failed");
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.AddTelegramHandler<ThrowingMessageHandler>();
+                services.AddTelegramHandler<FirstTieErrorHandler>();
+                services.AddTelegramHandler<SecondTieErrorHandler>();
+            });
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("boom"));
+
+        Assert.Equal(["first-tie:handler failed", "second-tie:handler failed"], probe.Events);
+    }
+
+    [Fact]
+    public async Task ErrorHandler_CatchAllRunsAfterTypedHandlers()
+    {
+        ThrowingMessageHandler.Exception = new InvalidOperationException("handler failed");
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.AddTelegramHandler<ThrowingMessageHandler>();
+                services.AddTelegramHandler<TypedUnhandledErrorHandler>();
+                services.AddTelegramHandler<CatchAllHandledErrorHandler>();
+            });
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("boom"));
+
+        Assert.Equal(["typed-unhandled:handler failed", "catch-all:handler failed"], probe.Events);
+    }
+
+    [Fact]
     public async Task ErrorHandler_BindsContextExceptionRouteValuesServicesAndCancellationToken()
     {
         using var serviceProvider = CreateServiceProvider(
             services =>
             {
                 services.AddTelegramHandler<RouteValueThrowingHandler>();
+                services.AddTelegramHandler<RouteValueErrorHandler>();
+            });
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/orders 77"));
+
+        Assert.Equal(
+            ["bound:77:RouteValueFailureException:Handle:RouteValueThrowingHandler:MessageContext:False"],
+            probe.Events);
+    }
+
+    [Fact]
+    public async Task ErrorHandler_SkipsIncompatibleRouteValueHandler()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.AddTelegramHandler<RouteValueThrowingHandler>();
+                services.AddTelegramHandler<IncompatibleRouteValueErrorHandler>();
                 services.AddTelegramHandler<RouteValueErrorHandler>();
             });
 
@@ -4248,6 +4325,74 @@ public sealed class TelegramHandlerDispatcherTests
         }
     }
 
+    public sealed class SpecificErrorHandlerFailureException : InvalidOperationException
+    {
+        public SpecificErrorHandlerFailureException()
+            : base("specific failure")
+        {
+        }
+    }
+
+    public sealed class BroadInvalidOperationErrorHandler
+    {
+        [Error<InvalidOperationException>]
+        public TelegramErrorHandlingResult Handle(InvalidOperationException exception, HandlerProbe probe)
+        {
+            probe.Events.Add($"broad-error:{exception.Message}");
+            return TelegramErrorHandlingResult.Handled;
+        }
+    }
+
+    public sealed class SpecificFailureErrorHandler
+    {
+        [Error<SpecificErrorHandlerFailureException>]
+        public TelegramErrorHandlingResult Handle(SpecificErrorHandlerFailureException exception, HandlerProbe probe)
+        {
+            probe.Events.Add($"specific-error:{exception.Message}");
+            return TelegramErrorHandlingResult.Handled;
+        }
+    }
+
+    public sealed class FirstTieErrorHandler
+    {
+        [Error<InvalidOperationException>]
+        public TelegramErrorHandlingResult Handle(InvalidOperationException exception, HandlerProbe probe)
+        {
+            probe.Events.Add($"first-tie:{exception.Message}");
+            return TelegramErrorHandlingResult.Unhandled;
+        }
+    }
+
+    public sealed class SecondTieErrorHandler
+    {
+        [Error<InvalidOperationException>]
+        public TelegramErrorHandlingResult Handle(InvalidOperationException exception, HandlerProbe probe)
+        {
+            probe.Events.Add($"second-tie:{exception.Message}");
+            return TelegramErrorHandlingResult.Handled;
+        }
+    }
+
+    public sealed class TypedUnhandledErrorHandler
+    {
+        [Error<InvalidOperationException>]
+        public TelegramErrorHandlingResult Handle(InvalidOperationException exception, HandlerProbe probe)
+        {
+            probe.Events.Add($"typed-unhandled:{exception.Message}");
+            return TelegramErrorHandlingResult.Unhandled;
+        }
+    }
+
+    public sealed class CatchAllHandledErrorHandler
+    {
+        [Error]
+        public TelegramErrorHandlingResult Handle(Exception exception, HandlerProbe probe)
+        {
+            probe.Events.Add($"catch-all:{exception.Message}");
+            return TelegramErrorHandlingResult.Handled;
+        }
+    }
+
     public sealed class RouteValueFailureException : InvalidOperationException
     {
         public RouteValueFailureException()
@@ -4278,6 +4423,19 @@ public sealed class TelegramHandlerDispatcherTests
         {
             probe.Events.Add(
                 $"bound:{orderId}:{exception.GetType().Name}:{error.HandlerMethodName}:{error.HandlerType.Name}:{context.GetType().Name}:{cancellationToken.IsCancellationRequested}");
+            return TelegramErrorHandlingResult.Handled;
+        }
+    }
+
+    public sealed class IncompatibleRouteValueErrorHandler
+    {
+        [Error<RouteValueFailureException>]
+        public TelegramErrorHandlingResult Handle(
+            RouteValueFailureException exception,
+            string orderId,
+            HandlerProbe probe)
+        {
+            probe.Events.Add($"incompatible:{orderId}:{exception.Message}");
             return TelegramErrorHandlingResult.Handled;
         }
     }
