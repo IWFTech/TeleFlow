@@ -115,6 +115,20 @@ public sealed class StageSixStateAndMiddlewareTests
     }
 
     [Fact]
+    public async Task UpdateState_IsAsync_UsesHydratedSnapshotWithoutExtraRead()
+    {
+        var store = new CountingStateStore(initialState: RegistrationNameState);
+        var state = new UpdateState(store, StateKey.Create("telegram", "user:1", "chat:10"));
+
+        Assert.Equal(RegistrationNameState, await state.GetAsync());
+
+        store.ThrowOnNextGet = true;
+
+        Assert.True(await state.IsAsync(State.Create(RegistrationNameState)));
+        Assert.Equal(1, store.GetCount);
+    }
+
+    [Fact]
     public async Task UpdateState_FailedGetAsync_DoesNotCacheFailure()
     {
         var store = new CountingStateStore(initialState: RegistrationNameState)
@@ -219,6 +233,28 @@ public sealed class StageSixStateAndMiddlewareTests
 
         Assert.Equal(State.Create("registration:name"), state.Wizard.Current);
         Assert.Empty(await historyStore.GetHistoryAsync(key));
+    }
+
+    [Fact]
+    public void UpdateWizard_Current_FailsClearlyBeforeCurrentStateIsHydrated()
+    {
+        var state = CreateUpdateStateWithWizard();
+
+        var exception = Assert.Throws<InvalidOperationException>(() => state.Wizard.Current);
+
+        Assert.Contains("not hydrated", exception.Message);
+    }
+
+    [Fact]
+    public async Task UpdateWizard_Current_FailsClearlyWhenHydratedStateIsMissing()
+    {
+        var state = CreateUpdateStateWithWizard();
+
+        Assert.Null(await state.Wizard.GetCurrentAsync());
+
+        var exception = Assert.Throws<InvalidOperationException>(() => state.Wizard.Current);
+
+        Assert.Contains("no active state", exception.Message);
     }
 
     [Fact]

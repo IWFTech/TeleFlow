@@ -6,7 +6,7 @@ public sealed class UpdateState
     private readonly UpdateStateData? _data;
     private readonly UpdateWizard? _wizard;
     private string? _currentState;
-    private bool _currentStateCached;
+    private bool _isHydrated;
 
     public UpdateState(
         IStateStore stateStore,
@@ -33,7 +33,19 @@ public sealed class UpdateState
 
     public StateKey Key { get; }
 
-    internal string? CurrentStateSnapshot => _currentState;
+    internal string? CurrentStateSnapshot
+    {
+        get
+        {
+            if (!_isHydrated)
+            {
+                throw new InvalidOperationException(
+                    "State snapshot is not hydrated for the current update. Call GetAsync, SetAsync, ClearAsync, Wizard.GetCurrentAsync, or Wizard.GoToAsync before reading Wizard.Current.");
+            }
+
+            return _currentState;
+        }
+    }
 
     public UpdateStateData Data => _data ??
         throw new InvalidOperationException(
@@ -45,13 +57,7 @@ public sealed class UpdateState
 
     public async ValueTask<string?> GetAsync(CancellationToken cancellationToken = default)
     {
-        if (_currentStateCached)
-        {
-            return _currentState;
-        }
-
-        _currentState = await _stateStore.GetStateAsync(Key, cancellationToken).ConfigureAwait(false);
-        _currentStateCached = true;
+        await EnsureHydratedAsync(cancellationToken).ConfigureAwait(false);
         return _currentState;
     }
 
@@ -60,7 +66,7 @@ public sealed class UpdateState
         ArgumentException.ThrowIfNullOrWhiteSpace(state);
         await _stateStore.SetStateAsync(Key, state, cancellationToken).ConfigureAwait(false);
         _currentState = state;
-        _currentStateCached = true;
+        _isHydrated = true;
     }
 
     public ValueTask SetAsync(State state, CancellationToken cancellationToken = default)
@@ -68,22 +74,43 @@ public sealed class UpdateState
         return SetAsync(state.Id, cancellationToken);
     }
 
-    public async ValueTask<bool> IsAsync(State state, CancellationToken cancellationToken = default)
+    public ValueTask<bool> IsAsync(State state, CancellationToken cancellationToken = default)
     {
-        var currentState = await GetAsync(cancellationToken).ConfigureAwait(false);
-        return string.Equals(currentState, state.Id, StringComparison.Ordinal);
+        if (_isHydrated)
+        {
+            return ValueTask.FromResult(string.Equals(_currentState, state.Id, StringComparison.Ordinal));
+        }
+
+        return IsAsyncSlowAsync(state, cancellationToken);
     }
 
     public async ValueTask ClearAsync(CancellationToken cancellationToken = default)
     {
         await _stateStore.ClearStateAsync(Key, cancellationToken).ConfigureAwait(false);
         _currentState = null;
-        _currentStateCached = true;
+        _isHydrated = true;
     }
 
     public async ValueTask ResetAsync(CancellationToken cancellationToken = default)
     {
         await Data.ClearAsync(cancellationToken).ConfigureAwait(false);
         await ClearAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async ValueTask EnsureHydratedAsync(CancellationToken cancellationToken)
+    {
+        if (_isHydrated)
+        {
+            return;
+        }
+
+        _currentState = await _stateStore.GetStateAsync(Key, cancellationToken).ConfigureAwait(false);
+        _isHydrated = true;
+    }
+
+    private async ValueTask<bool> IsAsyncSlowAsync(State state, CancellationToken cancellationToken)
+    {
+        await EnsureHydratedAsync(cancellationToken).ConfigureAwait(false);
+        return string.Equals(_currentState, state.Id, StringComparison.Ordinal);
     }
 }

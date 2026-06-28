@@ -20,13 +20,14 @@ public sealed class UpdateWizard
     {
         get
         {
-            if (string.IsNullOrWhiteSpace(_state.CurrentStateSnapshot))
+            var currentState = _state.CurrentStateSnapshot;
+            if (string.IsNullOrWhiteSpace(currentState))
             {
                 throw new InvalidOperationException(
                     "Wizard current state is not available because the current update has no active state.");
             }
 
-            return State.Create(_state.CurrentStateSnapshot);
+            return State.Create(currentState);
         }
     }
 
