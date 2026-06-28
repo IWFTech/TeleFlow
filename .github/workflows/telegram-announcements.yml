@@ -1,0 +1,114 @@
+name: Telegram Announcements
+
+on:
+  release:
+    types:
+      - published
+  issues:
+    types:
+      - opened
+      - reopened
+      - closed
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - ready_for_review
+      - closed
+  workflow_dispatch:
+    inputs:
+      dryRun:
+        description: Print the rendered message without sending it to Telegram.
+        required: true
+        default: true
+        type: boolean
+      eventKind:
+        description: Announcement kind to render.
+        required: true
+        default: release
+        type: choice
+        options:
+          - release
+          - issue
+          - pull_request
+      title:
+        description: Manual title.
+        required: false
+        type: string
+      number:
+        description: Manual issue or pull request number.
+        required: false
+        type: string
+      state:
+        description: Manual state or action.
+        required: false
+        type: string
+      url:
+        description: Manual URL.
+        required: false
+        type: string
+      body:
+        description: Manual body text.
+        required: false
+        type: string
+      tag:
+        description: Manual release tag.
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: telegram-announcements-${{ github.event_name }}-${{ github.event.release.id || github.event.issue.id || github.event.pull_request.id || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  announce:
+    name: Announce GitHub activity in Telegram
+    runs-on: windows-latest
+    timeout-minutes: 10
+
+    env:
+      TELEGRAM_NOTIFY_BOT_TOKEN: ${{ secrets.TELEGRAM_NOTIFY_BOT_TOKEN }}
+      TELEGRAM_NOTIFY_CHAT_ID: ${{ vars.TELEGRAM_NOTIFY_CHAT_ID }}
+      TELEGRAM_RELEASES_THREAD_ID: ${{ vars.TELEGRAM_RELEASES_THREAD_ID }}
+      TELEGRAM_ISSUES_THREAD_ID: ${{ vars.TELEGRAM_ISSUES_THREAD_ID }}
+      TELEGRAM_PULL_REQUESTS_THREAD_ID: ${{ vars.TELEGRAM_PULL_REQUESTS_THREAD_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Send GitHub event announcement
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        shell: pwsh
+        run: .\eng\send-telegram-announcement.ps1 -EventPath $env:GITHUB_EVENT_PATH
+
+      - name: Render manual announcement
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        shell: pwsh
+        env:
+          MANUAL_DRY_RUN: ${{ github.event.inputs.dryRun }}
+          MANUAL_EVENT_KIND: ${{ github.event.inputs.eventKind }}
+          MANUAL_TITLE: ${{ github.event.inputs.title }}
+          MANUAL_NUMBER: ${{ github.event.inputs.number }}
+          MANUAL_STATE: ${{ github.event.inputs.state }}
+          MANUAL_URL: ${{ github.event.inputs.url }}
+          MANUAL_BODY: ${{ github.event.inputs.body }}
+          MANUAL_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          $dryRun = [System.Convert]::ToBoolean($env:MANUAL_DRY_RUN)
+
+          .\eng\send-telegram-announcement.ps1 `
+              -Kind $env:MANUAL_EVENT_KIND `
+              -Title $env:MANUAL_TITLE `
+              -Number $env:MANUAL_NUMBER `
+              -State $env:MANUAL_STATE `
+              -Url $env:MANUAL_URL `
+              -Body $env:MANUAL_BODY `
+              -Tag $env:MANUAL_TAG `
+              -Repository "${{ github.repository }}" `
+              -DryRun:$dryRun
