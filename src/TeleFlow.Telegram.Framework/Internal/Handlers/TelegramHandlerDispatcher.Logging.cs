@@ -4,8 +4,17 @@ namespace TeleFlow.Telegram.Internal.Handlers;
 
 internal sealed partial class TelegramHandlerDispatcher
 {
+    private static class LogEventIds
+    {
+        public const int NoHandlerMatched = 1;
+        public const int HandlerMatched = 2;
+        public const int HandlerFailed = 3;
+        public const int HandlerCompleted = 4;
+        public const int ErrorHandlerCompleted = 5;
+    }
+
     [LoggerMessage(
-        EventId = 1,
+        EventId = LogEventIds.NoHandlerMatched,
         Level = LogLevel.Debug,
         Message = "No Telegram handler matched. update_id={UpdateId}, type={UpdateType}, match_ms={MatchElapsedMilliseconds:F2}.")]
     private static partial void LogNoHandlerMatched(
@@ -15,7 +24,7 @@ internal sealed partial class TelegramHandlerDispatcher
         double matchElapsedMilliseconds);
 
     [LoggerMessage(
-        EventId = 2,
+        EventId = LogEventIds.HandlerMatched,
         Level = LogLevel.Debug,
         Message = "Telegram handler matched. update_id={UpdateId}, type={UpdateType}, handler={Handler}, route={Route}, module={ModuleName}, scene={SceneName}, match_ms={MatchElapsedMilliseconds:F2}.")]
     private static partial void LogHandlerMatched(
@@ -29,7 +38,7 @@ internal sealed partial class TelegramHandlerDispatcher
         double matchElapsedMilliseconds);
 
     [LoggerMessage(
-        EventId = 3,
+        EventId = LogEventIds.HandlerFailed,
         Level = LogLevel.Error,
         Message = "Telegram handler failed. update_id={UpdateId}, type={UpdateType}, handler={Handler}, route={Route}, module={ModuleName}, scene={SceneName}, exception_type={ExceptionType}.")]
     private static partial void LogHandlerFailed(
@@ -44,7 +53,7 @@ internal sealed partial class TelegramHandlerDispatcher
         string exceptionType);
 
     [LoggerMessage(
-        EventId = 3,
+        EventId = LogEventIds.HandlerFailed,
         Level = LogLevel.Error,
         Message = "Telegram handler failed. update_id={UpdateId}, type={UpdateType}, handler={Handler}, route={Route}, module={ModuleName}, scene={SceneName}, exception_type={ExceptionType}, handler_ms={HandlerElapsedMilliseconds:F2}, telegram_request_count={TelegramRequestCount}, telegram_request_ms={TelegramRequestElapsedMilliseconds:F2}, handler_logic_ms={HandlerLogicElapsedMilliseconds:F2}.")]
     private static partial void LogHandlerFailedWithTiming(
@@ -63,7 +72,7 @@ internal sealed partial class TelegramHandlerDispatcher
         double handlerLogicElapsedMilliseconds);
 
     [LoggerMessage(
-        EventId = 4,
+        EventId = LogEventIds.HandlerCompleted,
         Level = LogLevel.Debug,
         Message = "Telegram handler completed. update_id={UpdateId}, type={UpdateType}, handler={Handler}, route={Route}, handler_ms={HandlerElapsedMilliseconds:F2}, telegram_request_count={TelegramRequestCount}, telegram_request_ms={TelegramRequestElapsedMilliseconds:F2}, handler_logic_ms={HandlerLogicElapsedMilliseconds:F2}.")]
     private static partial void LogHandlerCompleted(
@@ -78,7 +87,7 @@ internal sealed partial class TelegramHandlerDispatcher
         double handlerLogicElapsedMilliseconds);
 
     [LoggerMessage(
-        EventId = 5,
+        EventId = LogEventIds.ErrorHandlerCompleted,
         Level = LogLevel.Debug,
         Message = "Telegram error handler completed. update_id={UpdateId}, type={UpdateType}, handler={Handler}, route={Route}, module={ModuleName}, scene={SceneName}, exception_type={ExceptionType}, error_handler={ErrorHandler}, handled={Handled}.")]
     private static partial void LogErrorHandlerCompleted(
