@@ -5,7 +5,7 @@ using TeleFlow.Telegram.Internal;
 
 namespace TeleFlow.Telegram;
 
-public sealed class JsonCallbackDataSerializer : ICallbackDataSerializer
+public sealed class JsonCallbackDataSerializer : ICallbackDataRouteDeserializer
 {
     private const int MaxTelegramCallbackDataBytes = 64;
 
@@ -49,12 +49,42 @@ public sealed class JsonCallbackDataSerializer : ICallbackDataSerializer
             ?? throw new JsonException("Telegram callback data deserialized to null.");
     }
 
+    bool ICallbackDataRouteDeserializer.TryDeserializeForRoute(
+        Type payloadType,
+        string serializedPayload,
+        out object? payload)
+    {
+        ArgumentNullException.ThrowIfNull(payloadType);
+        ArgumentNullException.ThrowIfNull(serializedPayload);
+
+        if (CallbackDataMetadata.TryCreate(payloadType, out var metadata))
+        {
+            if (!metadata.MatchesSerializedPayload(serializedPayload))
+            {
+                payload = null;
+                return false;
+            }
+
+            payload = DeserializeCompact(serializedPayload, metadata);
+            return true;
+        }
+
+        payload = DeserializeJson(payloadType, serializedPayload);
+        return true;
+    }
+
     private static string SerializeCompact<TPayload>(TPayload payload, CallbackDataMetadata metadata)
     {
         var values = metadata.Fields
             .Select(field => metadata.FormatField(field.Property.GetValue(payload), field.Property.PropertyType));
 
         return string.Join(':', values.Prepend(metadata.Prefix));
+    }
+
+    private object DeserializeJson(Type payloadType, string serializedPayload)
+    {
+        return JsonSerializer.Deserialize(serializedPayload, payloadType, _jsonSerializerOptions)
+            ?? throw new JsonException("Telegram callback data deserialized to null.");
     }
 
     private static object DeserializeCompact(string serializedPayload, CallbackDataMetadata metadata)

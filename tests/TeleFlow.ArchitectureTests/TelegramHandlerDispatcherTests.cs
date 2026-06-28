@@ -2065,6 +2065,80 @@ public sealed class TelegramHandlerDispatcherTests
     }
 
     [Fact]
+    public async Task TypedCallbackRouteDeserializer_RejectedPayload_DoesNotBindPayload()
+    {
+        var serializer = new RouteDeserializingCallbackDataSerializer(canDeserialize: false);
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.AddSingleton<ICallbackDataSerializer>(serializer);
+                services.AddTelegramHandler<CompactCallbackHandler>();
+                services.AddTelegramHandler<RawCallbackHandler>();
+            });
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateCallbackUpdate("other:value"));
+
+        Assert.Equal(["callback:other:value"], probe.Events);
+        Assert.Equal(1, serializer.RouteDeserializeCalls);
+        Assert.Equal(0, serializer.PayloadBindingCalls);
+        Assert.Equal(0, serializer.PublicDeserializeCalls);
+    }
+
+    [Fact]
+    public async Task TypedCallbackRouteDeserializer_AcceptedPayload_BindsPayload()
+    {
+        var serializer = new RouteDeserializingCallbackDataSerializer(canDeserialize: true);
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.AddSingleton<ICallbackDataSerializer>(serializer);
+                services.AddTelegramHandler<CompactCallbackHandler>();
+                services.AddTelegramHandler<RawCallbackHandler>();
+            });
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateCallbackUpdate("del:item:9"));
+
+        Assert.Equal(["compact-callback:item:9"], probe.Events);
+        Assert.Equal(1, serializer.RouteDeserializeCalls);
+        Assert.Equal(1, serializer.PayloadBindingCalls);
+        Assert.Equal(0, serializer.PublicDeserializeCalls);
+    }
+
+    [Fact]
+    public void DefaultCallbackRouteDeserializer_RejectsCompactPayloadByPrefixAndShape()
+    {
+        using var serviceProvider = CreateServiceProvider(static _ => { });
+        var serializer = serviceProvider.GetRequiredService<ICallbackDataSerializer>();
+        var routeDeserializer = Assert.IsAssignableFrom<ICallbackDataRouteDeserializer>(serializer);
+
+        Assert.False(routeDeserializer.TryDeserializeForRoute(typeof(CompactDeleteCallback), "other:value", out _));
+        Assert.False(routeDeserializer.TryDeserializeForRoute(typeof(CompactDeleteCallback), "delete:x:7", out _));
+        Assert.False(routeDeserializer.TryDeserializeForRoute(typeof(CompactDeleteCallback), "del:x", out _));
+        Assert.False(routeDeserializer.TryDeserializeForRoute(typeof(CompactDeleteCallback), "del:x:7:extra", out _));
+
+        Assert.True(routeDeserializer.TryDeserializeForRoute(typeof(CompactDeleteCallback), "del:x:7", out var payload));
+        var callbackPayload = Assert.IsType<CompactDeleteCallback>(payload);
+
+        Assert.Equal("x", callbackPayload.Name);
+        Assert.Equal(7, callbackPayload.Id);
+    }
+
+    [Fact]
+    public void DefaultCallbackRouteDeserializer_PreservesJsonPayloadFallback()
+    {
+        using var serviceProvider = CreateServiceProvider(static _ => { });
+        var serializer = serviceProvider.GetRequiredService<ICallbackDataSerializer>();
+        var routeDeserializer = Assert.IsAssignableFrom<ICallbackDataRouteDeserializer>(serializer);
+
+        Assert.True(routeDeserializer.TryDeserializeForRoute(typeof(DeleteCallbackPayload), """{"id":42}""", out var payload));
+        var callbackPayload = Assert.IsType<DeleteCallbackPayload>(payload);
+
+        Assert.Equal(42, callbackPayload.Id);
+    }
+
+    [Fact]
     public void DuplicateCompactCallbackPrefixes_FailDuringDispatcherBuild()
     {
         var services = CreateBaseServices();
@@ -4879,6 +4953,43 @@ public sealed class TelegramHandlerDispatcherTests
             }
 
             throw new InvalidOperationException("Unexpected callback data.");
+        }
+    }
+
+    private sealed class RouteDeserializingCallbackDataSerializer(bool canDeserialize) : ICallbackDataRouteDeserializer
+    {
+        public int RouteDeserializeCalls { get; private set; }
+
+        public int PayloadBindingCalls { get; private set; }
+
+        public int PublicDeserializeCalls { get; private set; }
+
+        public bool TryDeserializeForRoute(Type payloadType, string serializedPayload, out object? payload)
+        {
+            RouteDeserializeCalls++;
+
+            if (!canDeserialize ||
+                payloadType != typeof(CompactDeleteCallback) ||
+                !string.Equals(serializedPayload, "del:item:9", StringComparison.Ordinal))
+            {
+                payload = null;
+                return false;
+            }
+
+            PayloadBindingCalls++;
+            payload = new CompactDeleteCallback("item", 9);
+            return true;
+        }
+
+        public string Serialize<TPayload>(TPayload payload)
+        {
+            throw new InvalidOperationException("Route deserializer test double is dispatch-only.");
+        }
+
+        public TPayload Deserialize<TPayload>(string serializedPayload)
+        {
+            PublicDeserializeCalls++;
+            throw new InvalidOperationException("Route deserializer should be used during handler selection.");
         }
     }
 
