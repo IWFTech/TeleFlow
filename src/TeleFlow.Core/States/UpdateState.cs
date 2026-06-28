@@ -3,8 +3,11 @@ namespace TeleFlow.Core.States;
 public sealed class UpdateState
 {
     private readonly IStateStore _stateStore;
-    private readonly UpdateStateData? _data;
-    private readonly UpdateWizard? _wizard;
+    private readonly IStateDataStore? _dataStore;
+    private readonly IStateDataSerializer? _dataSerializer;
+    private readonly IStateHistoryStore? _historyStore;
+    private UpdateStateData? _data;
+    private UpdateWizard? _wizard;
     private string? _currentState;
     private bool _isHydrated;
 
@@ -18,17 +21,10 @@ public sealed class UpdateState
         ArgumentNullException.ThrowIfNull(stateStore);
 
         _stateStore = stateStore;
+        _dataStore = dataStore;
+        _dataSerializer = dataSerializer;
+        _historyStore = historyStore;
         Key = key;
-
-        if (dataStore is not null && dataSerializer is not null)
-        {
-            _data = new UpdateStateData(dataStore, dataSerializer, key);
-        }
-
-        if (historyStore is not null)
-        {
-            _wizard = new UpdateWizard(this, historyStore);
-        }
     }
 
     public StateKey Key { get; }
@@ -47,13 +43,45 @@ public sealed class UpdateState
         }
     }
 
-    public UpdateStateData Data => _data ??
-        throw new InvalidOperationException(
-            "State data is not available for the current update. Register state data storage and serializer before using ctx.State.Data.");
+    public UpdateStateData Data
+    {
+        get
+        {
+            if (_data is not null)
+            {
+                return _data;
+            }
 
-    public UpdateWizard Wizard => _wizard ??
-        throw new InvalidOperationException(
-            "Wizard is not available for the current update. Register state history storage before using ctx.State.Wizard.");
+            if (_dataStore is null || _dataSerializer is null)
+            {
+                throw new InvalidOperationException(
+                    "State data is not available for the current update. Register state data storage and serializer before using ctx.State.Data.");
+            }
+
+            _data = new UpdateStateData(_dataStore, _dataSerializer, Key);
+            return _data;
+        }
+    }
+
+    public UpdateWizard Wizard
+    {
+        get
+        {
+            if (_wizard is not null)
+            {
+                return _wizard;
+            }
+
+            if (_historyStore is null)
+            {
+                throw new InvalidOperationException(
+                    "Wizard is not available for the current update. Register state history storage before using ctx.State.Wizard.");
+            }
+
+            _wizard = new UpdateWizard(this, _historyStore);
+            return _wizard;
+        }
+    }
 
     public async ValueTask<string?> GetAsync(CancellationToken cancellationToken = default)
     {
