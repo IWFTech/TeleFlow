@@ -128,9 +128,9 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
                 matchElapsedMilliseconds);
         }
 
-        var handlerDiagnosticsEnabled = debugEnabled || errorEnabled;
-        var handlerStarted = handlerDiagnosticsEnabled ? _timeProvider.GetTimestamp() : 0;
-        using var requestTimingScope = handlerDiagnosticsEnabled
+        var handlerTimingEnabled = debugEnabled;
+        var handlerStarted = handlerTimingEnabled ? _timeProvider.GetTimestamp() : 0;
+        using var requestTimingScope = handlerTimingEnabled
             ? TelegramHandlerRequestTimingScope.Begin()
             : null;
 
@@ -143,27 +143,41 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
         }
         catch (Exception exception) when (!IsUpdateCancellation(exception, effectiveCancellationToken))
         {
-            var handlerElapsed = handlerDiagnosticsEnabled
-                ? _timeProvider.GetElapsedTime(handlerStarted)
-                : TimeSpan.Zero;
-            var timing = requestTimingScope?.CreateSummary(_timeProvider, handlerElapsed) ?? default;
-
             if (errorEnabled)
             {
-                LogHandlerFailed(
-                    _logger,
-                    exception,
-                    payload.Update.UpdateId,
-                    GetUpdateType(),
-                    GetHandlerName(),
-                    GetRouteName(),
-                    selection.Handler.ModuleName ?? string.Empty,
-                    selection.Handler.SceneName ?? string.Empty,
-                    exception.GetType().FullName ?? exception.GetType().Name,
-                    handlerElapsed.TotalMilliseconds,
-                    timing.RequestCount,
-                    timing.RequestElapsedMilliseconds,
-                    timing.HandlerLogicElapsedMilliseconds);
+                if (handlerTimingEnabled)
+                {
+                    var handlerElapsed = _timeProvider.GetElapsedTime(handlerStarted);
+                    var timing = requestTimingScope!.CreateSummary(_timeProvider, handlerElapsed);
+
+                    LogHandlerFailedWithTiming(
+                        _logger,
+                        exception,
+                        payload.Update.UpdateId,
+                        GetUpdateType(),
+                        GetHandlerName(),
+                        GetRouteName(),
+                        selection.Handler.ModuleName ?? string.Empty,
+                        selection.Handler.SceneName ?? string.Empty,
+                        exception.GetType().FullName ?? exception.GetType().Name,
+                        handlerElapsed.TotalMilliseconds,
+                        timing.RequestCount,
+                        timing.RequestElapsedMilliseconds,
+                        timing.HandlerLogicElapsedMilliseconds);
+                }
+                else
+                {
+                    LogHandlerFailed(
+                        _logger,
+                        exception,
+                        payload.Update.UpdateId,
+                        GetUpdateType(),
+                        GetHandlerName(),
+                        GetRouteName(),
+                        selection.Handler.ModuleName ?? string.Empty,
+                        selection.Handler.SceneName ?? string.Empty,
+                        exception.GetType().FullName ?? exception.GetType().Name);
+                }
             }
 
             if (_errorHandlers.Length > 0 &&
@@ -188,7 +202,7 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
             telegramContext,
             effectiveCancellationToken).ConfigureAwait(false);
 
-        if (!debugEnabled)
+        if (!handlerTimingEnabled)
         {
             return;
         }
@@ -455,77 +469,4 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
             : new TelegramAutoAnswerCallbackDescriptor(options.Enabled, options.Text, options.ShowAlert);
     }
 
-    [LoggerMessage(
-        EventId = 1,
-        Level = LogLevel.Debug,
-        Message = "No Telegram handler matched. update_id={UpdateId}, type={UpdateType}, match_ms={MatchElapsedMilliseconds:F2}.")]
-    private static partial void LogNoHandlerMatched(
-        ILogger logger,
-        long updateId,
-        string updateType,
-        double matchElapsedMilliseconds);
-
-    [LoggerMessage(
-        EventId = 2,
-        Level = LogLevel.Debug,
-        Message = "Telegram handler matched. update_id={UpdateId}, type={UpdateType}, handler={Handler}, route={Route}, module={ModuleName}, scene={SceneName}, match_ms={MatchElapsedMilliseconds:F2}.")]
-    private static partial void LogHandlerMatched(
-        ILogger logger,
-        long updateId,
-        string updateType,
-        string handler,
-        string route,
-        string moduleName,
-        string sceneName,
-        double matchElapsedMilliseconds);
-
-    [LoggerMessage(
-        EventId = 3,
-        Level = LogLevel.Error,
-        Message = "Telegram handler failed. update_id={UpdateId}, type={UpdateType}, handler={Handler}, route={Route}, module={ModuleName}, scene={SceneName}, exception_type={ExceptionType}, handler_ms={HandlerElapsedMilliseconds:F2}, telegram_request_count={TelegramRequestCount}, telegram_request_ms={TelegramRequestElapsedMilliseconds:F2}, handler_logic_ms={HandlerLogicElapsedMilliseconds:F2}.")]
-    private static partial void LogHandlerFailed(
-        ILogger logger,
-        Exception exception,
-        long updateId,
-        string updateType,
-        string handler,
-        string route,
-        string moduleName,
-        string sceneName,
-        string exceptionType,
-        double handlerElapsedMilliseconds,
-        int telegramRequestCount,
-        double telegramRequestElapsedMilliseconds,
-        double handlerLogicElapsedMilliseconds);
-
-    [LoggerMessage(
-        EventId = 4,
-        Level = LogLevel.Debug,
-        Message = "Telegram handler completed. update_id={UpdateId}, type={UpdateType}, handler={Handler}, route={Route}, handler_ms={HandlerElapsedMilliseconds:F2}, telegram_request_count={TelegramRequestCount}, telegram_request_ms={TelegramRequestElapsedMilliseconds:F2}, handler_logic_ms={HandlerLogicElapsedMilliseconds:F2}.")]
-    private static partial void LogHandlerCompleted(
-        ILogger logger,
-        long updateId,
-        string updateType,
-        string handler,
-        string route,
-        double handlerElapsedMilliseconds,
-        int telegramRequestCount,
-        double telegramRequestElapsedMilliseconds,
-        double handlerLogicElapsedMilliseconds);
-
-    [LoggerMessage(
-        EventId = 5,
-        Level = LogLevel.Debug,
-        Message = "Telegram error handler completed. update_id={UpdateId}, type={UpdateType}, handler={Handler}, route={Route}, module={ModuleName}, scene={SceneName}, exception_type={ExceptionType}, error_handler={ErrorHandler}, handled={Handled}.")]
-    private static partial void LogErrorHandlerCompleted(
-        ILogger logger,
-        long updateId,
-        string updateType,
-        string handler,
-        string route,
-        string moduleName,
-        string sceneName,
-        string exceptionType,
-        string errorHandler,
-        bool handled);
 }

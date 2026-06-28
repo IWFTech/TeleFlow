@@ -89,6 +89,12 @@ builder.Services.AddLogging(logging =>
 
 Для enterprise deployments отправляй logs в существующую platform и держи update id, chat id, handler и exception type searchable.
 
+## Логи времени выполнения обработчиков
+
+Подробные замеры времени выполнения обработчиков собираются только когда для логгера Telegram framework включён `LogLevel.Debug`. В логах уровня Debug TeleFlow может показать общее время обработчика, количество Telegram-запросов, время Telegram-запросов и время собственной логики обработчика.
+
+Когда Debug logging выключен, обычный успешный путь обработки не создаёт области замера Telegram-запросов. Логи ошибок по-прежнему содержат update id, update type, handler, route, module, scene и exception type, но не содержат подробные поля времени, которые не собирались.
+
 ## Рекомендации по диагностике
 
 Начни с:
