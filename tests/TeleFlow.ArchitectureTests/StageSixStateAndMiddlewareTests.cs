@@ -1,3 +1,4 @@
+using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using TeleFlow.Annotations;
@@ -62,6 +63,30 @@ public sealed class StageSixStateAndMiddlewareTests
 
         Assert.Null(await state.GetAsync());
         Assert.Null(await state.Data.GetAsync<string>("name"));
+    }
+
+    [Fact]
+    public void UpdateState_Data_IsCreatedLazilyOnFirstAccess()
+    {
+        var state = CreateUpdateStateWithData();
+
+        Assert.Null(GetUpdateStateField<UpdateStateData>(state, "_data"));
+
+        var data = state.Data;
+
+        Assert.Same(data, GetUpdateStateField<UpdateStateData>(state, "_data"));
+    }
+
+    [Fact]
+    public void UpdateState_Wizard_IsCreatedLazilyOnFirstAccess()
+    {
+        var state = CreateUpdateStateWithWizard();
+
+        Assert.Null(GetUpdateStateField<UpdateWizard>(state, "_wizard"));
+
+        var wizard = state.Wizard;
+
+        Assert.Same(wizard, GetUpdateStateField<UpdateWizard>(state, "_wizard"));
     }
 
     [Fact]
@@ -921,6 +946,23 @@ public sealed class StageSixStateAndMiddlewareTests
             new MemoryStateDataStore(),
             new JsonStateDataSerializer(),
             new MemoryStateHistoryStore());
+    }
+
+    private static T? GetUpdateStateField<T>(
+        UpdateState state,
+        string fieldName)
+        where T : class
+    {
+        var field = typeof(UpdateState).GetField(
+            fieldName,
+            BindingFlags.Instance | BindingFlags.NonPublic);
+
+        if (field is null)
+        {
+            throw new InvalidOperationException($"UpdateState field '{fieldName}' was not found.");
+        }
+
+        return (T?)field.GetValue(state);
     }
 
     private static StateKey CreateStateKey(
