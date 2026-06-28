@@ -370,14 +370,26 @@ function New-AnnouncementText {
     }
 
     if (-not [string]::IsNullOrWhiteSpace($summary)) {
-        $header += "`n`n<b>Summary</b>`n$(ConvertTo-HtmlText $summary)"
+        $header += "`n`n<b>Summary</b>"
+
+        $normalizedBody = if ([string]::IsNullOrWhiteSpace($normalizedBody)) {
+            $summary
+        }
+        else {
+            $summary + "`n`n" + $normalizedBody
+        }
     }
 
     if ([string]::IsNullOrWhiteSpace($normalizedBody)) {
         return @($header)
     }
 
-    $quotePrefix = "`n`n<blockquote expandable>"
+    $quotePrefix = if (-not [string]::IsNullOrWhiteSpace($summary)) {
+        "`n<blockquote expandable>"
+    }
+    else {
+        "`n`n<blockquote expandable>"
+    }
     $quoteSuffix = "</blockquote>"
     $availableBodyLength = $MaximumMessageLength - $header.Length - $quotePrefix.Length - $quoteSuffix.Length
 
