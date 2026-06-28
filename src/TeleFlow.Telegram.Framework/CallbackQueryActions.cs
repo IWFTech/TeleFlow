@@ -1,5 +1,6 @@
 using TeleFlow.Telegram.Internal;
 using TeleFlow.Telegram.Schema.Abstractions;
+using TeleFlow.Telegram.Schema.Types;
 
 namespace TeleFlow.Telegram;
 
@@ -47,21 +48,21 @@ public sealed class CallbackQueryActions
 
     public Task<MessageBoolean> EditTextAsync(string text, CancellationToken cancellationToken = default)
     {
-        return EditTextAsync(text, replyMarkup: null, cancellationToken);
+        return EditTextCoreAsync(text, replyMarkup: null, cancellationToken);
     }
 
     public Task<MessageBoolean> EditTextAsync(
         string text,
-        InlineKeyboard keyboard,
+        InlineKeyboardMarkup replyMarkup,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(keyboard);
-        return EditTextAsync(text, keyboard.ToMarkup(_context.CallbackData), cancellationToken);
+        ArgumentNullException.ThrowIfNull(replyMarkup);
+        return EditTextCoreAsync(text, replyMarkup, cancellationToken);
     }
 
-    private Task<MessageBoolean> EditTextAsync(
+    private Task<MessageBoolean> EditTextCoreAsync(
         string text,
-        TeleFlow.Telegram.Schema.Types.InlineKeyboardMarkup? replyMarkup,
+        InlineKeyboardMarkup? replyMarkup,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(text);

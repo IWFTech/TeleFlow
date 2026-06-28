@@ -75,10 +75,7 @@ public sealed class JsonCallbackDataSerializer : ICallbackDataRouteDeserializer
 
     private static string SerializeCompact<TPayload>(TPayload payload, CallbackDataMetadata metadata)
     {
-        var values = metadata.Fields
-            .Select(field => metadata.FormatField(field.Property.GetValue(payload), field.Property.PropertyType));
-
-        return string.Join(':', values.Prepend(metadata.Prefix));
+        return metadata.Pack(payload!);
     }
 
     private object DeserializeJson(Type payloadType, string serializedPayload)

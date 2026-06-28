@@ -8,11 +8,12 @@ Telegram bots often become real applications when inline buttons appear. TeleFlo
 [Command("menu")]
 public Task Menu(MessageContext ctx, CancellationToken ct)
 {
-    var keyboard = InlineKeyboard.Create()
+    var keyboard = InlineKeyboardBuilder.Create()
         .Button("Profile", "menu:profile")
         .Button("Settings", "menu:settings")
         .Row()
-        .Url("Docs", "https://example.com/docs");
+        .Url("Docs", "https://example.com/docs")
+        .Build();
 
     return ctx.Message.AnswerAsync("Choose:", keyboard, ct);
 }
@@ -45,9 +46,16 @@ Create buttons:
 [CommandTemplate("ticket {id:long}")]
 public Task Ticket(MessageContext ctx, long id, CancellationToken ct)
 {
-    var keyboard = InlineKeyboard.Create()
-        .Button("Take", new TicketAction(id, "take"))
-        .Button("Resolve", new TicketAction(id, "resolve"));
+    var keyboard = InlineKeyboardBuilder.Create()
+        .Button(
+            "Take",
+            new TicketAction(id, "take"),
+            new InlineKeyboardButtonOptions { Style = "primary" })
+        .Button(
+            "Resolve",
+            new TicketAction(id, "resolve"),
+            new InlineKeyboardButtonOptions { Style = "success" })
+        .Build();
 
     return ctx.Message.AnswerAsync($"Ticket #{id}", keyboard, ct);
 }
@@ -131,6 +139,34 @@ var keyboard = ReplyKeyboard.Create()
 
 await ctx.Message.AnswerAsync("Choose an action.", keyboard, ct);
 ```
+
+## Native Telegram Markup
+
+`InlineKeyboardBuilder` is only a convenience layer. TeleFlow helpers accept
+the native generated `InlineKeyboardMarkup`, so new Telegram keyboard fields
+can be used directly as soon as the schema package contains them:
+
+```csharp
+var keyboard = new InlineKeyboardMarkup
+{
+    InlineKeyboard =
+    [
+        [
+            new InlineKeyboardButton
+            {
+                Text = "Delete",
+                CallbackData = "ticket:delete:42",
+                Style = "danger"
+            }
+        ]
+    ]
+};
+
+await ctx.Message.AnswerAsync("Choose:", keyboard, ct);
+```
+
+Use the builder for common cases. Use native markup when you need full Bot API
+control or a newly added Telegram field that the builder does not wrap yet.
 
 ## Remove Keyboard
 

@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Reflection;
+using System.Text;
 using TeleFlow.Annotations;
 
 namespace TeleFlow.Telegram.Internal;
@@ -196,6 +197,29 @@ internal sealed class CallbackDataMetadata
                 : Convert.ToString(value, CultureInfo.InvariantCulture)!;
 
         return Escape(text);
+    }
+
+    public string Pack(object payload)
+    {
+        ArgumentNullException.ThrowIfNull(payload);
+
+        if (!PayloadType.IsInstanceOfType(payload))
+        {
+            throw new InvalidOperationException(
+                $"Callback data payload type '{payload.GetType().FullName}' is not compatible with metadata for '{PayloadType.FullName}'.");
+        }
+
+        var builder = new StringBuilder(Prefix);
+
+        for (var index = 0; index < Fields.Count; index++)
+        {
+            var field = Fields[index];
+            builder
+                .Append(':')
+                .Append(FormatField(field.Property.GetValue(payload), field.Property.PropertyType));
+        }
+
+        return builder.ToString();
     }
 
     public object ParseField(string value, Type fieldType)
