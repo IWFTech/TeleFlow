@@ -143,41 +143,29 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
         }
         catch (Exception exception) when (!IsUpdateCancellation(exception, effectiveCancellationToken))
         {
+            HandlerFailureLogContext? logContext = null;
+            HandlerFailureLogContext GetLogContext()
+            {
+                logContext ??= new HandlerFailureLogContext(
+                    payload.Update.UpdateId,
+                    GetUpdateType(),
+                    GetHandlerName(),
+                    GetRouteName(),
+                    selection.Handler.ModuleName ?? string.Empty,
+                    selection.Handler.SceneName ?? string.Empty,
+                    exception.GetType().FullName ?? exception.GetType().Name);
+
+                return logContext.Value;
+            }
+
             if (errorEnabled)
             {
-                if (handlerTimingEnabled)
-                {
-                    var handlerElapsed = _timeProvider.GetElapsedTime(handlerStarted);
-                    var timing = requestTimingScope!.CreateSummary(_timeProvider, handlerElapsed);
-
-                    LogHandlerFailedWithTiming(
-                        _logger,
-                        exception,
-                        payload.Update.UpdateId,
-                        GetUpdateType(),
-                        GetHandlerName(),
-                        GetRouteName(),
-                        selection.Handler.ModuleName ?? string.Empty,
-                        selection.Handler.SceneName ?? string.Empty,
-                        exception.GetType().FullName ?? exception.GetType().Name,
-                        handlerElapsed.TotalMilliseconds,
-                        timing.RequestCount,
-                        timing.RequestElapsedMilliseconds,
-                        timing.HandlerLogicElapsedMilliseconds);
-                }
-                else
-                {
-                    LogHandlerFailed(
-                        _logger,
-                        exception,
-                        payload.Update.UpdateId,
-                        GetUpdateType(),
-                        GetHandlerName(),
-                        GetRouteName(),
-                        selection.Handler.ModuleName ?? string.Empty,
-                        selection.Handler.SceneName ?? string.Empty,
-                        exception.GetType().FullName ?? exception.GetType().Name);
-                }
+                LogHandlerFailure(
+                    exception,
+                    GetLogContext(),
+                    handlerTimingEnabled,
+                    handlerStarted,
+                    requestTimingScope);
             }
 
             if (_errorHandlers.Length > 0 &&
@@ -185,10 +173,7 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
                     selection,
                     telegramContext,
                     exception,
-                    payload.Update.UpdateId,
-                    GetUpdateType(),
-                    GetHandlerName(),
-                    GetRouteName(),
+                    debugEnabled ? GetLogContext() : null,
                     effectiveCancellationToken).ConfigureAwait(false))
             {
                 return;
@@ -264,10 +249,7 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
         TelegramRouteSelection selection,
         TelegramUpdateContext telegramContext,
         Exception exception,
-        long updateId,
-        string updateType,
-        string handlerName,
-        string routeName,
+        HandlerFailureLogContext? logContext,
         CancellationToken cancellationToken)
     {
         if (_errorHandlers.Length == 0)
@@ -295,17 +277,17 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
                 cancellationToken).ConfigureAwait(false);
             var handled = result == TelegramErrorHandlingResult.Handled;
 
-            if (_logger.IsEnabled(LogLevel.Debug))
+            if (logContext is { } context)
             {
                 LogErrorHandlerCompleted(
                     _logger,
-                    updateId,
-                    updateType,
-                    handlerName,
-                    routeName,
-                    selection.Handler.ModuleName ?? string.Empty,
-                    selection.Handler.SceneName ?? string.Empty,
-                    exception.GetType().FullName ?? exception.GetType().Name,
+                    context.UpdateId,
+                    context.UpdateType,
+                    context.Handler,
+                    context.Route,
+                    context.ModuleName,
+                    context.SceneName,
+                    context.ExceptionType,
                     FormatErrorHandler(errorHandler),
                     handled);
             }

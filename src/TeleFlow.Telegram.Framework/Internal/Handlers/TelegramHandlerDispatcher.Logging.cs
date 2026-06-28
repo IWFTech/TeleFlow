@@ -13,6 +13,58 @@ internal sealed partial class TelegramHandlerDispatcher
         public const int ErrorHandlerCompleted = 5;
     }
 
+    private readonly record struct HandlerFailureLogContext(
+        long UpdateId,
+        string UpdateType,
+        string Handler,
+        string Route,
+        string ModuleName,
+        string SceneName,
+        string ExceptionType);
+
+    private void LogHandlerFailure(
+        Exception exception,
+        HandlerFailureLogContext context,
+        bool includeTiming,
+        long handlerStarted,
+        TelegramHandlerRequestTimingScope? requestTimingScope)
+    {
+        if (!includeTiming)
+        {
+            LogHandlerFailed(
+                _logger,
+                exception,
+                context.UpdateId,
+                context.UpdateType,
+                context.Handler,
+                context.Route,
+                context.ModuleName,
+                context.SceneName,
+                context.ExceptionType);
+            return;
+        }
+
+        ArgumentNullException.ThrowIfNull(requestTimingScope);
+
+        var handlerElapsed = _timeProvider.GetElapsedTime(handlerStarted);
+        var timing = requestTimingScope.CreateSummary(_timeProvider, handlerElapsed);
+
+        LogHandlerFailedWithTiming(
+            _logger,
+            exception,
+            context.UpdateId,
+            context.UpdateType,
+            context.Handler,
+            context.Route,
+            context.ModuleName,
+            context.SceneName,
+            context.ExceptionType,
+            handlerElapsed.TotalMilliseconds,
+            timing.RequestCount,
+            timing.RequestElapsedMilliseconds,
+            timing.HandlerLogicElapsedMilliseconds);
+    }
+
     [LoggerMessage(
         EventId = LogEventIds.NoHandlerMatched,
         Level = LogLevel.Debug,
