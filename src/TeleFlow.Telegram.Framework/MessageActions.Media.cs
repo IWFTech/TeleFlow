@@ -24,25 +24,6 @@ public sealed partial class MessageActions
 
     public Task<Message> AnswerPhotoAsync(
         InputFileString photo,
-        InlineKeyboard keyboard,
-        string? caption = null,
-        CancellationToken cancellationToken = default)
-    {
-        return SendPhotoAsync(photo, caption, parseMode: null, ToReplyMarkup(keyboard), replyToCurrentMessage: false, cancellationToken);
-    }
-
-    public Task<Message> AnswerPhotoAsync(
-        InputFileString photo,
-        InlineKeyboard keyboard,
-        string? caption,
-        TelegramParseMode? parseMode,
-        CancellationToken cancellationToken = default)
-    {
-        return SendPhotoAsync(photo, caption, parseMode, ToReplyMarkup(keyboard), replyToCurrentMessage: false, cancellationToken);
-    }
-
-    public Task<Message> AnswerPhotoAsync(
-        InputFileString photo,
         ReplyMarkup replyMarkup,
         string? caption = null,
         CancellationToken cancellationToken = default)
@@ -77,25 +58,6 @@ public sealed partial class MessageActions
         CancellationToken cancellationToken = default)
     {
         return SendPhotoAsync(photo, caption, parseMode, replyMarkup: null, replyToCurrentMessage: true, cancellationToken);
-    }
-
-    public Task<Message> ReplyPhotoAsync(
-        InputFileString photo,
-        InlineKeyboard keyboard,
-        string? caption = null,
-        CancellationToken cancellationToken = default)
-    {
-        return SendPhotoAsync(photo, caption, parseMode: null, ToReplyMarkup(keyboard), replyToCurrentMessage: true, cancellationToken);
-    }
-
-    public Task<Message> ReplyPhotoAsync(
-        InputFileString photo,
-        InlineKeyboard keyboard,
-        string? caption,
-        TelegramParseMode? parseMode,
-        CancellationToken cancellationToken = default)
-    {
-        return SendPhotoAsync(photo, caption, parseMode, ToReplyMarkup(keyboard), replyToCurrentMessage: true, cancellationToken);
     }
 
     public Task<Message> ReplyPhotoAsync(
@@ -138,25 +100,6 @@ public sealed partial class MessageActions
 
     public Task<Message> AnswerDocumentAsync(
         InputFileString document,
-        InlineKeyboard keyboard,
-        string? caption = null,
-        CancellationToken cancellationToken = default)
-    {
-        return SendDocumentAsync(document, caption, parseMode: null, ToReplyMarkup(keyboard), replyToCurrentMessage: false, cancellationToken);
-    }
-
-    public Task<Message> AnswerDocumentAsync(
-        InputFileString document,
-        InlineKeyboard keyboard,
-        string? caption,
-        TelegramParseMode? parseMode,
-        CancellationToken cancellationToken = default)
-    {
-        return SendDocumentAsync(document, caption, parseMode, ToReplyMarkup(keyboard), replyToCurrentMessage: false, cancellationToken);
-    }
-
-    public Task<Message> AnswerDocumentAsync(
-        InputFileString document,
         ReplyMarkup replyMarkup,
         string? caption = null,
         CancellationToken cancellationToken = default)
@@ -191,25 +134,6 @@ public sealed partial class MessageActions
         CancellationToken cancellationToken = default)
     {
         return SendDocumentAsync(document, caption, parseMode, replyMarkup: null, replyToCurrentMessage: true, cancellationToken);
-    }
-
-    public Task<Message> ReplyDocumentAsync(
-        InputFileString document,
-        InlineKeyboard keyboard,
-        string? caption = null,
-        CancellationToken cancellationToken = default)
-    {
-        return SendDocumentAsync(document, caption, parseMode: null, ToReplyMarkup(keyboard), replyToCurrentMessage: true, cancellationToken);
-    }
-
-    public Task<Message> ReplyDocumentAsync(
-        InputFileString document,
-        InlineKeyboard keyboard,
-        string? caption,
-        TelegramParseMode? parseMode,
-        CancellationToken cancellationToken = default)
-    {
-        return SendDocumentAsync(document, caption, parseMode, ToReplyMarkup(keyboard), replyToCurrentMessage: true, cancellationToken);
     }
 
     public Task<Message> ReplyDocumentAsync(
@@ -252,25 +176,6 @@ public sealed partial class MessageActions
 
     public Task<Message> AnswerVideoAsync(
         InputFileString video,
-        InlineKeyboard keyboard,
-        string? caption = null,
-        CancellationToken cancellationToken = default)
-    {
-        return SendVideoAsync(video, caption, parseMode: null, ToReplyMarkup(keyboard), replyToCurrentMessage: false, cancellationToken);
-    }
-
-    public Task<Message> AnswerVideoAsync(
-        InputFileString video,
-        InlineKeyboard keyboard,
-        string? caption,
-        TelegramParseMode? parseMode,
-        CancellationToken cancellationToken = default)
-    {
-        return SendVideoAsync(video, caption, parseMode, ToReplyMarkup(keyboard), replyToCurrentMessage: false, cancellationToken);
-    }
-
-    public Task<Message> AnswerVideoAsync(
-        InputFileString video,
         ReplyMarkup replyMarkup,
         string? caption = null,
         CancellationToken cancellationToken = default)
@@ -305,25 +210,6 @@ public sealed partial class MessageActions
         CancellationToken cancellationToken = default)
     {
         return SendVideoAsync(video, caption, parseMode, replyMarkup: null, replyToCurrentMessage: true, cancellationToken);
-    }
-
-    public Task<Message> ReplyVideoAsync(
-        InputFileString video,
-        InlineKeyboard keyboard,
-        string? caption = null,
-        CancellationToken cancellationToken = default)
-    {
-        return SendVideoAsync(video, caption, parseMode: null, ToReplyMarkup(keyboard), replyToCurrentMessage: true, cancellationToken);
-    }
-
-    public Task<Message> ReplyVideoAsync(
-        InputFileString video,
-        InlineKeyboard keyboard,
-        string? caption,
-        TelegramParseMode? parseMode,
-        CancellationToken cancellationToken = default)
-    {
-        return SendVideoAsync(video, caption, parseMode, ToReplyMarkup(keyboard), replyToCurrentMessage: true, cancellationToken);
     }
 
     public Task<Message> ReplyVideoAsync(
@@ -366,25 +252,6 @@ public sealed partial class MessageActions
 
     public Task<Message> AnswerAnimationAsync(
         InputFileString animation,
-        InlineKeyboard keyboard,
-        string? caption = null,
-        CancellationToken cancellationToken = default)
-    {
-        return SendAnimationAsync(animation, caption, parseMode: null, ToReplyMarkup(keyboard), replyToCurrentMessage: false, cancellationToken);
-    }
-
-    public Task<Message> AnswerAnimationAsync(
-        InputFileString animation,
-        InlineKeyboard keyboard,
-        string? caption,
-        TelegramParseMode? parseMode,
-        CancellationToken cancellationToken = default)
-    {
-        return SendAnimationAsync(animation, caption, parseMode, ToReplyMarkup(keyboard), replyToCurrentMessage: false, cancellationToken);
-    }
-
-    public Task<Message> AnswerAnimationAsync(
-        InputFileString animation,
         ReplyMarkup replyMarkup,
         string? caption = null,
         CancellationToken cancellationToken = default)
@@ -419,25 +286,6 @@ public sealed partial class MessageActions
         CancellationToken cancellationToken = default)
     {
         return SendAnimationAsync(animation, caption, parseMode, replyMarkup: null, replyToCurrentMessage: true, cancellationToken);
-    }
-
-    public Task<Message> ReplyAnimationAsync(
-        InputFileString animation,
-        InlineKeyboard keyboard,
-        string? caption = null,
-        CancellationToken cancellationToken = default)
-    {
-        return SendAnimationAsync(animation, caption, parseMode: null, ToReplyMarkup(keyboard), replyToCurrentMessage: true, cancellationToken);
-    }
-
-    public Task<Message> ReplyAnimationAsync(
-        InputFileString animation,
-        InlineKeyboard keyboard,
-        string? caption,
-        TelegramParseMode? parseMode,
-        CancellationToken cancellationToken = default)
-    {
-        return SendAnimationAsync(animation, caption, parseMode, ToReplyMarkup(keyboard), replyToCurrentMessage: true, cancellationToken);
     }
 
     public Task<Message> ReplyAnimationAsync(
@@ -480,25 +328,6 @@ public sealed partial class MessageActions
 
     public Task<Message> AnswerAudioAsync(
         InputFileString audio,
-        InlineKeyboard keyboard,
-        string? caption = null,
-        CancellationToken cancellationToken = default)
-    {
-        return SendAudioAsync(audio, caption, parseMode: null, ToReplyMarkup(keyboard), replyToCurrentMessage: false, cancellationToken);
-    }
-
-    public Task<Message> AnswerAudioAsync(
-        InputFileString audio,
-        InlineKeyboard keyboard,
-        string? caption,
-        TelegramParseMode? parseMode,
-        CancellationToken cancellationToken = default)
-    {
-        return SendAudioAsync(audio, caption, parseMode, ToReplyMarkup(keyboard), replyToCurrentMessage: false, cancellationToken);
-    }
-
-    public Task<Message> AnswerAudioAsync(
-        InputFileString audio,
         ReplyMarkup replyMarkup,
         string? caption = null,
         CancellationToken cancellationToken = default)
@@ -533,25 +362,6 @@ public sealed partial class MessageActions
         CancellationToken cancellationToken = default)
     {
         return SendAudioAsync(audio, caption, parseMode, replyMarkup: null, replyToCurrentMessage: true, cancellationToken);
-    }
-
-    public Task<Message> ReplyAudioAsync(
-        InputFileString audio,
-        InlineKeyboard keyboard,
-        string? caption = null,
-        CancellationToken cancellationToken = default)
-    {
-        return SendAudioAsync(audio, caption, parseMode: null, ToReplyMarkup(keyboard), replyToCurrentMessage: true, cancellationToken);
-    }
-
-    public Task<Message> ReplyAudioAsync(
-        InputFileString audio,
-        InlineKeyboard keyboard,
-        string? caption,
-        TelegramParseMode? parseMode,
-        CancellationToken cancellationToken = default)
-    {
-        return SendAudioAsync(audio, caption, parseMode, ToReplyMarkup(keyboard), replyToCurrentMessage: true, cancellationToken);
     }
 
     public Task<Message> ReplyAudioAsync(
@@ -594,25 +404,6 @@ public sealed partial class MessageActions
 
     public Task<Message> AnswerVoiceAsync(
         InputFileString voice,
-        InlineKeyboard keyboard,
-        string? caption = null,
-        CancellationToken cancellationToken = default)
-    {
-        return SendVoiceAsync(voice, caption, parseMode: null, ToReplyMarkup(keyboard), replyToCurrentMessage: false, cancellationToken);
-    }
-
-    public Task<Message> AnswerVoiceAsync(
-        InputFileString voice,
-        InlineKeyboard keyboard,
-        string? caption,
-        TelegramParseMode? parseMode,
-        CancellationToken cancellationToken = default)
-    {
-        return SendVoiceAsync(voice, caption, parseMode, ToReplyMarkup(keyboard), replyToCurrentMessage: false, cancellationToken);
-    }
-
-    public Task<Message> AnswerVoiceAsync(
-        InputFileString voice,
         ReplyMarkup replyMarkup,
         string? caption = null,
         CancellationToken cancellationToken = default)
@@ -651,25 +442,6 @@ public sealed partial class MessageActions
 
     public Task<Message> ReplyVoiceAsync(
         InputFileString voice,
-        InlineKeyboard keyboard,
-        string? caption = null,
-        CancellationToken cancellationToken = default)
-    {
-        return SendVoiceAsync(voice, caption, parseMode: null, ToReplyMarkup(keyboard), replyToCurrentMessage: true, cancellationToken);
-    }
-
-    public Task<Message> ReplyVoiceAsync(
-        InputFileString voice,
-        InlineKeyboard keyboard,
-        string? caption,
-        TelegramParseMode? parseMode,
-        CancellationToken cancellationToken = default)
-    {
-        return SendVoiceAsync(voice, caption, parseMode, ToReplyMarkup(keyboard), replyToCurrentMessage: true, cancellationToken);
-    }
-
-    public Task<Message> ReplyVoiceAsync(
-        InputFileString voice,
         ReplyMarkup replyMarkup,
         string? caption = null,
         CancellationToken cancellationToken = default)
@@ -698,14 +470,6 @@ public sealed partial class MessageActions
 
     public Task<Message> AnswerStickerAsync(
         InputFileString sticker,
-        InlineKeyboard keyboard,
-        CancellationToken cancellationToken = default)
-    {
-        return SendStickerAsync(sticker, ToReplyMarkup(keyboard), replyToCurrentMessage: false, cancellationToken);
-    }
-
-    public Task<Message> AnswerStickerAsync(
-        InputFileString sticker,
         ReplyMarkup replyMarkup,
         CancellationToken cancellationToken = default)
     {
@@ -718,14 +482,6 @@ public sealed partial class MessageActions
         CancellationToken cancellationToken = default)
     {
         return SendStickerAsync(sticker, replyMarkup: null, replyToCurrentMessage: true, cancellationToken);
-    }
-
-    public Task<Message> ReplyStickerAsync(
-        InputFileString sticker,
-        InlineKeyboard keyboard,
-        CancellationToken cancellationToken = default)
-    {
-        return SendStickerAsync(sticker, ToReplyMarkup(keyboard), replyToCurrentMessage: true, cancellationToken);
     }
 
     public Task<Message> ReplyStickerAsync(
@@ -746,14 +502,6 @@ public sealed partial class MessageActions
 
     public Task<Message> AnswerVideoNoteAsync(
         InputFileString videoNote,
-        InlineKeyboard keyboard,
-        CancellationToken cancellationToken = default)
-    {
-        return SendVideoNoteAsync(videoNote, ToReplyMarkup(keyboard), replyToCurrentMessage: false, cancellationToken);
-    }
-
-    public Task<Message> AnswerVideoNoteAsync(
-        InputFileString videoNote,
         ReplyMarkup replyMarkup,
         CancellationToken cancellationToken = default)
     {
@@ -766,14 +514,6 @@ public sealed partial class MessageActions
         CancellationToken cancellationToken = default)
     {
         return SendVideoNoteAsync(videoNote, replyMarkup: null, replyToCurrentMessage: true, cancellationToken);
-    }
-
-    public Task<Message> ReplyVideoNoteAsync(
-        InputFileString videoNote,
-        InlineKeyboard keyboard,
-        CancellationToken cancellationToken = default)
-    {
-        return SendVideoNoteAsync(videoNote, ToReplyMarkup(keyboard), replyToCurrentMessage: true, cancellationToken);
     }
 
     public Task<Message> ReplyVideoNoteAsync(
@@ -941,9 +681,4 @@ public sealed partial class MessageActions
             : null;
     }
 
-    private ReplyMarkup ToReplyMarkup(InlineKeyboard keyboard)
-    {
-        ArgumentNullException.ThrowIfNull(keyboard);
-        return ReplyMarkup.From(keyboard.ToMarkup(_context.CallbackData));
-    }
 }

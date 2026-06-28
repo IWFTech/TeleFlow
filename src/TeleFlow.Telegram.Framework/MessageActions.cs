@@ -19,13 +19,13 @@ public sealed partial class MessageActions
 
     public Task<Message> AnswerAsync(
         string text,
-        InlineKeyboard keyboard,
+        InlineKeyboardMarkup inlineKeyboard,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(keyboard);
+        ArgumentNullException.ThrowIfNull(inlineKeyboard);
         return AnswerAsync(
             text,
-            ReplyMarkup.From(keyboard.ToMarkup(_context.CallbackData)),
+            ReplyMarkup.From(inlineKeyboard),
             cancellationToken);
     }
 
@@ -81,13 +81,13 @@ public sealed partial class MessageActions
 
     public Task<Message> ReplyAsync(
         string text,
-        InlineKeyboard keyboard,
+        InlineKeyboardMarkup inlineKeyboard,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(keyboard);
+        ArgumentNullException.ThrowIfNull(inlineKeyboard);
         return ReplyAsync(
             text,
-            ReplyMarkup.From(keyboard.ToMarkup(_context.CallbackData)),
+            ReplyMarkup.From(inlineKeyboard),
             cancellationToken);
     }
 
@@ -145,11 +145,11 @@ public sealed partial class MessageActions
     [Obsolete("Use ReplyAsync instead.")]
     public Task<Message> ReplyTextAsync(
         string text,
-        InlineKeyboard keyboard,
+        InlineKeyboardMarkup inlineKeyboard,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(keyboard);
-        return ReplyAsync(text, keyboard, cancellationToken);
+        ArgumentNullException.ThrowIfNull(inlineKeyboard);
+        return ReplyAsync(text, inlineKeyboard, cancellationToken);
     }
 
     [Obsolete("Use ReplyAsync instead.")]

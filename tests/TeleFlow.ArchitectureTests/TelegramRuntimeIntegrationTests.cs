@@ -2015,9 +2015,10 @@ public sealed class TelegramRuntimeIntegrationTests
                     }
                 }));
 
-        var keyboard = InlineKeyboard.Create()
+        var keyboard = InlineKeyboardBuilder.Create()
             .Button("Delete", new KeyboardDeleteCallback(42))
-            .Url("Open", "https://example.com");
+            .Url("Open", "https://example.com")
+            .Build();
 
         await context.GetMessageContext().Message.AnswerAsync("choose", keyboard);
 
@@ -2276,12 +2277,13 @@ public sealed class TelegramRuntimeIntegrationTests
         using var serviceProvider = CreateTelegramServiceProvider(clientOverride: fakeClient);
         var context = CreateScopedMessageUpdateContext(serviceProvider);
 
-        var keyboard = InlineKeyboard.Create()
-            .Button("Delete", new KeyboardDeleteCallback(42));
+        var keyboard = InlineKeyboardBuilder.Create()
+            .Button("Delete", new KeyboardDeleteCallback(42))
+            .Build();
 
         await context.GetMessageContext().Message.AnswerPhotoAsync(
             InputFileString.From("photo-file-id"),
-            keyboard,
+            ReplyMarkup.From(keyboard),
             caption: "choose");
 
         var sendPhoto = Assert.IsType<SendPhoto>(fakeClient.Methods.Single());
@@ -2824,8 +2826,9 @@ public sealed class TelegramRuntimeIntegrationTests
                     }
                 }));
 
-        var keyboard = InlineKeyboard.Create()
-            .Button("Next", new KeyboardDeleteCallback(99));
+        var keyboard = InlineKeyboardBuilder.Create()
+            .Button("Next", new KeyboardDeleteCallback(99))
+            .Build();
 
         await context.GetCallbackQueryContext().Callback.EditTextAsync("edited", keyboard);
 

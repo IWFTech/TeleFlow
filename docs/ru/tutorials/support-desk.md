@@ -338,9 +338,16 @@ public sealed class AdminTicketHandlers
             return;
         }
 
-        var keyboard = InlineKeyboard.Create()
-            .Button("Take", new TicketAction(ticket.Id, "take"))
-            .Button("Resolve", new TicketAction(ticket.Id, "resolve"));
+        var keyboard = InlineKeyboardBuilder.Create()
+            .Button(
+                "Take",
+                new TicketAction(ticket.Id, "take"),
+                new InlineKeyboardButtonOptions { Style = "primary" })
+            .Button(
+                "Resolve",
+                new TicketAction(ticket.Id, "resolve"),
+                new InlineKeyboardButtonOptions { Style = "success" })
+            .Build();
 
         await ctx.Message.AnswerAsync(
             $"Ticket #{ticket.Id}\nStatus: {ticket.Status}\n{ticket.Description}",
