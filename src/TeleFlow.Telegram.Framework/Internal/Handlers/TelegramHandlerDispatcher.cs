@@ -6,6 +6,9 @@ using TeleFlow.Telegram.Internal;
 
 namespace TeleFlow.Telegram.Internal.Handlers;
 
+/// <summary>
+/// Selects and invokes the Telegram handler for a single update payload.
+/// </summary>
 internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
 {
     private readonly TelegramHandlerSelector _selector;
@@ -14,6 +17,9 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
     private readonly TelegramAutoAnswerCallbackDescriptor? _globalAutoAnswerCallback;
     private readonly ILogger<TelegramHandlerDispatcher> _logger;
 
+    /// <summary>
+    /// Creates a dispatcher from registered handler descriptors and framework services.
+    /// </summary>
     public TelegramHandlerDispatcher(
         IEnumerable<TelegramHandlerDescriptor> descriptors,
         IEnumerable<TelegramErrorHandlerDescriptor> errorHandlers,
@@ -36,6 +42,9 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
         _logger = loggerFactory.CreateLogger<TelegramHandlerDispatcher>();
     }
 
+    /// <summary>
+    /// Dispatches one update through handler selection, invocation, error handlers, and callback auto-answering.
+    /// </summary>
     public async Task DispatchAsync(UpdateContext context, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -207,6 +216,9 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
             completedTiming.HandlerLogicElapsedMilliseconds);
     }
 
+    /// <summary>
+    /// Reads current state only when the selector contains stateful handlers.
+    /// </summary>
     private static async ValueTask<string?> GetCurrentStateAsync(
         UpdateContext context,
         CancellationToken cancellationToken)
@@ -216,11 +228,17 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
             : null;
     }
 
+    /// <summary>
+    /// Returns elapsed milliseconds from a timestamp captured by the dispatcher time provider.
+    /// </summary>
     private double GetElapsedMilliseconds(long startingTimestamp)
     {
         return _timeProvider.GetElapsedTime(startingTimestamp).TotalMilliseconds;
     }
 
+    /// <summary>
+    /// Sends the configured callback answer after a callback handler when the handler did not answer it explicitly.
+    /// </summary>
     private async Task AutoAnswerCallbackAsync(
         TelegramHandlerDescriptor handler,
         TelegramUpdateContext context,
@@ -245,6 +263,9 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
             cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Tries registered Telegram error handlers in deterministic priority order.
+    /// </summary>
     private async ValueTask<bool> TryHandleErrorAsync(
         TelegramRouteSelection selection,
         TelegramUpdateContext telegramContext,
@@ -301,6 +322,9 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
         return false;
     }
 
+    /// <summary>
+    /// Enumerates module-scoped error handlers before global error handlers.
+    /// </summary>
     private IEnumerable<TelegramErrorHandlerDescriptor> GetErrorHandlerCandidates(
         TelegramRouteSelection selection,
         TelegramUpdateContext telegramContext,
@@ -328,6 +352,9 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
         }
     }
 
+    /// <summary>
+    /// Filters compatible error handlers and orders them from most specific to least specific.
+    /// </summary>
     private static IEnumerable<TelegramErrorHandlerDescriptor> RankErrorHandlerCandidates(
         IReadOnlyDictionary<string, object?> routeValues,
         TelegramUpdateContext telegramContext,
@@ -340,6 +367,9 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
             .ThenBy(static handler => handler.RegistrationOrder);
     }
 
+    /// <summary>
+    /// Checks whether an error handler can receive the thrown exception, update context, and route values.
+    /// </summary>
     private static bool IsCompatibleErrorHandler(
         TelegramErrorHandlerDescriptor handler,
         IReadOnlyDictionary<string, object?> routeValues,
@@ -366,6 +396,9 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
         return true;
     }
 
+    /// <summary>
+    /// Checks all route-value parameters required by an error handler.
+    /// </summary>
     private static bool HasCompatibleRouteValues(
         TelegramErrorHandlerDescriptor handler,
         IReadOnlyDictionary<string, object?> routeValues)
@@ -386,6 +419,9 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
         return true;
     }
 
+    /// <summary>
+    /// Checks that one route-value parameter exists and can be assigned to the handler parameter type.
+    /// </summary>
     private static bool HasCompatibleRouteValue(
         TelegramErrorHandlerParameterDescriptor parameter,
         IReadOnlyDictionary<string, object?> routeValues)
@@ -394,6 +430,9 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
                IsRouteValueAssignable(parameter.ParameterType, value);
     }
 
+    /// <summary>
+    /// Gets the route value for an error-handler parameter.
+    /// </summary>
     private static bool TryGetRouteValue(
         TelegramErrorHandlerParameterDescriptor parameter,
         IReadOnlyDictionary<string, object?> routeValues,
@@ -405,6 +444,9 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
                routeValues.TryGetValue(parameter.Name, out value);
     }
 
+    /// <summary>
+    /// Checks whether a route value can be assigned to a handler parameter, including nullable value types.
+    /// </summary>
     private static bool IsRouteValueAssignable(Type parameterType, object? value)
     {
         if (value is null)
@@ -417,12 +459,18 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
         return targetType.IsInstanceOfType(value);
     }
 
+    /// <summary>
+    /// Checks whether a route-value parameter type can accept a null value.
+    /// </summary>
     private static bool IsNullableRouteValue(Type parameterType)
     {
         return !parameterType.IsValueType ||
                Nullable.GetUnderlyingType(parameterType) is not null;
     }
 
+    /// <summary>
+    /// Computes how specific an error handler exception type is for the thrown exception type.
+    /// </summary>
     private static int GetExceptionDistance(Type? handlerExceptionType, Type thrownExceptionType)
     {
         if (handlerExceptionType is null)
@@ -447,16 +495,25 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
         return int.MaxValue - 1;
     }
 
+    /// <summary>
+    /// Determines whether an exception represents cancellation requested for the current update.
+    /// </summary>
     private static bool IsUpdateCancellation(Exception exception, CancellationToken cancellationToken)
     {
         return exception is OperationCanceledException && cancellationToken.IsCancellationRequested;
     }
 
+    /// <summary>
+    /// Formats an error handler name for diagnostic logs.
+    /// </summary>
     private static string FormatErrorHandler(TelegramErrorHandlerDescriptor handler)
     {
         return $"{handler.HandlerType.Name}.{handler.MethodName}";
     }
 
+    /// <summary>
+    /// Converts global callback auto-answer options to the descriptor used by the dispatcher.
+    /// </summary>
     private static TelegramAutoAnswerCallbackDescriptor? CreateGlobalAutoAnswerDescriptor(
         TelegramAutoAnswerCallbackOptions? options)
     {

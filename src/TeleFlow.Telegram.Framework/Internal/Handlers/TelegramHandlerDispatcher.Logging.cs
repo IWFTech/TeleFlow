@@ -4,15 +4,40 @@ namespace TeleFlow.Telegram.Internal.Handlers;
 
 internal sealed partial class TelegramHandlerDispatcher
 {
+    /// <summary>
+    /// Stable event ids emitted by the Telegram handler dispatcher.
+    /// </summary>
     private static class LogEventIds
     {
+        /// <summary>
+        /// No route matched the incoming Telegram update.
+        /// </summary>
         public const int NoHandlerMatched = 1;
+
+        /// <summary>
+        /// A route matched the incoming Telegram update.
+        /// </summary>
         public const int HandlerMatched = 2;
+
+        /// <summary>
+        /// A selected Telegram handler failed.
+        /// </summary>
         public const int HandlerFailed = 3;
+
+        /// <summary>
+        /// A selected Telegram handler completed successfully.
+        /// </summary>
         public const int HandlerCompleted = 4;
+
+        /// <summary>
+        /// A Telegram error handler completed after a selected handler failed.
+        /// </summary>
         public const int ErrorHandlerCompleted = 5;
     }
 
+    /// <summary>
+    /// Captures log fields shared by handler failure logs and error-handler completion logs.
+    /// </summary>
     private readonly record struct HandlerFailureLogContext(
         long UpdateId,
         string UpdateType,
@@ -22,6 +47,9 @@ internal sealed partial class TelegramHandlerDispatcher
         string SceneName,
         string ExceptionType);
 
+    /// <summary>
+    /// Logs a handler failure with optional timing details collected only for debug diagnostics.
+    /// </summary>
     private void LogHandlerFailure(
         Exception exception,
         HandlerFailureLogContext context,
@@ -65,6 +93,9 @@ internal sealed partial class TelegramHandlerDispatcher
             timing.HandlerLogicElapsedMilliseconds);
     }
 
+    /// <summary>
+    /// Logs that no Telegram handler matched an update.
+    /// </summary>
     [LoggerMessage(
         EventId = LogEventIds.NoHandlerMatched,
         Level = LogLevel.Debug,
@@ -75,6 +106,9 @@ internal sealed partial class TelegramHandlerDispatcher
         string updateType,
         double matchElapsedMilliseconds);
 
+    /// <summary>
+    /// Logs the Telegram handler selected for an update.
+    /// </summary>
     [LoggerMessage(
         EventId = LogEventIds.HandlerMatched,
         Level = LogLevel.Debug,
@@ -89,6 +123,9 @@ internal sealed partial class TelegramHandlerDispatcher
         string sceneName,
         double matchElapsedMilliseconds);
 
+    /// <summary>
+    /// Logs a Telegram handler failure without debug-only timing fields.
+    /// </summary>
     [LoggerMessage(
         EventId = LogEventIds.HandlerFailed,
         Level = LogLevel.Error,
@@ -104,6 +141,9 @@ internal sealed partial class TelegramHandlerDispatcher
         string sceneName,
         string exceptionType);
 
+    /// <summary>
+    /// Logs a Telegram handler failure with debug-only timing fields.
+    /// </summary>
     [LoggerMessage(
         EventId = LogEventIds.HandlerFailed,
         Level = LogLevel.Error,
@@ -123,6 +163,9 @@ internal sealed partial class TelegramHandlerDispatcher
         double telegramRequestElapsedMilliseconds,
         double handlerLogicElapsedMilliseconds);
 
+    /// <summary>
+    /// Logs a successfully completed Telegram handler with debug timing fields.
+    /// </summary>
     [LoggerMessage(
         EventId = LogEventIds.HandlerCompleted,
         Level = LogLevel.Debug,
@@ -138,6 +181,9 @@ internal sealed partial class TelegramHandlerDispatcher
         double telegramRequestElapsedMilliseconds,
         double handlerLogicElapsedMilliseconds);
 
+    /// <summary>
+    /// Logs the result returned by a Telegram error handler.
+    /// </summary>
     [LoggerMessage(
         EventId = LogEventIds.ErrorHandlerCompleted,
         Level = LogLevel.Debug,
