@@ -232,6 +232,39 @@ internal sealed class CallbackDataMetadata
             $"Callback data payload type '{PayloadType.FullName}' has unsupported field type '{fieldType.FullName}'.");
     }
 
+    public bool MatchesSerializedPayload(string serializedPayload)
+    {
+        ArgumentNullException.ThrowIfNull(serializedPayload);
+
+        if (!serializedPayload.StartsWith(Prefix, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (Fields.Count == 0)
+        {
+            return serializedPayload.Length == Prefix.Length;
+        }
+
+        if (serializedPayload.Length <= Prefix.Length ||
+            serializedPayload[Prefix.Length] != ':')
+        {
+            return false;
+        }
+
+        var separatorCount = 0;
+
+        for (var index = Prefix.Length; index < serializedPayload.Length; index++)
+        {
+            if (serializedPayload[index] == ':')
+            {
+                separatorCount++;
+            }
+        }
+
+        return separatorCount == Fields.Count;
+    }
+
     private static string Escape(string value)
     {
         return value

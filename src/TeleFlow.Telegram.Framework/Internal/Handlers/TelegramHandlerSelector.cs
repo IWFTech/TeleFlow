@@ -375,11 +375,26 @@ internal sealed class TelegramHandlerSelector
         Type payloadType,
         out object? payload)
     {
+        var data = context.TelegramCallbackQuery.Data!;
+
+        if (context.CallbackData is ICallbackDataRouteDeserializer routeDeserializer)
+        {
+            try
+            {
+                return routeDeserializer.TryDeserializeForRoute(payloadType, data, out payload);
+            }
+            catch (Exception exception) when (IsCallbackPayloadNoMatchException(exception))
+            {
+                payload = null;
+                return false;
+            }
+        }
+
         var deserializer = CallbackPayloadDeserializers.GetOrAdd(payloadType, CreateCallbackPayloadDeserializer);
 
         try
         {
-            payload = deserializer(context.CallbackData, context.TelegramCallbackQuery.Data!);
+            payload = deserializer(context.CallbackData, data);
             return true;
         }
         catch (Exception exception) when (IsCallbackPayloadNoMatchException(exception))
