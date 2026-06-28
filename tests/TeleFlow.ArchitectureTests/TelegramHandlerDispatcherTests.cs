@@ -11,6 +11,7 @@ using TeleFlow.Core.States;
 using TeleFlow.Core.Updates;
 using TeleFlow.Storage.Memory;
 using TeleFlow.Telegram;
+using TeleFlow.Telegram.Internal;
 using TeleFlow.Telegram.Schema.Methods;
 using TeleFlow.Telegram.Schema.Types;
 
@@ -2471,6 +2472,43 @@ public sealed class TelegramHandlerDispatcherTests
     }
 
     [Fact]
+    public void CallbackDataMetadata_TryCreate_CachesCompactPayloadMetadata()
+    {
+        Assert.True(CallbackDataMetadata.TryCreate(typeof(CompactDeleteCallback), out var first));
+        Assert.True(CallbackDataMetadata.TryCreate(typeof(CompactDeleteCallback), out var second));
+
+        Assert.Same(first, second);
+    }
+
+    [Fact]
+    public void CallbackDataMetadata_TryCreate_PreservesJsonFallbackForNonCompactPayloads()
+    {
+        using var serviceProvider = CreateServiceProvider(static _ => { });
+        var serializer = serviceProvider.GetRequiredService<ICallbackDataSerializer>();
+
+        Assert.False(CallbackDataMetadata.TryCreate(typeof(DeleteCallbackPayload), out _));
+        Assert.False(CallbackDataMetadata.TryCreate(typeof(DeleteCallbackPayload), out _));
+
+        var serialized = serializer.Serialize(new DeleteCallbackPayload(42));
+        var deserialized = serializer.Deserialize<DeleteCallbackPayload>(serialized);
+
+        Assert.Equal("""{"id":42}""", serialized);
+        Assert.Equal(42, deserialized.Id);
+    }
+
+    [Fact]
+    public void CallbackDataMetadata_TryCreate_PreservesInvalidPayloadDiagnostics()
+    {
+        var first = Assert.Throws<InvalidOperationException>(
+            () => CallbackDataMetadata.TryCreate(typeof(InvalidCompactCallback), out _));
+        var second = Assert.Throws<InvalidOperationException>(
+            () => CallbackDataMetadata.TryCreate(typeof(InvalidCompactCallback), out _));
+
+        Assert.Equal(first.Message, second.Message);
+        Assert.Contains("field 'Id' must not be nullable", first.Message);
+    }
+
+    [Fact]
     public async Task CustomCallbackSerializer_CanReplaceDefaultSerializer()
     {
         var customSerializer = new CustomCallbackDataSerializer();
@@ -4800,6 +4838,9 @@ public sealed class TelegramHandlerDispatcherTests
 
     [CallbackData("del")]
     public sealed record DuplicateCompactDeleteCallback(long Id);
+
+    [CallbackData("bad")]
+    public sealed record InvalidCompactCallback(int? Id);
 
     public sealed record LargeCallbackPayload(string Value);
 
