@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Reflection;
 using TeleFlow.Annotations;
@@ -6,6 +7,8 @@ namespace TeleFlow.Telegram.Internal;
 
 internal sealed class CallbackDataMetadata
 {
+    private static readonly ConcurrentDictionary<Type, Lazy<MetadataLookup>> MetadataCache = new();
+
     private CallbackDataMetadata(
         Type payloadType,
         string prefix,
@@ -30,15 +33,43 @@ internal sealed class CallbackDataMetadata
     {
         ArgumentNullException.ThrowIfNull(payloadType);
 
-        var attribute = payloadType.GetCustomAttribute<CallbackDataAttribute>(inherit: false);
-        if (attribute is null)
+        var lookup = MetadataCache.GetOrAdd(
+            payloadType,
+            static type => new Lazy<MetadataLookup>(
+                () => CreateLookup(type),
+                LazyThreadSafetyMode.ExecutionAndPublication)).Value;
+
+        if (lookup.ErrorMessage is not null)
+        {
+            throw new InvalidOperationException(lookup.ErrorMessage);
+        }
+
+        if (lookup.Metadata is null)
         {
             metadata = null!;
             return false;
         }
 
-        metadata = Create(payloadType, attribute.Prefix);
+        metadata = lookup.Metadata;
         return true;
+    }
+
+    private static MetadataLookup CreateLookup(Type payloadType)
+    {
+        var attribute = payloadType.GetCustomAttribute<CallbackDataAttribute>(inherit: false);
+        if (attribute is null)
+        {
+            return MetadataLookup.Missing;
+        }
+
+        try
+        {
+            return MetadataLookup.Valid(Create(payloadType, attribute.Prefix));
+        }
+        catch (InvalidOperationException exception)
+        {
+            return MetadataLookup.Invalid(exception.Message);
+        }
     }
 
     private static CallbackDataMetadata Create(Type payloadType, string prefix)
@@ -213,6 +244,33 @@ internal sealed class CallbackDataMetadata
         return value
             .Replace("%3A", ":", StringComparison.Ordinal)
             .Replace("%25", "%", StringComparison.Ordinal);
+    }
+
+    private sealed class MetadataLookup
+    {
+        public static readonly MetadataLookup Missing = new(metadata: null, errorMessage: null);
+
+        private MetadataLookup(
+            CallbackDataMetadata? metadata,
+            string? errorMessage)
+        {
+            Metadata = metadata;
+            ErrorMessage = errorMessage;
+        }
+
+        public CallbackDataMetadata? Metadata { get; }
+
+        public string? ErrorMessage { get; }
+
+        public static MetadataLookup Valid(CallbackDataMetadata metadata)
+        {
+            return new MetadataLookup(metadata, errorMessage: null);
+        }
+
+        public static MetadataLookup Invalid(string errorMessage)
+        {
+            return new MetadataLookup(metadata: null, errorMessage);
+        }
     }
 }
 
