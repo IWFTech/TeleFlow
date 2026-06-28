@@ -55,7 +55,6 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
         }
 
         var debugEnabled = _logger.IsEnabled(LogLevel.Debug);
-        var errorEnabled = _logger.IsEnabled(LogLevel.Error);
         string? updateType = null;
         string GetUpdateType() => updateType ??= TelegramUpdateLogFormatter.GetUpdateType(payload.Update);
 
@@ -167,7 +166,7 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
                 return logContext.Value;
             }
 
-            if (errorEnabled)
+            if (_logger.IsEnabled(LogLevel.Error))
             {
                 LogHandlerFailure(
                     exception,
