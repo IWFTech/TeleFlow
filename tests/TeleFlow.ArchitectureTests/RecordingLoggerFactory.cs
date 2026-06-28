@@ -2,13 +2,13 @@ using Microsoft.Extensions.Logging;
 
 namespace TeleFlow.ArchitectureTests;
 
-internal sealed class RecordingLoggerFactory : ILoggerFactory
+internal sealed class RecordingLoggerFactory(LogLevel minimumLevel = LogLevel.Trace) : ILoggerFactory
 {
     public List<TestLogEntry> Entries { get; } = [];
 
     public ILogger CreateLogger(string categoryName)
     {
-        return new RecordingLogger(categoryName, Entries);
+        return new RecordingLogger(categoryName, minimumLevel, Entries);
     }
 
     public void AddProvider(ILoggerProvider provider)
@@ -21,6 +21,7 @@ internal sealed class RecordingLoggerFactory : ILoggerFactory
 
     private sealed class RecordingLogger(
         string categoryName,
+        LogLevel minimumLevel,
         List<TestLogEntry> entries) : ILogger
     {
         public IDisposable? BeginScope<TState>(TState state)
@@ -31,7 +32,7 @@ internal sealed class RecordingLoggerFactory : ILoggerFactory
 
         public bool IsEnabled(LogLevel logLevel)
         {
-            return true;
+            return logLevel >= minimumLevel && minimumLevel != LogLevel.None;
         }
 
         public void Log<TState>(

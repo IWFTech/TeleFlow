@@ -89,6 +89,12 @@ builder.Services.AddLogging(logging =>
 
 For enterprise deployments, route logs to your existing platform and keep update id, chat id, handler, and exception type searchable.
 
+## Handler Timing Logs
+
+Detailed handler timing is collected only when `LogLevel.Debug` is enabled for the Telegram framework logger. In Debug logs TeleFlow can report handler duration, Telegram request count, Telegram request time, and handler logic time.
+
+When Debug logging is disabled, the normal successful handler path does not create handler request timing scopes. Error logs still include update id, update type, handler, route, module, scene, and exception type, but they do not include detailed timing fields that were not collected.
+
 ## Diagnostics Recommendation
 
 Start with:

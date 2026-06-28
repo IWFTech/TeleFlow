@@ -201,6 +201,36 @@ public sealed class TelegramHandlerDispatcherTests
     }
 
     [Fact]
+    public async Task Dispatcher_DoesNotLogHandlerTimingWhenDebugDisabled()
+    {
+        var loggerFactory = new RecordingLoggerFactory(LogLevel.Information);
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.RemoveAll<ILoggerFactory>();
+                services.AddSingleton<ILoggerFactory>(loggerFactory);
+                services.RemoveAll<ITelegramTransport>();
+                services.AddSingleton<ITelegramTransport>(
+                    new SequencedTelegramTransport(CreateGetMeResponse()));
+                services.AddTelegramHandler<OneTelegramRequestMessageHandler>();
+            });
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("hello"));
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        Assert.Equal(["one-request:42"], probe.Events);
+        Assert.DoesNotContain(
+            loggerFactory.Entries,
+            entry => entry.Category.EndsWith("TelegramHandlerDispatcher", StringComparison.Ordinal) &&
+                     entry.Message.Contains("Telegram handler completed", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            loggerFactory.Entries,
+            entry => entry.Category.EndsWith("TelegramHandlerDispatcher", StringComparison.Ordinal) &&
+                     entry.Message.Contains("telegram_request_count=", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Dispatcher_LogsNoMatchedHandler()
     {
         var loggerFactory = new RecordingLoggerFactory();
@@ -253,6 +283,37 @@ public sealed class TelegramHandlerDispatcherTests
     }
 
     [Fact]
+    public async Task Dispatcher_LogsFailedHandlerWithoutTimingWhenDebugDisabled()
+    {
+        var loggerFactory = new RecordingLoggerFactory(LogLevel.Information);
+        var expected = new InvalidOperationException("handler failed");
+        ThrowingMessageHandler.Exception = expected;
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.RemoveAll<ILoggerFactory>();
+                services.AddSingleton<ILoggerFactory>(loggerFactory);
+                services.AddTelegramHandler<ThrowingMessageHandler>();
+            });
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => DispatchAsync(serviceProvider, CreateMessageUpdate("boom")));
+
+        Assert.Same(expected, exception);
+        var entry = Assert.Single(
+            loggerFactory.Entries,
+            entry => entry.Level == LogLevel.Error &&
+                     ReferenceEquals(entry.Exception, expected) &&
+                     entry.Message.Contains("Telegram handler failed", StringComparison.Ordinal));
+
+        Assert.Contains("handler=ThrowingMessageHandler.Handle", entry.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("handler_ms=", entry.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("telegram_request_count=", entry.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("telegram_request_ms=", entry.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("handler_logic_ms=", entry.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ErrorHandler_HandlesSelectedHandlerException()
     {
         var expected = new InvalidOperationException("handler failed");
@@ -269,6 +330,54 @@ public sealed class TelegramHandlerDispatcherTests
         await DispatchAsync(serviceProvider, CreateMessageUpdate("boom"));
 
         Assert.Equal(["handled:handler failed"], probe.Events);
+    }
+
+    [Fact]
+    public async Task ErrorHandler_LogsCompletionWhenDebugEnabled()
+    {
+        var loggerFactory = new RecordingLoggerFactory();
+        var expected = new InvalidOperationException("handler failed");
+        ThrowingMessageHandler.Exception = expected;
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.RemoveAll<ILoggerFactory>();
+                services.AddSingleton<ILoggerFactory>(loggerFactory);
+                services.AddTelegramHandler<ThrowingMessageHandler>();
+                services.AddTelegramHandler<HandledErrorHandler>();
+            });
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("boom"));
+
+        Assert.Contains(
+            loggerFactory.Entries,
+            entry => entry.Level == LogLevel.Debug &&
+                     entry.Message.Contains("Telegram error handler completed", StringComparison.Ordinal) &&
+                     entry.Message.Contains("handler=ThrowingMessageHandler.Handle", StringComparison.Ordinal) &&
+                     entry.Message.Contains("error_handler=HandledErrorHandler.Handle", StringComparison.Ordinal) &&
+                     entry.Message.Contains("handled=True", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task ErrorHandler_DoesNotLogCompletionWhenDebugDisabled()
+    {
+        var loggerFactory = new RecordingLoggerFactory(LogLevel.Information);
+        var expected = new InvalidOperationException("handler failed");
+        ThrowingMessageHandler.Exception = expected;
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.RemoveAll<ILoggerFactory>();
+                services.AddSingleton<ILoggerFactory>(loggerFactory);
+                services.AddTelegramHandler<ThrowingMessageHandler>();
+                services.AddTelegramHandler<HandledErrorHandler>();
+            });
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("boom"));
+
+        Assert.DoesNotContain(
+            loggerFactory.Entries,
+            entry => entry.Message.Contains("Telegram error handler completed", StringComparison.Ordinal));
     }
 
     [Fact]
