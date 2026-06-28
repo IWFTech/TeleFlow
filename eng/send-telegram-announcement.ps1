@@ -122,6 +122,22 @@ function Select-MarkdownSection {
     return $match.Groups[1].Value.Trim()
 }
 
+function Remove-MarkdownSection {
+    param(
+        [AllowEmptyString()][string] $Text,
+        [string] $Heading
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Text) -or [string]::IsNullOrWhiteSpace($Heading)) {
+        return $Text
+    }
+
+    $escapedHeading = [System.Text.RegularExpressions.Regex]::Escape($Heading)
+    $pattern = "(?ms)^\s*#{1,6}\s+$escapedHeading\s*$\s*.*?(?=^\s*#{1,6}\s+\S|\z)"
+
+    return [System.Text.RegularExpressions.Regex]::Replace($Text, $pattern, "").Trim()
+}
+
 function ConvertTo-Announcement {
     param([object] $Payload)
 
@@ -317,11 +333,34 @@ function New-AnnouncementText {
     $header = New-AnnouncementHeaderText $Announcement
     $previewLength = Get-BodyPreviewLength $Announcement.Kind
     $normalizedBody = ([string] $Announcement.Body).Trim()
+    $summary = ""
 
-    if ($Announcement.Kind -eq "pull_request") {
-        $normalizedBody = Select-MarkdownSection `
+    if ($Announcement.Kind -eq "issue" -or $Announcement.Kind -eq "pull_request") {
+        $summary = Select-MarkdownSection `
             -Text $normalizedBody `
             -Heading "Summary"
+
+        $hasSummary = -not [string]::IsNullOrWhiteSpace($summary)
+        $summaryIsBody = [string]::Equals($summary, $normalizedBody, [StringComparison]::Ordinal)
+
+        if ($hasSummary -and -not $summaryIsBody) {
+            $normalizedBody = Remove-MarkdownSection `
+                -Text $normalizedBody `
+                -Heading "Summary"
+
+            if ($Announcement.Kind -eq "pull_request") {
+                $normalizedBody = ""
+            }
+        }
+        else {
+            $summary = ""
+        }
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($summary)) {
+        $summary = ConvertTo-PlainTextPreview `
+            -Text $summary `
+            -MaximumLength $previewLength
     }
 
     if ($previewLength -ge 0) {
@@ -330,11 +369,27 @@ function New-AnnouncementText {
             -MaximumLength $previewLength
     }
 
+    if (-not [string]::IsNullOrWhiteSpace($summary)) {
+        $header += "`n`n<b>Summary</b>"
+
+        $normalizedBody = if ([string]::IsNullOrWhiteSpace($normalizedBody)) {
+            $summary
+        }
+        else {
+            $summary + "`n`n" + $normalizedBody
+        }
+    }
+
     if ([string]::IsNullOrWhiteSpace($normalizedBody)) {
         return @($header)
     }
 
-    $quotePrefix = "`n`n<blockquote expandable>"
+    $quotePrefix = if (-not [string]::IsNullOrWhiteSpace($summary)) {
+        "`n<blockquote expandable>"
+    }
+    else {
+        "`n`n<blockquote expandable>"
+    }
     $quoteSuffix = "</blockquote>"
     $availableBodyLength = $MaximumMessageLength - $header.Length - $quotePrefix.Length - $quoteSuffix.Length
 
