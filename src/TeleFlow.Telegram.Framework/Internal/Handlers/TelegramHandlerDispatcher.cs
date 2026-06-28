@@ -370,43 +370,57 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
         TelegramErrorHandlerDescriptor handler,
         IReadOnlyDictionary<string, object?> routeValues)
     {
-        foreach (var parameter in handler.Parameters.Where(static parameter => parameter.Kind == TelegramErrorHandlerParameterKind.RouteValue))
+        foreach (var parameter in handler.Parameters)
         {
-            if (string.IsNullOrWhiteSpace(parameter.Name) ||
-                !routeValues.TryGetValue(parameter.Name, out var value))
+            if (parameter.Kind != TelegramErrorHandlerParameterKind.RouteValue)
             {
-                return false;
-            }
-
-            if (value is null)
-            {
-                if (parameter.ParameterType.IsValueType && Nullable.GetUnderlyingType(parameter.ParameterType) is null)
-                {
-                    return false;
-                }
-
                 continue;
             }
 
-            var underlyingParameterType = Nullable.GetUnderlyingType(parameter.ParameterType);
-
-            if (underlyingParameterType is not null)
-            {
-                if (!underlyingParameterType.IsInstanceOfType(value))
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
-            if (!parameter.ParameterType.IsInstanceOfType(value))
+            if (!HasCompatibleRouteValue(parameter, routeValues))
             {
                 return false;
             }
         }
 
         return true;
+    }
+
+    private static bool HasCompatibleRouteValue(
+        TelegramErrorHandlerParameterDescriptor parameter,
+        IReadOnlyDictionary<string, object?> routeValues)
+    {
+        return TryGetRouteValue(parameter, routeValues, out var value) &&
+               IsRouteValueAssignable(parameter.ParameterType, value);
+    }
+
+    private static bool TryGetRouteValue(
+        TelegramErrorHandlerParameterDescriptor parameter,
+        IReadOnlyDictionary<string, object?> routeValues,
+        out object? value)
+    {
+        value = null;
+
+        return !string.IsNullOrWhiteSpace(parameter.Name) &&
+               routeValues.TryGetValue(parameter.Name, out value);
+    }
+
+    private static bool IsRouteValueAssignable(Type parameterType, object? value)
+    {
+        if (value is null)
+        {
+            return IsNullableRouteValue(parameterType);
+        }
+
+        var targetType = Nullable.GetUnderlyingType(parameterType) ?? parameterType;
+
+        return targetType.IsInstanceOfType(value);
+    }
+
+    private static bool IsNullableRouteValue(Type parameterType)
+    {
+        return !parameterType.IsValueType ||
+               Nullable.GetUnderlyingType(parameterType) is not null;
     }
 
     private static int GetExceptionDistance(Type? handlerExceptionType, Type thrownExceptionType)
