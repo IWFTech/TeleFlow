@@ -1455,6 +1455,23 @@ public sealed class TelegramHandlerDispatcherTests
     }
 
     [Fact]
+    public async Task BuiltInFilterNoMatch_DoesNotResolveCustomFilter()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.AddTelegramHandler<BuiltInFilterBeforeCustomFilterHandler>();
+                services.AddTelegramHandler<AnyMessageHandler>();
+            });
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("custom"));
+
+        Assert.Equal(["message:custom"], probe.Events);
+    }
+
+    [Fact]
     public async Task TypedCallbackPayloadMismatch_DoesNotRunCustomFilter()
     {
         using var serviceProvider = CreateServiceProvider(
@@ -3885,6 +3902,18 @@ public sealed class TelegramHandlerDispatcherTests
         public Task Handle(CallbackQueryContext context, HandlerProbe probe)
         {
             probe.Events.Add($"custom-callback:{context.TelegramCallbackQuery.Data}");
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class BuiltInFilterBeforeCustomFilterHandler
+    {
+        [Message]
+        [ChatId(999)]
+        [UseFilter<ThrowingMessageFilter>]
+        public Task Handle(MessageContext context, HandlerProbe probe)
+        {
+            probe.Events.Add($"built-in-before-custom:{context.TelegramMessage.Text}");
             return Task.CompletedTask;
         }
     }

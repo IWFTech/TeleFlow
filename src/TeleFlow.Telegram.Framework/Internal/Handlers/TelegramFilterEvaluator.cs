@@ -13,17 +13,31 @@ internal static class TelegramFilterEvaluator
         IReadOnlyList<TelegramRoleRequirementDescriptor> roleRequirements,
         CancellationToken cancellationToken)
     {
-        foreach (var filter in filters.Where(static filter => filter.CustomFilterType is null))
+        for (var index = 0; index < filters.Count; index++)
         {
+            var filter = filters[index];
+
+            if (filter.CustomFilterType is not null)
+            {
+                continue;
+            }
+
             if (!MatchesBuiltInFilter(context, filter))
             {
                 return false;
             }
         }
 
-        foreach (var filter in filters.Where(static filter => filter.CustomFilterType is not null))
+        for (var index = 0; index < filters.Count; index++)
         {
-            if (!await MatchesCustomFilterAsync(context, filter.CustomFilterType!, cancellationToken).ConfigureAwait(false))
+            var filterType = filters[index].CustomFilterType;
+
+            if (filterType is null)
+            {
+                continue;
+            }
+
+            if (!await MatchesCustomFilterAsync(context, filterType, cancellationToken).ConfigureAwait(false))
             {
                 return false;
             }
@@ -54,19 +68,25 @@ internal static class TelegramFilterEvaluator
         return filter.Kind switch
         {
             TelegramFilterKind.ChatType => facts.Chat is not null &&
-                                           filter.StringValues.Contains(facts.Chat.Type, StringComparer.Ordinal),
+                                           ContainsString(
+                                               filter.StringValues,
+                                               facts.Chat.Type,
+                                               StringComparison.Ordinal),
             TelegramFilterKind.ChatId => facts.Chat is not null &&
-                                         filter.LongValues.Contains(facts.Chat.Id),
+                                         ContainsLong(filter.LongValues, facts.Chat.Id),
             TelegramFilterKind.ChatUsername => facts.Chat?.Username is { } username &&
-                                               filter.StringValues.Contains(username, StringComparer.OrdinalIgnoreCase),
+                                               ContainsString(
+                                                   filter.StringValues,
+                                                   username,
+                                                   StringComparison.OrdinalIgnoreCase),
             TelegramFilterKind.MessageThreadId => facts.MessageThreadId is { } messageThreadId &&
-                                                  filter.LongValues.Contains(messageThreadId),
+                                                  ContainsLong(filter.LongValues, messageThreadId),
             TelegramFilterKind.HasMessageThread => facts.MessageThreadId is not null,
             TelegramFilterKind.HasCallbackData => context is CallbackQueryContext callbackContext &&
                                                   !string.IsNullOrWhiteSpace(callbackContext.TelegramCallbackQuery.Data),
             TelegramFilterKind.CallbackDataPrefix => context is CallbackQueryContext callbackContext &&
                                                      callbackContext.TelegramCallbackQuery.Data is { } data &&
-                                                     filter.StringValues.Any(prefix => data.StartsWith(prefix, StringComparison.Ordinal)),
+                                                     StartsWithAnyPrefix(data, filter.StringValues),
             _ => context is MessageContext messageContext &&
                  MatchesMessageBuiltInFilter(messageContext.TelegramMessage, filter)
         };
@@ -78,7 +98,7 @@ internal static class TelegramFilterEvaluator
     {
         return filter.Kind switch
         {
-            TelegramFilterKind.FromUser => message.From is not null && filter.LongValues.Contains(message.From.Id),
+            TelegramFilterKind.FromUser => message.From is not null && ContainsLong(filter.LongValues, message.From.Id),
             TelegramFilterKind.HasText => !string.IsNullOrWhiteSpace(message.Text),
             TelegramFilterKind.HasPhoto => message.Photo is { Count: > 0 },
             TelegramFilterKind.HasDocument => message.Document is not null,
@@ -220,6 +240,52 @@ internal static class TelegramFilterEvaluator
         return filter.StringValues.Count > 0
             ? filter.StringValues[0]
             : null;
+    }
+
+    private static bool ContainsString(
+        IReadOnlyList<string> values,
+        string value,
+        StringComparison comparison)
+    {
+        for (var index = 0; index < values.Count; index++)
+        {
+            if (string.Equals(values[index], value, comparison))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool ContainsLong(
+        IReadOnlyList<long> values,
+        long value)
+    {
+        for (var index = 0; index < values.Count; index++)
+        {
+            if (values[index] == value)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool StartsWithAnyPrefix(
+        string value,
+        IReadOnlyList<string> prefixes)
+    {
+        for (var index = 0; index < prefixes.Count; index++)
+        {
+            if (value.StartsWith(prefixes[index], StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static ValueTask<TelegramMemberStatusSet?> ResolveUncachedStatusAsync(
