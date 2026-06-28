@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Reflection;
 using System.Text;
 using TeleFlow.Core.Callbacks;
 using TeleFlow.Telegram.Schema.Types;
@@ -7,6 +9,8 @@ namespace TeleFlow.Telegram;
 public sealed class InlineKeyboard
 {
     private const int MaxTelegramCallbackDataBytes = 64;
+
+    private static readonly ConcurrentDictionary<Type, CallbackPayloadSerializer> CallbackPayloadSerializers = new();
 
     private readonly List<List<InlineKeyboardButtonIntent>> _rows = [[]];
 
@@ -24,7 +28,17 @@ public sealed class InlineKeyboard
         ArgumentException.ThrowIfNullOrWhiteSpace(text);
         ArgumentNullException.ThrowIfNull(payload);
 
-        CurrentRow.Add(new InlineKeyboardButtonIntent(text, Payload: payload, CallbackData: null, Url: null));
+        var payloadObject = (object)payload;
+        var payloadSerializer = CallbackPayloadSerializers.GetOrAdd(
+            payloadObject.GetType(),
+            CreateCallbackPayloadSerializer);
+
+        CurrentRow.Add(new InlineKeyboardButtonIntent(
+            Text: text,
+            Payload: payloadObject,
+            PayloadSerializer: payloadSerializer,
+            CallbackData: null,
+            Url: null));
         return this;
     }
 
@@ -34,7 +48,12 @@ public sealed class InlineKeyboard
         ArgumentException.ThrowIfNullOrWhiteSpace(callbackData);
         ValidateCallbackDataLength(callbackData);
 
-        CurrentRow.Add(new InlineKeyboardButtonIntent(text, Payload: null, callbackData, Url: null));
+        CurrentRow.Add(new InlineKeyboardButtonIntent(
+            Text: text,
+            Payload: null,
+            PayloadSerializer: null,
+            CallbackData: callbackData,
+            Url: null));
         return this;
     }
 
@@ -66,7 +85,12 @@ public sealed class InlineKeyboard
 
     private InlineKeyboard UrlCore(string text, string url)
     {
-        CurrentRow.Add(new InlineKeyboardButtonIntent(text, Payload: null, CallbackData: null, url));
+        CurrentRow.Add(new InlineKeyboardButtonIntent(
+            Text: text,
+            Payload: null,
+            PayloadSerializer: null,
+            CallbackData: null,
+            Url: url));
         return this;
     }
 
@@ -113,20 +137,34 @@ public sealed class InlineKeyboard
         }
     }
 
+    private static CallbackPayloadSerializer CreateCallbackPayloadSerializer(Type payloadType)
+    {
+        var serializeMethod = typeof(InlineKeyboard)
+            .GetMethod(nameof(SerializeCallbackPayload), BindingFlags.NonPublic | BindingFlags.Static)!
+            .MakeGenericMethod(payloadType);
+
+        return serializeMethod.CreateDelegate<CallbackPayloadSerializer>();
+    }
+
+    private static string SerializeCallbackPayload<TPayload>(
+        ICallbackDataSerializer callbackDataSerializer,
+        object payload)
+    {
+        return callbackDataSerializer.Serialize((TPayload)payload);
+    }
+
     private sealed record InlineKeyboardButtonIntent(
         string Text,
         object? Payload,
+        CallbackPayloadSerializer? PayloadSerializer,
         string? CallbackData,
         string? Url)
     {
         public InlineKeyboardButton ToButton(ICallbackDataSerializer callbackDataSerializer)
         {
-            if (Payload is not null)
+            if (Payload is not null && PayloadSerializer is not null)
             {
-                var serializeMethod = typeof(ICallbackDataSerializer)
-                    .GetMethod(nameof(ICallbackDataSerializer.Serialize))!
-                    .MakeGenericMethod(Payload.GetType());
-                var callbackData = (string)serializeMethod.Invoke(callbackDataSerializer, [Payload])!;
+                var callbackData = PayloadSerializer(callbackDataSerializer, Payload);
 
                 return new InlineKeyboardButton
                 {
@@ -156,4 +194,6 @@ public sealed class InlineKeyboard
             throw new InvalidOperationException("Inline keyboard button intent does not contain an action.");
         }
     }
+
+    private delegate string CallbackPayloadSerializer(ICallbackDataSerializer serializer, object payload);
 }

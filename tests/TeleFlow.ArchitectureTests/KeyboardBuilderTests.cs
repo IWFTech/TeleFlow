@@ -1,3 +1,5 @@
+using TeleFlow.Annotations;
+using TeleFlow.Core.Callbacks;
 using TeleFlow.Telegram;
 using TeleFlow.Telegram.Schema.Types;
 
@@ -5,6 +7,52 @@ namespace TeleFlow.ArchitectureTests;
 
 public sealed class KeyboardBuilderTests
 {
+    [Fact]
+    public void InlineKeyboard_CreatesMarkupWithTypedStringAndUrlButtons()
+    {
+        var serializer = new TypeRecordingCallbackDataSerializer();
+        IInlineKeyboardCallback callback = new InlineKeyboardDeleteCallback(42);
+
+        var markup = InlineKeyboard.Create()
+            .Button("Delete", callback)
+            .Button("Raw", "raw:42")
+            .Row()
+            .Url("Open", "https://example.com")
+            .ToMarkup(serializer);
+
+        Assert.Equal(2, markup.InlineKeyboard.Count);
+        Assert.Equal("InlineKeyboardDeleteCallback:42", markup.InlineKeyboard[0][0].CallbackData);
+        Assert.Equal("raw:42", markup.InlineKeyboard[0][1].CallbackData);
+        Assert.Equal("https://example.com", markup.InlineKeyboard[1][0].Url);
+        Assert.Equal([typeof(InlineKeyboardDeleteCallback)], serializer.SerializedPayloadTypes);
+    }
+
+    [Fact]
+    public void InlineKeyboard_TypedCallbackButton_UsesRuntimePayloadType()
+    {
+        var serializer = new TypeRecordingCallbackDataSerializer();
+        object callback = new InlineKeyboardDeleteCallback(7);
+
+        var markup = InlineKeyboard.Create()
+            .Button("Delete", callback)
+            .ToMarkup(serializer);
+
+        Assert.Equal("InlineKeyboardDeleteCallback:7", markup.InlineKeyboard[0][0].CallbackData);
+        Assert.Equal([typeof(InlineKeyboardDeleteCallback)], serializer.SerializedPayloadTypes);
+    }
+
+    [Fact]
+    public void InlineKeyboard_TypedCallbackData_PreservesTelegramByteLimitValidation()
+    {
+        var serializer = new JsonCallbackDataSerializer(TelegramJsonOptions.CreateDefault());
+        var keyboard = InlineKeyboard.Create()
+            .Button("Large", new LargeInlineKeyboardCallback(new string('x', 80)));
+
+        var exception = Assert.Throws<InvalidOperationException>(() => keyboard.ToMarkup(serializer));
+
+        Assert.Contains("64 UTF-8 bytes", exception.Message);
+    }
+
     [Fact]
     public void ReplyKeyboard_CreatesMarkupWithRowsAndOptions()
     {
@@ -97,5 +145,34 @@ public sealed class KeyboardBuilderTests
 
         Assert.Contains("64", exception.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("placeholder", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private interface IInlineKeyboardCallback
+    {
+        int Id { get; }
+    }
+
+    private sealed record InlineKeyboardDeleteCallback(int Id) : IInlineKeyboardCallback;
+
+    [CallbackData("large")]
+    private sealed record LargeInlineKeyboardCallback(string Value);
+
+    private sealed class TypeRecordingCallbackDataSerializer : ICallbackDataSerializer
+    {
+        public List<Type> SerializedPayloadTypes { get; } = [];
+
+        public string Serialize<TPayload>(TPayload payload)
+        {
+            SerializedPayloadTypes.Add(typeof(TPayload));
+
+            return payload is IInlineKeyboardCallback callback
+                ? $"{typeof(TPayload).Name}:{callback.Id}"
+                : typeof(TPayload).Name;
+        }
+
+        public TPayload Deserialize<TPayload>(string serializedPayload)
+        {
+            throw new NotSupportedException();
+        }
     }
 }
