@@ -72,7 +72,7 @@ Use `ResetAsync` when both state and state data should be cleared.
 | `ClearAsync()` | Clears only the current state value. |
 | `ResetAsync()` | Clears state data first, then clears the current state. |
 
-`ctx.State` caches the current state snapshot for the duration of one update. The first `GetAsync` reads storage, later current-state reads in the same update use the snapshot, and successful `SetAsync` or `ClearAsync` calls update it. Failed storage calls do not update the snapshot. Direct writes through `IStateStore` in the same update are outside this synchronization path; use `ctx.State` inside handlers and middleware.
+`ctx.State` caches a hydrated current state snapshot for the duration of one update. The first `GetAsync` reads storage, later current-state reads in the same update use the snapshot, and successful `SetAsync` or `ClearAsync` calls update it. Failed storage calls do not update the snapshot. Direct writes through `IStateStore` in the same update are outside this synchronization path; use `ctx.State` inside handlers and middleware.
 
 `ctx.State.Data` stores small JSON-serialized values by string key:
 
@@ -132,8 +132,8 @@ Wizard API:
 
 | API | Behavior |
 | --- | --- |
-| `GetCurrentAsync()` | Reads the current wizard state or returns `null`. |
-| `Current` | Returns the current state snapshot; throws if no state is active in the current update. |
+| `GetCurrentAsync()` | Reads storage when needed, hydrates the current state snapshot, and returns the current wizard state or `null`. |
+| `Current` | Returns the already-hydrated current state snapshot synchronously; does not perform storage I/O and throws if the snapshot has not been hydrated or no state is active. |
 | `GoToAsync(state)` | Sets the next state and pushes the previous state into history when one existed. |
 | `BackAsync()` | Restores the previous state; throws when history is empty. |
 | `ResetAsync()` | Clears state data, history, and the current state. |
