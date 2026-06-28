@@ -100,9 +100,11 @@ jobs:
           }
 
           foreach ($package in $packages) {
+              # Symbol packages are pushed explicitly below. Prevent dotnet from auto-pushing matching .snupkg files here.
               dotnet nuget push $package.FullName `
                   --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" `
                   --source "https://api.nuget.org/v3/index.json" `
+                  --no-symbols `
                   --skip-duplicate
 
               if ($LASTEXITCODE -ne 0) {
