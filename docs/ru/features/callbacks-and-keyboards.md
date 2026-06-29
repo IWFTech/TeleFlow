@@ -40,6 +40,9 @@ Typed payloads лучше, когда callback data несёт structured inform
 public sealed record TicketAction(long Id, string Action);
 ```
 
+Примеры button style ниже используют generated Bot API constants из
+`TeleFlow.Telegram.Schema.Constants`.
+
 Создание buttons:
 
 ```csharp
@@ -50,11 +53,11 @@ public Task Ticket(MessageContext ctx, long id, CancellationToken ct)
         .Button(
             "Take",
             new TicketAction(id, "take"),
-            new InlineKeyboardButtonOptions { Style = "primary" })
+            new InlineKeyboardButtonOptions { Style = ButtonStyles.Primary })
         .Button(
             "Resolve",
             new TicketAction(id, "resolve"),
-            new InlineKeyboardButtonOptions { Style = "success" })
+            new InlineKeyboardButtonOptions { Style = ButtonStyles.Success })
         .Build();
 
     return ctx.Message.AnswerAsync($"Ticket #{id}", keyboard, ct);
@@ -156,7 +159,7 @@ var keyboard = new InlineKeyboardMarkup
             {
                 Text = "Delete",
                 CallbackData = "ticket:delete:42",
-                Style = "danger"
+                Style = ButtonStyles.Danger
             }
         ]
     ]
@@ -167,7 +170,9 @@ await ctx.Message.AnswerAsync("Choose:", keyboard, ct);
 
 Builder стоит использовать для обычных сценариев. Нативная markup нужна, когда
 требуется полный контроль Bot API или новое Telegram-поле, для которого builder
-ещё не успел получить удобный wrapper.
+ещё не успел получить удобный wrapper. Если Telegram добавил string value до
+того, как schema package сгенерировал для него constant, передай эту строку
+напрямую.
 
 ## Remove keyboard
 

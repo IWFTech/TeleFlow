@@ -1,5 +1,6 @@
 using TeleFlow.Annotations;
 using TeleFlow.Telegram;
+using TeleFlow.Telegram.Schema.Constants;
 using TeleFlow.Telegram.Schema.Types;
 
 namespace TeleFlow.ArchitectureTests;
@@ -15,22 +16,22 @@ public sealed class KeyboardBuilderTests
                 new InlineKeyboardDeleteCallback(42),
                 new InlineKeyboardButtonOptions
                 {
-                    Style = "danger",
+                    Style = ButtonStyles.Danger,
                     IconCustomEmojiId = "emoji-delete"
                 })
-            .Button("Raw", "raw:42", new InlineKeyboardButtonOptions { Style = "primary" })
+            .Button("Raw", "raw:42", new InlineKeyboardButtonOptions { Style = ButtonStyles.Primary })
             .Row()
-            .Url("Open", "https://example.com", new InlineKeyboardButtonOptions { Style = "success" })
+            .Url("Open", "https://example.com", new InlineKeyboardButtonOptions { Style = ButtonStyles.Success })
             .Build();
 
         Assert.Equal(2, markup.InlineKeyboard.Count);
         Assert.Equal("del:42", markup.InlineKeyboard[0][0].CallbackData);
-        Assert.Equal("danger", markup.InlineKeyboard[0][0].Style);
+        Assert.Equal(ButtonStyles.Danger, markup.InlineKeyboard[0][0].Style);
         Assert.Equal("emoji-delete", markup.InlineKeyboard[0][0].IconCustomEmojiId);
         Assert.Equal("raw:42", markup.InlineKeyboard[0][1].CallbackData);
-        Assert.Equal("primary", markup.InlineKeyboard[0][1].Style);
+        Assert.Equal(ButtonStyles.Primary, markup.InlineKeyboard[0][1].Style);
         Assert.Equal("https://example.com", markup.InlineKeyboard[1][0].Url);
-        Assert.Equal("success", markup.InlineKeyboard[1][0].Style);
+        Assert.Equal(ButtonStyles.Success, markup.InlineKeyboard[1][0].Style);
     }
 
     [Fact]
