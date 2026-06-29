@@ -877,142 +877,94 @@ file sealed class RichTextJsonConverter : JsonConverter<RichText>
             throw new JsonException("Unable to deserialize RichText: unexpected JSON token.");
         }
 
-        var objectReader = reader;
-        ReadObjectMetadata(
-            ref objectReader,
-            out var typeDiscriminator);
+        using var document = JsonDocument.ParseValue(ref reader);
 
-        if (typeDiscriminator is not null)
+        if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
         {
-            switch (typeDiscriminator)
+            var discriminator = typeElement.GetString();
+            switch (discriminator)
             {
                 case "anchor":
-                    return RichText.From(JsonSerializer.Deserialize<RichTextAnchor>(ref reader, options)
+                    return RichText.From(document.RootElement.Deserialize<RichTextAnchor>(options)
                         ?? throw new JsonException("Unable to deserialize RichText as RichTextAnchor."));
                 case "anchor_link":
-                    return RichText.From(JsonSerializer.Deserialize<RichTextAnchorLink>(ref reader, options)
+                    return RichText.From(document.RootElement.Deserialize<RichTextAnchorLink>(options)
                         ?? throw new JsonException("Unable to deserialize RichText as RichTextAnchorLink."));
                 case "bank_card_number":
-                    return RichText.From(JsonSerializer.Deserialize<RichTextBankCardNumber>(ref reader, options)
+                    return RichText.From(document.RootElement.Deserialize<RichTextBankCardNumber>(options)
                         ?? throw new JsonException("Unable to deserialize RichText as RichTextBankCardNumber."));
                 case "bold":
-                    return RichText.From(JsonSerializer.Deserialize<RichTextBold>(ref reader, options)
+                    return RichText.From(document.RootElement.Deserialize<RichTextBold>(options)
                         ?? throw new JsonException("Unable to deserialize RichText as RichTextBold."));
                 case "bot_command":
-                    return RichText.From(JsonSerializer.Deserialize<RichTextBotCommand>(ref reader, options)
+                    return RichText.From(document.RootElement.Deserialize<RichTextBotCommand>(options)
                         ?? throw new JsonException("Unable to deserialize RichText as RichTextBotCommand."));
                 case "cashtag":
-                    return RichText.From(JsonSerializer.Deserialize<RichTextCashtag>(ref reader, options)
+                    return RichText.From(document.RootElement.Deserialize<RichTextCashtag>(options)
                         ?? throw new JsonException("Unable to deserialize RichText as RichTextCashtag."));
                 case "code":
-                    return RichText.From(JsonSerializer.Deserialize<RichTextCode>(ref reader, options)
+                    return RichText.From(document.RootElement.Deserialize<RichTextCode>(options)
                         ?? throw new JsonException("Unable to deserialize RichText as RichTextCode."));
                 case "custom_emoji":
-                    return RichText.From(JsonSerializer.Deserialize<RichTextCustomEmoji>(ref reader, options)
+                    return RichText.From(document.RootElement.Deserialize<RichTextCustomEmoji>(options)
                         ?? throw new JsonException("Unable to deserialize RichText as RichTextCustomEmoji."));
                 case "date_time":
-                    return RichText.From(JsonSerializer.Deserialize<RichTextDateTime>(ref reader, options)
+                    return RichText.From(document.RootElement.Deserialize<RichTextDateTime>(options)
                         ?? throw new JsonException("Unable to deserialize RichText as RichTextDateTime."));
                 case "email_address":
-                    return RichText.From(JsonSerializer.Deserialize<RichTextEmailAddress>(ref reader, options)
+                    return RichText.From(document.RootElement.Deserialize<RichTextEmailAddress>(options)
                         ?? throw new JsonException("Unable to deserialize RichText as RichTextEmailAddress."));
                 case "hashtag":
-                    return RichText.From(JsonSerializer.Deserialize<RichTextHashtag>(ref reader, options)
+                    return RichText.From(document.RootElement.Deserialize<RichTextHashtag>(options)
                         ?? throw new JsonException("Unable to deserialize RichText as RichTextHashtag."));
                 case "italic":
-                    return RichText.From(JsonSerializer.Deserialize<RichTextItalic>(ref reader, options)
+                    return RichText.From(document.RootElement.Deserialize<RichTextItalic>(options)
                         ?? throw new JsonException("Unable to deserialize RichText as RichTextItalic."));
                 case "marked":
-                    return RichText.From(JsonSerializer.Deserialize<RichTextMarked>(ref reader, options)
+                    return RichText.From(document.RootElement.Deserialize<RichTextMarked>(options)
                         ?? throw new JsonException("Unable to deserialize RichText as RichTextMarked."));
                 case "mathematical_expression":
-                    return RichText.From(JsonSerializer.Deserialize<RichTextMathematicalExpression>(ref reader, options)
+                    return RichText.From(document.RootElement.Deserialize<RichTextMathematicalExpression>(options)
                         ?? throw new JsonException("Unable to deserialize RichText as RichTextMathematicalExpression."));
                 case "mention":
-                    return RichText.From(JsonSerializer.Deserialize<RichTextMention>(ref reader, options)
+                    return RichText.From(document.RootElement.Deserialize<RichTextMention>(options)
                         ?? throw new JsonException("Unable to deserialize RichText as RichTextMention."));
                 case "phone_number":
-                    return RichText.From(JsonSerializer.Deserialize<RichTextPhoneNumber>(ref reader, options)
+                    return RichText.From(document.RootElement.Deserialize<RichTextPhoneNumber>(options)
                         ?? throw new JsonException("Unable to deserialize RichText as RichTextPhoneNumber."));
                 case "reference":
-                    return RichText.From(JsonSerializer.Deserialize<RichTextReference>(ref reader, options)
+                    return RichText.From(document.RootElement.Deserialize<RichTextReference>(options)
                         ?? throw new JsonException("Unable to deserialize RichText as RichTextReference."));
                 case "reference_link":
-                    return RichText.From(JsonSerializer.Deserialize<RichTextReferenceLink>(ref reader, options)
+                    return RichText.From(document.RootElement.Deserialize<RichTextReferenceLink>(options)
                         ?? throw new JsonException("Unable to deserialize RichText as RichTextReferenceLink."));
                 case "spoiler":
-                    return RichText.From(JsonSerializer.Deserialize<RichTextSpoiler>(ref reader, options)
+                    return RichText.From(document.RootElement.Deserialize<RichTextSpoiler>(options)
                         ?? throw new JsonException("Unable to deserialize RichText as RichTextSpoiler."));
                 case "strikethrough":
-                    return RichText.From(JsonSerializer.Deserialize<RichTextStrikethrough>(ref reader, options)
+                    return RichText.From(document.RootElement.Deserialize<RichTextStrikethrough>(options)
                         ?? throw new JsonException("Unable to deserialize RichText as RichTextStrikethrough."));
                 case "subscript":
-                    return RichText.From(JsonSerializer.Deserialize<RichTextSubscript>(ref reader, options)
+                    return RichText.From(document.RootElement.Deserialize<RichTextSubscript>(options)
                         ?? throw new JsonException("Unable to deserialize RichText as RichTextSubscript."));
                 case "superscript":
-                    return RichText.From(JsonSerializer.Deserialize<RichTextSuperscript>(ref reader, options)
+                    return RichText.From(document.RootElement.Deserialize<RichTextSuperscript>(options)
                         ?? throw new JsonException("Unable to deserialize RichText as RichTextSuperscript."));
                 case "text_mention":
-                    return RichText.From(JsonSerializer.Deserialize<RichTextTextMention>(ref reader, options)
+                    return RichText.From(document.RootElement.Deserialize<RichTextTextMention>(options)
                         ?? throw new JsonException("Unable to deserialize RichText as RichTextTextMention."));
                 case "underline":
-                    return RichText.From(JsonSerializer.Deserialize<RichTextUnderline>(ref reader, options)
+                    return RichText.From(document.RootElement.Deserialize<RichTextUnderline>(options)
                         ?? throw new JsonException("Unable to deserialize RichText as RichTextUnderline."));
                 case "url":
-                    return RichText.From(JsonSerializer.Deserialize<RichTextUrl>(ref reader, options)
+                    return RichText.From(document.RootElement.Deserialize<RichTextUrl>(options)
                         ?? throw new JsonException("Unable to deserialize RichText as RichTextUrl."));
                 default:
-                    throw new JsonException($"Unknown discriminator value '{typeDiscriminator}' for RichText.");
+                    throw new JsonException($"Unknown discriminator value '{discriminator}' for RichText.");
             }
         }
 
         throw new JsonException("Unable to deserialize RichText from the provided Telegram payload.");
-    }
-
-    private static void ReadObjectMetadata(
-        ref Utf8JsonReader reader,
-        out string? typeDiscriminator)
-    {
-        typeDiscriminator = null;
-
-        while (reader.Read())
-        {
-            if (reader.TokenType == JsonTokenType.EndObject)
-            {
-                return;
-            }
-
-            if (reader.TokenType != JsonTokenType.PropertyName)
-            {
-                throw new JsonException("Unable to scan union object metadata: expected a JSON property name.");
-            }
-
-            if (reader.ValueTextEquals("type"u8))
-            {
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                typeDiscriminator = null;
-                if (reader.TokenType == JsonTokenType.String)
-                {
-                    typeDiscriminator = reader.GetString();
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (!reader.Read())
-            {
-                throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-            }
-
-            reader.Skip();
-        }
-
-        throw new JsonException("Unable to scan union object metadata: object was not closed.");
     }
 
     public override void Write(Utf8JsonWriter writer, RichText value, JsonSerializerOptions options)

@@ -222,254 +222,45 @@ file sealed class InputMessageContentJsonConverter : JsonConverter<InputMessageC
             throw new JsonException("Unable to deserialize InputMessageContent: unexpected JSON token.");
         }
 
-        var objectReader = reader;
-        ReadObjectMetadata(
-            ref objectReader,
-            out var hasAddressProperty,
-            out var hasCurrencyProperty,
-            out var hasDescriptionProperty,
-            out var hasFirstNameProperty,
-            out var hasLatitudeProperty,
-            out var hasLongitudeProperty,
-            out var hasMessageTextProperty,
-            out var hasPayloadProperty,
-            out var hasPhoneNumberProperty,
-            out var hasPricesProperty,
-            out var hasRichMessageProperty,
-            out var hasTitleProperty);
+        using var document = JsonDocument.ParseValue(ref reader);
 
-        if (hasCurrencyProperty && hasDescriptionProperty && hasPayloadProperty && hasPricesProperty && hasTitleProperty)
+        if (document.RootElement.TryGetProperty("currency", out _) && document.RootElement.TryGetProperty("description", out _) && document.RootElement.TryGetProperty("payload", out _) && document.RootElement.TryGetProperty("prices", out _) && document.RootElement.TryGetProperty("title", out _))
         {
-            return InputMessageContent.From(JsonSerializer.Deserialize<InputInvoiceMessageContent>(ref reader, options)
+            return InputMessageContent.From(document.RootElement.Deserialize<InputInvoiceMessageContent>(options)
                 ?? throw new JsonException("Unable to deserialize InputMessageContent as InputInvoiceMessageContent."));
         }
 
-        if (hasAddressProperty && hasLatitudeProperty && hasLongitudeProperty && hasTitleProperty)
+        if (document.RootElement.TryGetProperty("address", out _) && document.RootElement.TryGetProperty("latitude", out _) && document.RootElement.TryGetProperty("longitude", out _) && document.RootElement.TryGetProperty("title", out _))
         {
-            return InputMessageContent.From(JsonSerializer.Deserialize<InputVenueMessageContent>(ref reader, options)
+            return InputMessageContent.From(document.RootElement.Deserialize<InputVenueMessageContent>(options)
                 ?? throw new JsonException("Unable to deserialize InputMessageContent as InputVenueMessageContent."));
         }
 
-        if (hasFirstNameProperty && hasPhoneNumberProperty)
+        if (document.RootElement.TryGetProperty("first_name", out _) && document.RootElement.TryGetProperty("phone_number", out _))
         {
-            return InputMessageContent.From(JsonSerializer.Deserialize<InputContactMessageContent>(ref reader, options)
+            return InputMessageContent.From(document.RootElement.Deserialize<InputContactMessageContent>(options)
                 ?? throw new JsonException("Unable to deserialize InputMessageContent as InputContactMessageContent."));
         }
 
-        if (hasLatitudeProperty && hasLongitudeProperty)
+        if (document.RootElement.TryGetProperty("latitude", out _) && document.RootElement.TryGetProperty("longitude", out _))
         {
-            return InputMessageContent.From(JsonSerializer.Deserialize<InputLocationMessageContent>(ref reader, options)
+            return InputMessageContent.From(document.RootElement.Deserialize<InputLocationMessageContent>(options)
                 ?? throw new JsonException("Unable to deserialize InputMessageContent as InputLocationMessageContent."));
         }
 
-        if (hasRichMessageProperty)
+        if (document.RootElement.TryGetProperty("rich_message", out _))
         {
-            return InputMessageContent.From(JsonSerializer.Deserialize<InputRichMessageContent>(ref reader, options)
+            return InputMessageContent.From(document.RootElement.Deserialize<InputRichMessageContent>(options)
                 ?? throw new JsonException("Unable to deserialize InputMessageContent as InputRichMessageContent."));
         }
 
-        if (hasMessageTextProperty)
+        if (document.RootElement.TryGetProperty("message_text", out _))
         {
-            return InputMessageContent.From(JsonSerializer.Deserialize<InputTextMessageContent>(ref reader, options)
+            return InputMessageContent.From(document.RootElement.Deserialize<InputTextMessageContent>(options)
                 ?? throw new JsonException("Unable to deserialize InputMessageContent as InputTextMessageContent."));
         }
 
         throw new JsonException("Unable to deserialize InputMessageContent from the provided Telegram payload.");
-    }
-
-    private static void ReadObjectMetadata(
-        ref Utf8JsonReader reader,
-        out bool hasAddressProperty,
-        out bool hasCurrencyProperty,
-        out bool hasDescriptionProperty,
-        out bool hasFirstNameProperty,
-        out bool hasLatitudeProperty,
-        out bool hasLongitudeProperty,
-        out bool hasMessageTextProperty,
-        out bool hasPayloadProperty,
-        out bool hasPhoneNumberProperty,
-        out bool hasPricesProperty,
-        out bool hasRichMessageProperty,
-        out bool hasTitleProperty)
-    {
-        hasAddressProperty = false;
-        hasCurrencyProperty = false;
-        hasDescriptionProperty = false;
-        hasFirstNameProperty = false;
-        hasLatitudeProperty = false;
-        hasLongitudeProperty = false;
-        hasMessageTextProperty = false;
-        hasPayloadProperty = false;
-        hasPhoneNumberProperty = false;
-        hasPricesProperty = false;
-        hasRichMessageProperty = false;
-        hasTitleProperty = false;
-
-        while (reader.Read())
-        {
-            if (reader.TokenType == JsonTokenType.EndObject)
-            {
-                return;
-            }
-
-            if (reader.TokenType != JsonTokenType.PropertyName)
-            {
-                throw new JsonException("Unable to scan union object metadata: expected a JSON property name.");
-            }
-
-            if (reader.ValueTextEquals("address"u8))
-            {
-                hasAddressProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("currency"u8))
-            {
-                hasCurrencyProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("description"u8))
-            {
-                hasDescriptionProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("first_name"u8))
-            {
-                hasFirstNameProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("latitude"u8))
-            {
-                hasLatitudeProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("longitude"u8))
-            {
-                hasLongitudeProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("message_text"u8))
-            {
-                hasMessageTextProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("payload"u8))
-            {
-                hasPayloadProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("phone_number"u8))
-            {
-                hasPhoneNumberProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("prices"u8))
-            {
-                hasPricesProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("rich_message"u8))
-            {
-                hasRichMessageProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("title"u8))
-            {
-                hasTitleProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (!reader.Read())
-            {
-                throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-            }
-
-            reader.Skip();
-        }
-
-        throw new JsonException("Unable to scan union object metadata: object was not closed.");
     }
 
     public override void Write(Utf8JsonWriter writer, InputMessageContent value, JsonSerializerOptions options)

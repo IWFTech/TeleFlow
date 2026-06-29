@@ -253,88 +253,40 @@ file sealed class TransactionPartnerJsonConverter : JsonConverter<TransactionPar
             throw new JsonException("Unable to deserialize TransactionPartner: unexpected JSON token.");
         }
 
-        var objectReader = reader;
-        ReadObjectMetadata(
-            ref objectReader,
-            out var typeDiscriminator);
+        using var document = JsonDocument.ParseValue(ref reader);
 
-        if (typeDiscriminator is not null)
+        if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
         {
-            switch (typeDiscriminator)
+            var discriminator = typeElement.GetString();
+            switch (discriminator)
             {
                 case "affiliate_program":
-                    return TransactionPartner.From(JsonSerializer.Deserialize<TransactionPartnerAffiliateProgram>(ref reader, options)
+                    return TransactionPartner.From(document.RootElement.Deserialize<TransactionPartnerAffiliateProgram>(options)
                         ?? throw new JsonException("Unable to deserialize TransactionPartner as TransactionPartnerAffiliateProgram."));
                 case "chat":
-                    return TransactionPartner.From(JsonSerializer.Deserialize<TransactionPartnerChat>(ref reader, options)
+                    return TransactionPartner.From(document.RootElement.Deserialize<TransactionPartnerChat>(options)
                         ?? throw new JsonException("Unable to deserialize TransactionPartner as TransactionPartnerChat."));
                 case "fragment":
-                    return TransactionPartner.From(JsonSerializer.Deserialize<TransactionPartnerFragment>(ref reader, options)
+                    return TransactionPartner.From(document.RootElement.Deserialize<TransactionPartnerFragment>(options)
                         ?? throw new JsonException("Unable to deserialize TransactionPartner as TransactionPartnerFragment."));
                 case "other":
-                    return TransactionPartner.From(JsonSerializer.Deserialize<TransactionPartnerOther>(ref reader, options)
+                    return TransactionPartner.From(document.RootElement.Deserialize<TransactionPartnerOther>(options)
                         ?? throw new JsonException("Unable to deserialize TransactionPartner as TransactionPartnerOther."));
                 case "telegram_ads":
-                    return TransactionPartner.From(JsonSerializer.Deserialize<TransactionPartnerTelegramAds>(ref reader, options)
+                    return TransactionPartner.From(document.RootElement.Deserialize<TransactionPartnerTelegramAds>(options)
                         ?? throw new JsonException("Unable to deserialize TransactionPartner as TransactionPartnerTelegramAds."));
                 case "telegram_api":
-                    return TransactionPartner.From(JsonSerializer.Deserialize<TransactionPartnerTelegramApi>(ref reader, options)
+                    return TransactionPartner.From(document.RootElement.Deserialize<TransactionPartnerTelegramApi>(options)
                         ?? throw new JsonException("Unable to deserialize TransactionPartner as TransactionPartnerTelegramApi."));
                 case "user":
-                    return TransactionPartner.From(JsonSerializer.Deserialize<TransactionPartnerUser>(ref reader, options)
+                    return TransactionPartner.From(document.RootElement.Deserialize<TransactionPartnerUser>(options)
                         ?? throw new JsonException("Unable to deserialize TransactionPartner as TransactionPartnerUser."));
                 default:
-                    throw new JsonException($"Unknown discriminator value '{typeDiscriminator}' for TransactionPartner.");
+                    throw new JsonException($"Unknown discriminator value '{discriminator}' for TransactionPartner.");
             }
         }
 
         throw new JsonException("Unable to deserialize TransactionPartner from the provided Telegram payload.");
-    }
-
-    private static void ReadObjectMetadata(
-        ref Utf8JsonReader reader,
-        out string? typeDiscriminator)
-    {
-        typeDiscriminator = null;
-
-        while (reader.Read())
-        {
-            if (reader.TokenType == JsonTokenType.EndObject)
-            {
-                return;
-            }
-
-            if (reader.TokenType != JsonTokenType.PropertyName)
-            {
-                throw new JsonException("Unable to scan union object metadata: expected a JSON property name.");
-            }
-
-            if (reader.ValueTextEquals("type"u8))
-            {
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                typeDiscriminator = null;
-                if (reader.TokenType == JsonTokenType.String)
-                {
-                    typeDiscriminator = reader.GetString();
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (!reader.Read())
-            {
-                throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-            }
-
-            reader.Skip();
-        }
-
-        throw new JsonException("Unable to scan union object metadata: object was not closed.");
     }
 
     public override void Write(Utf8JsonWriter writer, TransactionPartner value, JsonSerializerOptions options)

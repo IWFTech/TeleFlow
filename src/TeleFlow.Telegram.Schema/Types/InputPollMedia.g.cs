@@ -284,91 +284,43 @@ file sealed class InputPollMediaJsonConverter : JsonConverter<InputPollMedia>
             throw new JsonException("Unable to deserialize InputPollMedia: unexpected JSON token.");
         }
 
-        var objectReader = reader;
-        ReadObjectMetadata(
-            ref objectReader,
-            out var typeDiscriminator);
+        using var document = JsonDocument.ParseValue(ref reader);
 
-        if (typeDiscriminator is not null)
+        if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
         {
-            switch (typeDiscriminator)
+            var discriminator = typeElement.GetString();
+            switch (discriminator)
             {
                 case "animation":
-                    return InputPollMedia.From(JsonSerializer.Deserialize<InputMediaAnimation>(ref reader, options)
+                    return InputPollMedia.From(document.RootElement.Deserialize<InputMediaAnimation>(options)
                         ?? throw new JsonException("Unable to deserialize InputPollMedia as InputMediaAnimation."));
                 case "audio":
-                    return InputPollMedia.From(JsonSerializer.Deserialize<InputMediaAudio>(ref reader, options)
+                    return InputPollMedia.From(document.RootElement.Deserialize<InputMediaAudio>(options)
                         ?? throw new JsonException("Unable to deserialize InputPollMedia as InputMediaAudio."));
                 case "document":
-                    return InputPollMedia.From(JsonSerializer.Deserialize<InputMediaDocument>(ref reader, options)
+                    return InputPollMedia.From(document.RootElement.Deserialize<InputMediaDocument>(options)
                         ?? throw new JsonException("Unable to deserialize InputPollMedia as InputMediaDocument."));
                 case "live_photo":
-                    return InputPollMedia.From(JsonSerializer.Deserialize<InputMediaLivePhoto>(ref reader, options)
+                    return InputPollMedia.From(document.RootElement.Deserialize<InputMediaLivePhoto>(options)
                         ?? throw new JsonException("Unable to deserialize InputPollMedia as InputMediaLivePhoto."));
                 case "location":
-                    return InputPollMedia.From(JsonSerializer.Deserialize<InputMediaLocation>(ref reader, options)
+                    return InputPollMedia.From(document.RootElement.Deserialize<InputMediaLocation>(options)
                         ?? throw new JsonException("Unable to deserialize InputPollMedia as InputMediaLocation."));
                 case "photo":
-                    return InputPollMedia.From(JsonSerializer.Deserialize<InputMediaPhoto>(ref reader, options)
+                    return InputPollMedia.From(document.RootElement.Deserialize<InputMediaPhoto>(options)
                         ?? throw new JsonException("Unable to deserialize InputPollMedia as InputMediaPhoto."));
                 case "venue":
-                    return InputPollMedia.From(JsonSerializer.Deserialize<InputMediaVenue>(ref reader, options)
+                    return InputPollMedia.From(document.RootElement.Deserialize<InputMediaVenue>(options)
                         ?? throw new JsonException("Unable to deserialize InputPollMedia as InputMediaVenue."));
                 case "video":
-                    return InputPollMedia.From(JsonSerializer.Deserialize<InputMediaVideo>(ref reader, options)
+                    return InputPollMedia.From(document.RootElement.Deserialize<InputMediaVideo>(options)
                         ?? throw new JsonException("Unable to deserialize InputPollMedia as InputMediaVideo."));
                 default:
-                    throw new JsonException($"Unknown discriminator value '{typeDiscriminator}' for InputPollMedia.");
+                    throw new JsonException($"Unknown discriminator value '{discriminator}' for InputPollMedia.");
             }
         }
 
         throw new JsonException("Unable to deserialize InputPollMedia from the provided Telegram payload.");
-    }
-
-    private static void ReadObjectMetadata(
-        ref Utf8JsonReader reader,
-        out string? typeDiscriminator)
-    {
-        typeDiscriminator = null;
-
-        while (reader.Read())
-        {
-            if (reader.TokenType == JsonTokenType.EndObject)
-            {
-                return;
-            }
-
-            if (reader.TokenType != JsonTokenType.PropertyName)
-            {
-                throw new JsonException("Unable to scan union object metadata: expected a JSON property name.");
-            }
-
-            if (reader.ValueTextEquals("type"u8))
-            {
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                typeDiscriminator = null;
-                if (reader.TokenType == JsonTokenType.String)
-                {
-                    typeDiscriminator = reader.GetString();
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (!reader.Read())
-            {
-                throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-            }
-
-            reader.Skip();
-        }
-
-        throw new JsonException("Unable to scan union object metadata: object was not closed.");
     }
 
     public override void Write(Utf8JsonWriter writer, InputPollMedia value, JsonSerializerOptions options)

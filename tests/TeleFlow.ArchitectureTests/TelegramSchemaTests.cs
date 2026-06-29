@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Xml.Linq;
 using TeleFlow.Telegram.Schema.Abstractions;
+using TeleFlow.Telegram.Schema.Constants;
 using TeleFlow.Telegram.Schema.Methods;
 using TeleFlow.Telegram.Schema.Types;
 using IoFile = System.IO.File;
@@ -31,8 +32,10 @@ public sealed class TelegramSchemaTests
         Assert.True(Directory.Exists(Path.Combine(RepositoryRoot, "src", "TeleFlow.Telegram.Schema", "Methods")));
         Assert.True(Directory.Exists(Path.Combine(RepositoryRoot, "src", "TeleFlow.Telegram.Schema", "Responses")));
         Assert.True(Directory.Exists(Path.Combine(RepositoryRoot, "src", "TeleFlow.Telegram.Schema", "Abstractions")));
+        Assert.True(Directory.Exists(Path.Combine(RepositoryRoot, "src", "TeleFlow.Telegram.Schema", "Constants")));
         Assert.True(IoFile.Exists(Path.Combine(RepositoryRoot, "src", "TeleFlow.Telegram.Schema", "Types", "Update.g.cs")));
         Assert.True(IoFile.Exists(Path.Combine(RepositoryRoot, "src", "TeleFlow.Telegram.Schema", "Methods", "SendMessage.g.cs")));
+        Assert.True(IoFile.Exists(Path.Combine(RepositoryRoot, "src", "TeleFlow.Telegram.Schema", "Constants", "ButtonStyles.g.cs")));
         Assert.False(IoFile.Exists(Path.Combine(RepositoryRoot, "src", "TeleFlow.Telegram.Schema", "Methods", "SendMessageRequest.g.cs")));
     }
 
@@ -555,11 +558,31 @@ public sealed class TelegramSchemaTests
         var methodFile = IoFile.ReadAllText(Path.Combine(RepositoryRoot, "src", "TeleFlow.Telegram.Schema", "Methods", "SendMessage.g.cs"));
         var responseFile = IoFile.ReadAllText(Path.Combine(RepositoryRoot, "src", "TeleFlow.Telegram.Schema", "Responses", "TelegramApiResponse.g.cs"));
         var abstractionFile = IoFile.ReadAllText(Path.Combine(RepositoryRoot, "src", "TeleFlow.Telegram.Schema", "Abstractions", "ITelegramApiMethod.g.cs"));
+        var constantsFile = IoFile.ReadAllText(Path.Combine(RepositoryRoot, "src", "TeleFlow.Telegram.Schema", "Constants", "ButtonStyles.g.cs"));
 
         AssertGeneratedHeader(typeFile, "Type");
         AssertGeneratedHeader(methodFile, "Method");
         AssertGeneratedHeader(responseFile, "Response");
         AssertGeneratedHeader(abstractionFile, "Abstraction");
+        AssertGeneratedHeader(constantsFile, "ConstantGroup");
+    }
+
+    [Fact]
+    public void GeneratedConstants_ExposeKnownBotApiStringValues()
+    {
+        Assert.Equal("danger", ButtonStyles.Danger);
+        Assert.Equal("primary", ButtonStyles.Primary);
+        Assert.Equal("success", ButtonStyles.Success);
+
+        Assert.Equal("channel", ChatTypes.Channel);
+        Assert.Equal("group", ChatTypes.Group);
+        Assert.Equal("private", ChatTypes.Private);
+        Assert.Equal("sender", ChatTypes.Sender);
+        Assert.Equal("supergroup", ChatTypes.Supergroup);
+
+        Assert.Equal("custom_emoji", ReactionTypes.CustomEmoji);
+        Assert.Equal("emoji", ReactionTypes.Emoji);
+        Assert.Equal("paid", ReactionTypes.Paid);
     }
 
     [Fact]
@@ -583,7 +606,7 @@ public sealed class TelegramSchemaTests
         Assert.Equal("2026-06-11", telegramBotApi.GetProperty("releasedAt").GetString());
         Assert.Equal("june-11-2026", telegramBotApi.GetProperty("changelogAnchor").GetString());
         Assert.Equal("https://core.telegram.org/bots/api-changelog#june-11-2026", telegramBotApi.GetProperty("changelogUrl").GetString());
-        Assert.Equal(6, pipeline.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(7, pipeline.GetProperty("schemaVersion").GetInt32());
         Assert.Equal(10, pipeline.GetProperty("generatorVersion").GetInt32());
     }
 
