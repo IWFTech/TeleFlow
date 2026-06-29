@@ -164,13 +164,12 @@ public sealed class StageSevenPolicyOverrideTests
             limiter => Assert.IsType<FirstRecordingRateLimiter>(limiter),
             limiter => Assert.IsType<SecondRecordingRateLimiter>(limiter));
         Assert.Contains(
-            serviceProvider.GetServices<IUpdateMiddleware>(),
-            middleware => middleware is UpdateRateLimitMiddleware);
+            serviceProvider.GetServices<UpdateMiddlewareRegistration>(),
+            registration => registration.MiddlewareType == typeof(UpdateRateLimitMiddleware));
 
-        var context = new UpdateContext(serviceProvider, new TestUpdatePayload("rate-limit"));
-        var middleware = serviceProvider.GetServices<IUpdateMiddleware>()
-            .OfType<UpdateRateLimitMiddleware>()
-            .Single();
+        using var scope = serviceProvider.CreateScope();
+        var context = new UpdateContext(scope.ServiceProvider, new TestUpdatePayload("rate-limit"));
+        var middleware = scope.ServiceProvider.GetRequiredService<UpdateRateLimitMiddleware>();
 
         await middleware.InvokeAsync(
             context,

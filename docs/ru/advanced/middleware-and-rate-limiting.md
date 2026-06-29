@@ -29,13 +29,15 @@ Update middleware выполняется до Telegram routing, built-in filters
 Этот пример регистрирует входящего Telegram user, пишет статистику update-а и останавливает pipeline, если user заблокирован:
 
 ```csharp
-using Microsoft.Extensions.DependencyInjection;
 using TeleFlow.Core.Middleware;
 using TeleFlow.Core.Updates;
 using TeleFlow.Telegram;
 using TeleFlow.Telegram.Schema.Types;
 
-public sealed class UserGateMiddleware : IUpdateMiddleware
+public sealed class UserGateMiddleware(
+    IUserRepository users,
+    IAntiSpamService antiSpam,
+    IUpdateStatistics stats) : IUpdateMiddleware
 {
     public async Task InvokeAsync(UpdateContext context, UpdateDelegate next)
     {
@@ -51,10 +53,6 @@ public sealed class UserGateMiddleware : IUpdateMiddleware
             await next(context);
             return;
         }
-
-        var users = context.Services.GetRequiredService<IUserRepository>();
-        var antiSpam = context.Services.GetRequiredService<IAntiSpamService>();
-        var stats = context.Services.GetRequiredService<IUpdateStatistics>();
 
         await users.EnsureExistsAsync(actor.UserId, context.CancellationToken);
         await stats.RecordIncomingUpdateAsync(
@@ -113,7 +111,19 @@ builder.Services.AddScoped<IUpdateStatistics, UpdateStatistics>();
 builder.Services.AddUpdateMiddleware<UserGateMiddleware>();
 ```
 
-`AddUpdateMiddleware<T>()` регистрирует middleware как singleton. Scoped application services резолви из `context.Services`: это service provider текущего update scope.
+`AddUpdateMiddleware<T>()` добавляет middleware в update pipeline и создаёт его из текущего update scope. Поэтому middleware может принимать scoped-зависимости в конструкторе: repositories, unit-of-work services, database contexts и другие update-scoped application services.
+
+`context.Services` используй только когда middleware намеренно нужен dynamic service resolution. Для обычных application dependencies рекомендуемый путь - constructor injection.
+
+Если middleware stateless и должен переиспользоваться как один process-wide instance, регистрируй это явно:
+
+```csharp
+builder.Services.AddSingletonUpdateMiddleware<MyStatelessMiddleware>();
+```
+
+Singleton middleware не должен принимать scoped services в конструкторе.
+
+Не регистрируй middleware напрямую как `IUpdateMiddleware` в `IServiceCollection`. TeleFlow строит middleware pipeline из middleware-регистраций, а не из произвольных `IUpdateMiddleware` services, и startup приложения намеренно падает с понятной ошибкой, если находит прямые регистрации.
 
 Если middleware не вызывает `next(context)`, TeleFlow прекращает обработку этого update. Routing и handlers не выполнятся. Используй это для глобальных gates: ban list, tenant shutdown или жёсткие rate limits.
 

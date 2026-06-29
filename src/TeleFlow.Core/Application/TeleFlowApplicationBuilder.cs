@@ -17,6 +17,8 @@ internal sealed class TeleFlowApplicationBuilder : ITeleFlowApplicationBuilder
 
     public ITeleFlowApplication Build()
     {
+        ValidateMiddlewareRegistrations();
+
         var serviceProvider = Services.BuildServiceProvider(new ServiceProviderOptions
         {
             ValidateOnBuild = true,
@@ -26,7 +28,7 @@ internal sealed class TeleFlowApplicationBuilder : ITeleFlowApplicationBuilder
         var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
         var updateSource = ResolveSingleRequiredService<IUpdateSource>(serviceProvider);
         var dispatcher = ResolveSingleRequiredService<IUpdateDispatcher>(serviceProvider);
-        var middleware = serviceProvider.GetServices<IUpdateMiddleware>().ToArray();
+        var middleware = serviceProvider.GetServices<UpdateMiddlewareRegistration>().ToArray();
         var processor = new DefaultUpdateProcessor(scopeFactory, dispatcher, middleware);
 
         return new TeleFlowApplication(serviceProvider, updateSource, processor);
@@ -45,5 +47,19 @@ internal sealed class TeleFlowApplicationBuilder : ITeleFlowApplicationBuilder
                 $"Only one {typeof(TService).Name} registration is supported when building the TeleFlow application."),
             _ => services[0]
         };
+    }
+
+    private void ValidateMiddlewareRegistrations()
+    {
+        if (!Services.Any(static descriptor => descriptor.ServiceType == typeof(IUpdateMiddleware)))
+        {
+            return;
+        }
+
+        throw new InvalidOperationException(
+            "Direct IUpdateMiddleware service registrations are not used by the TeleFlow update pipeline. " +
+            $"Register middleware with {nameof(ServiceCollectionMiddlewareExtensions.AddUpdateMiddleware)}<TMiddleware>() " +
+            $"or {nameof(ServiceCollectionMiddlewareExtensions.AddSingletonUpdateMiddleware)}<TMiddleware>() so TeleFlow can " +
+            "resolve it from the correct update scope.");
     }
 }

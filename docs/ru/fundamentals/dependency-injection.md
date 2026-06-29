@@ -90,7 +90,7 @@ builder.Services.AddUpdateRateLimiter<TenantUpdateRateLimiter>();
 
 - Singleton подходит для stateless services и thread-safe repositories.
 - Singleton подходит для in-memory demo repositories только когда process-local data acceptable.
-- Scoped services используй только когда surrounding host создаёт scopes так, как ожидает приложение.
+- Scoped services используй для update-scoped application work. TeleFlow создаёт один DI scope на update, когда update проходит через framework pipeline, и scoped middleware вместе с handlers разделяют этот scope.
 - Избегай mutable singleton state в production workflows, если он явно не синхронизирован и не process-local by design.
 
 TeleFlow сам по себе не превращает DI в application architecture. Границы своего приложения нужно держать отдельно.

@@ -11,7 +11,18 @@ public static class ServiceCollectionMiddlewareExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddSingleton<IUpdateMiddleware, TMiddleware>();
+        services.AddScoped<TMiddleware>();
+        services.AddUpdateMiddlewareRegistration<TMiddleware>();
+        return services;
+    }
+
+    public static IServiceCollection AddSingletonUpdateMiddleware<TMiddleware>(this IServiceCollection services)
+        where TMiddleware : class, IUpdateMiddleware
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.AddSingleton<TMiddleware>();
+        services.AddUpdateMiddlewareRegistration<TMiddleware>();
         return services;
     }
 
@@ -19,8 +30,24 @@ public static class ServiceCollectionMiddlewareExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IUpdateMiddleware, UpdateRateLimitMiddleware>());
+        services.AddUpdateMiddleware<UpdateRateLimitMiddleware>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IUpdateRateLimiter, NoOpUpdateRateLimiter>());
         return services;
+    }
+
+    private static void AddUpdateMiddlewareRegistration<TMiddleware>(this IServiceCollection services)
+        where TMiddleware : class, IUpdateMiddleware
+    {
+        var middlewareType = typeof(TMiddleware);
+
+        if (services.Any(descriptor =>
+                descriptor.ServiceType == typeof(UpdateMiddlewareRegistration) &&
+                descriptor.ImplementationInstance is UpdateMiddlewareRegistration registration &&
+                registration.MiddlewareType == middlewareType))
+        {
+            return;
+        }
+
+        services.AddSingleton(new UpdateMiddlewareRegistration(middlewareType));
     }
 }

@@ -2816,22 +2816,12 @@ public sealed class TelegramHandlerDispatcherTests
         Update update,
         CancellationToken cancellationToken = default)
     {
-        using var scope = serviceProvider.CreateScope();
-        var context = new UpdateContext(
-            scope.ServiceProvider,
-            new TelegramUpdatePayload(update),
-            cancellationToken);
-        var dispatcher = scope.ServiceProvider.GetRequiredService<TeleFlow.Core.Dispatching.IUpdateDispatcher>();
-        var middlewares = scope.ServiceProvider.GetServices<IUpdateMiddleware>().Reverse().ToArray();
-        UpdateDelegate next = updateContext => dispatcher.DispatchAsync(updateContext, cancellationToken);
+        var processor = new DefaultUpdateProcessor(
+            serviceProvider.GetRequiredService<IServiceScopeFactory>(),
+            serviceProvider.GetRequiredService<TeleFlow.Core.Dispatching.IUpdateDispatcher>(),
+            serviceProvider.GetServices<UpdateMiddlewareRegistration>());
 
-        foreach (var middleware in middlewares)
-        {
-            var currentNext = next;
-            next = updateContext => middleware.InvokeAsync(updateContext, currentNext);
-        }
-
-        await next(context);
+        await processor.ProcessAsync(new TelegramUpdatePayload(update), cancellationToken);
     }
 
     private static IReadOnlyList<string?> GetRegisteredModuleNames(IServiceCollection services)

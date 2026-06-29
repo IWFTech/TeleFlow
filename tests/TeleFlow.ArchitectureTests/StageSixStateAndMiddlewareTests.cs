@@ -514,8 +514,8 @@ public sealed class StageSixStateAndMiddlewareTests
         Assert.Same(customSerializer, serviceProvider.GetRequiredService<IStateDataSerializer>());
         Assert.Same(customHistoryStore, serviceProvider.GetRequiredService<IStateHistoryStore>());
         Assert.Contains(
-            serviceProvider.GetServices<IUpdateMiddleware>(),
-            middleware => middleware is UpdateStateMiddleware);
+            serviceProvider.GetServices<UpdateMiddlewareRegistration>(),
+            registration => registration.MiddlewareType == typeof(UpdateStateMiddleware));
     }
 
     [Fact]
@@ -569,10 +569,7 @@ public sealed class StageSixStateAndMiddlewareTests
 
         Assert.Throws<InvalidOperationException>(() => context.GetMessageContext().State);
 
-        var stateMiddleware = serviceProvider
-            .GetServices<IUpdateMiddleware>()
-            .OfType<UpdateStateMiddleware>()
-            .Single();
+        var stateMiddleware = scope.ServiceProvider.GetRequiredService<UpdateStateMiddleware>();
 
         await stateMiddleware.InvokeAsync(context, static _ => Task.CompletedTask);
 
@@ -597,10 +594,7 @@ public sealed class StageSixStateAndMiddlewareTests
         var context = new UpdateContext(
             scope.ServiceProvider,
             new TelegramUpdatePayload(CreateMessageUpdate("hello", userId: 5, chatId: 100)));
-        var stateMiddleware = serviceProvider
-            .GetServices<IUpdateMiddleware>()
-            .OfType<UpdateStateMiddleware>()
-            .Single();
+        var stateMiddleware = scope.ServiceProvider.GetRequiredService<UpdateStateMiddleware>();
 
         await stateMiddleware.InvokeAsync(context, static _ => Task.CompletedTask);
 
@@ -623,10 +617,7 @@ public sealed class StageSixStateAndMiddlewareTests
         var context = new UpdateContext(
             scope.ServiceProvider,
             new TelegramUpdatePayload(CreateMessageUpdate("hello", userId: 5, chatId: 100)));
-        var stateMiddleware = serviceProvider
-            .GetServices<IUpdateMiddleware>()
-            .OfType<UpdateStateMiddleware>()
-            .Single();
+        var stateMiddleware = scope.ServiceProvider.GetRequiredService<UpdateStateMiddleware>();
 
         await stateMiddleware.InvokeAsync(context, static _ => Task.CompletedTask);
 
@@ -912,21 +903,12 @@ public sealed class StageSixStateAndMiddlewareTests
         ServiceProvider serviceProvider,
         IUpdatePayload payload)
     {
-        using var scope = serviceProvider.CreateScope();
-        var context = new UpdateContext(scope.ServiceProvider, payload);
-        var middleware = serviceProvider.GetServices<IUpdateMiddleware>().ToArray();
-        var dispatcher = scope.ServiceProvider.GetRequiredService<IUpdateDispatcher>();
+        var processor = new DefaultUpdateProcessor(
+            serviceProvider.GetRequiredService<IServiceScopeFactory>(),
+            serviceProvider.GetRequiredService<IUpdateDispatcher>(),
+            serviceProvider.GetServices<UpdateMiddlewareRegistration>());
 
-        UpdateDelegate pipeline = updateContext => dispatcher.DispatchAsync(updateContext);
-
-        for (var index = middleware.Length - 1; index >= 0; index--)
-        {
-            var current = middleware[index];
-            var next = pipeline;
-            pipeline = updateContext => current.InvokeAsync(updateContext, next);
-        }
-
-        await pipeline(context);
+        await processor.ProcessAsync(payload);
     }
 
     private static UpdateState CreateUpdateStateWithData()
