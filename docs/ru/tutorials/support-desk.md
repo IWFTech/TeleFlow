@@ -35,6 +35,7 @@ using TeleFlow.Core.Application;
 using TeleFlow.Storage.Memory;
 using TeleFlow.Telegram;
 using TeleFlow.Telegram.Schema.Abstractions;
+using TeleFlow.Telegram.Schema.Constants;
 
 var token = Environment.GetEnvironmentVariable("TELEFLOW_BOT_TOKEN")
     ?? throw new InvalidOperationException("TELEFLOW_BOT_TOKEN is not set.");
@@ -342,11 +343,11 @@ public sealed class AdminTicketHandlers
             .Button(
                 "Take",
                 new TicketAction(ticket.Id, "take"),
-                new InlineKeyboardButtonOptions { Style = "primary" })
+                new InlineKeyboardButtonOptions { Style = ButtonStyles.Primary })
             .Button(
                 "Resolve",
                 new TicketAction(ticket.Id, "resolve"),
-                new InlineKeyboardButtonOptions { Style = "success" })
+                new InlineKeyboardButtonOptions { Style = ButtonStyles.Success })
             .Build();
 
         await ctx.Message.AnswerAsync(
