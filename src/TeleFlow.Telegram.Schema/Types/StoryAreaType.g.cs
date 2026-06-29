@@ -191,82 +191,34 @@ file sealed class StoryAreaTypeJsonConverter : JsonConverter<StoryAreaType>
             throw new JsonException("Unable to deserialize StoryAreaType: unexpected JSON token.");
         }
 
-        var objectReader = reader;
-        ReadObjectMetadata(
-            ref objectReader,
-            out var typeDiscriminator);
+        using var document = JsonDocument.ParseValue(ref reader);
 
-        if (typeDiscriminator is not null)
+        if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
         {
-            switch (typeDiscriminator)
+            var discriminator = typeElement.GetString();
+            switch (discriminator)
             {
                 case "link":
-                    return StoryAreaType.From(JsonSerializer.Deserialize<StoryAreaTypeLink>(ref reader, options)
+                    return StoryAreaType.From(document.RootElement.Deserialize<StoryAreaTypeLink>(options)
                         ?? throw new JsonException("Unable to deserialize StoryAreaType as StoryAreaTypeLink."));
                 case "location":
-                    return StoryAreaType.From(JsonSerializer.Deserialize<StoryAreaTypeLocation>(ref reader, options)
+                    return StoryAreaType.From(document.RootElement.Deserialize<StoryAreaTypeLocation>(options)
                         ?? throw new JsonException("Unable to deserialize StoryAreaType as StoryAreaTypeLocation."));
                 case "suggested_reaction":
-                    return StoryAreaType.From(JsonSerializer.Deserialize<StoryAreaTypeSuggestedReaction>(ref reader, options)
+                    return StoryAreaType.From(document.RootElement.Deserialize<StoryAreaTypeSuggestedReaction>(options)
                         ?? throw new JsonException("Unable to deserialize StoryAreaType as StoryAreaTypeSuggestedReaction."));
                 case "unique_gift":
-                    return StoryAreaType.From(JsonSerializer.Deserialize<StoryAreaTypeUniqueGift>(ref reader, options)
+                    return StoryAreaType.From(document.RootElement.Deserialize<StoryAreaTypeUniqueGift>(options)
                         ?? throw new JsonException("Unable to deserialize StoryAreaType as StoryAreaTypeUniqueGift."));
                 case "weather":
-                    return StoryAreaType.From(JsonSerializer.Deserialize<StoryAreaTypeWeather>(ref reader, options)
+                    return StoryAreaType.From(document.RootElement.Deserialize<StoryAreaTypeWeather>(options)
                         ?? throw new JsonException("Unable to deserialize StoryAreaType as StoryAreaTypeWeather."));
                 default:
-                    throw new JsonException($"Unknown discriminator value '{typeDiscriminator}' for StoryAreaType.");
+                    throw new JsonException($"Unknown discriminator value '{discriminator}' for StoryAreaType.");
             }
         }
 
         throw new JsonException("Unable to deserialize StoryAreaType from the provided Telegram payload.");
-    }
-
-    private static void ReadObjectMetadata(
-        ref Utf8JsonReader reader,
-        out string? typeDiscriminator)
-    {
-        typeDiscriminator = null;
-
-        while (reader.Read())
-        {
-            if (reader.TokenType == JsonTokenType.EndObject)
-            {
-                return;
-            }
-
-            if (reader.TokenType != JsonTokenType.PropertyName)
-            {
-                throw new JsonException("Unable to scan union object metadata: expected a JSON property name.");
-            }
-
-            if (reader.ValueTextEquals("type"u8))
-            {
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                typeDiscriminator = null;
-                if (reader.TokenType == JsonTokenType.String)
-                {
-                    typeDiscriminator = reader.GetString();
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (!reader.Read())
-            {
-                throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-            }
-
-            reader.Skip();
-        }
-
-        throw new JsonException("Unable to scan union object metadata: object was not closed.");
     }
 
     public override void Write(Utf8JsonWriter writer, StoryAreaType value, JsonSerializerOptions options)

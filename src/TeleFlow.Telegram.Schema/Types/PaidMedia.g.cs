@@ -160,79 +160,31 @@ file sealed class PaidMediaJsonConverter : JsonConverter<PaidMedia>
             throw new JsonException("Unable to deserialize PaidMedia: unexpected JSON token.");
         }
 
-        var objectReader = reader;
-        ReadObjectMetadata(
-            ref objectReader,
-            out var typeDiscriminator);
+        using var document = JsonDocument.ParseValue(ref reader);
 
-        if (typeDiscriminator is not null)
+        if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
         {
-            switch (typeDiscriminator)
+            var discriminator = typeElement.GetString();
+            switch (discriminator)
             {
                 case "live_photo":
-                    return PaidMedia.From(JsonSerializer.Deserialize<PaidMediaLivePhoto>(ref reader, options)
+                    return PaidMedia.From(document.RootElement.Deserialize<PaidMediaLivePhoto>(options)
                         ?? throw new JsonException("Unable to deserialize PaidMedia as PaidMediaLivePhoto."));
                 case "photo":
-                    return PaidMedia.From(JsonSerializer.Deserialize<PaidMediaPhoto>(ref reader, options)
+                    return PaidMedia.From(document.RootElement.Deserialize<PaidMediaPhoto>(options)
                         ?? throw new JsonException("Unable to deserialize PaidMedia as PaidMediaPhoto."));
                 case "preview":
-                    return PaidMedia.From(JsonSerializer.Deserialize<PaidMediaPreview>(ref reader, options)
+                    return PaidMedia.From(document.RootElement.Deserialize<PaidMediaPreview>(options)
                         ?? throw new JsonException("Unable to deserialize PaidMedia as PaidMediaPreview."));
                 case "video":
-                    return PaidMedia.From(JsonSerializer.Deserialize<PaidMediaVideo>(ref reader, options)
+                    return PaidMedia.From(document.RootElement.Deserialize<PaidMediaVideo>(options)
                         ?? throw new JsonException("Unable to deserialize PaidMedia as PaidMediaVideo."));
                 default:
-                    throw new JsonException($"Unknown discriminator value '{typeDiscriminator}' for PaidMedia.");
+                    throw new JsonException($"Unknown discriminator value '{discriminator}' for PaidMedia.");
             }
         }
 
         throw new JsonException("Unable to deserialize PaidMedia from the provided Telegram payload.");
-    }
-
-    private static void ReadObjectMetadata(
-        ref Utf8JsonReader reader,
-        out string? typeDiscriminator)
-    {
-        typeDiscriminator = null;
-
-        while (reader.Read())
-        {
-            if (reader.TokenType == JsonTokenType.EndObject)
-            {
-                return;
-            }
-
-            if (reader.TokenType != JsonTokenType.PropertyName)
-            {
-                throw new JsonException("Unable to scan union object metadata: expected a JSON property name.");
-            }
-
-            if (reader.ValueTextEquals("type"u8))
-            {
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                typeDiscriminator = null;
-                if (reader.TokenType == JsonTokenType.String)
-                {
-                    typeDiscriminator = reader.GetString();
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (!reader.Read())
-            {
-                throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-            }
-
-            reader.Skip();
-        }
-
-        throw new JsonException("Unable to scan union object metadata: object was not closed.");
     }
 
     public override void Write(Utf8JsonWriter writer, PaidMedia value, JsonSerializerOptions options)

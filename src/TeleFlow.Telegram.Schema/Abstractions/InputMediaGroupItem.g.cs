@@ -184,82 +184,34 @@ file sealed class InputMediaGroupItemJsonConverter : JsonConverter<InputMediaGro
             throw new JsonException("Unable to deserialize InputMediaGroupItem: unexpected JSON token.");
         }
 
-        var objectReader = reader;
-        ReadObjectMetadata(
-            ref objectReader,
-            out var typeDiscriminator);
+        using var document = JsonDocument.ParseValue(ref reader);
 
-        if (typeDiscriminator is not null)
+        if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
         {
-            switch (typeDiscriminator)
+            var discriminator = typeElement.GetString();
+            switch (discriminator)
             {
                 case "audio":
-                    return InputMediaGroupItem.From(JsonSerializer.Deserialize<InputMediaAudio>(ref reader, options)
+                    return InputMediaGroupItem.From(document.RootElement.Deserialize<InputMediaAudio>(options)
                         ?? throw new JsonException("Unable to deserialize InputMediaGroupItem as InputMediaAudio."));
                 case "document":
-                    return InputMediaGroupItem.From(JsonSerializer.Deserialize<InputMediaDocument>(ref reader, options)
+                    return InputMediaGroupItem.From(document.RootElement.Deserialize<InputMediaDocument>(options)
                         ?? throw new JsonException("Unable to deserialize InputMediaGroupItem as InputMediaDocument."));
                 case "live_photo":
-                    return InputMediaGroupItem.From(JsonSerializer.Deserialize<InputMediaLivePhoto>(ref reader, options)
+                    return InputMediaGroupItem.From(document.RootElement.Deserialize<InputMediaLivePhoto>(options)
                         ?? throw new JsonException("Unable to deserialize InputMediaGroupItem as InputMediaLivePhoto."));
                 case "photo":
-                    return InputMediaGroupItem.From(JsonSerializer.Deserialize<InputMediaPhoto>(ref reader, options)
+                    return InputMediaGroupItem.From(document.RootElement.Deserialize<InputMediaPhoto>(options)
                         ?? throw new JsonException("Unable to deserialize InputMediaGroupItem as InputMediaPhoto."));
                 case "video":
-                    return InputMediaGroupItem.From(JsonSerializer.Deserialize<InputMediaVideo>(ref reader, options)
+                    return InputMediaGroupItem.From(document.RootElement.Deserialize<InputMediaVideo>(options)
                         ?? throw new JsonException("Unable to deserialize InputMediaGroupItem as InputMediaVideo."));
                 default:
-                    throw new JsonException($"Unknown discriminator value '{typeDiscriminator}' for InputMediaGroupItem.");
+                    throw new JsonException($"Unknown discriminator value '{discriminator}' for InputMediaGroupItem.");
             }
         }
 
         throw new JsonException("Unable to deserialize InputMediaGroupItem from the provided Telegram payload.");
-    }
-
-    private static void ReadObjectMetadata(
-        ref Utf8JsonReader reader,
-        out string? typeDiscriminator)
-    {
-        typeDiscriminator = null;
-
-        while (reader.Read())
-        {
-            if (reader.TokenType == JsonTokenType.EndObject)
-            {
-                return;
-            }
-
-            if (reader.TokenType != JsonTokenType.PropertyName)
-            {
-                throw new JsonException("Unable to scan union object metadata: expected a JSON property name.");
-            }
-
-            if (reader.ValueTextEquals("type"u8))
-            {
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                typeDiscriminator = null;
-                if (reader.TokenType == JsonTokenType.String)
-                {
-                    typeDiscriminator = reader.GetString();
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (!reader.Read())
-            {
-                throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-            }
-
-            reader.Skip();
-        }
-
-        throw new JsonException("Unable to scan union object metadata: object was not closed.");
     }
 
     public override void Write(Utf8JsonWriter writer, InputMediaGroupItem value, JsonSerializerOptions options)

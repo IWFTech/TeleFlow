@@ -657,443 +657,121 @@ file sealed class InlineQueryResultJsonConverter : JsonConverter<InlineQueryResu
             throw new JsonException("Unable to deserialize InlineQueryResult: unexpected JSON token.");
         }
 
-        var objectReader = reader;
-        ReadObjectMetadata(
-            ref objectReader,
-            out var hasAudioFileIdProperty,
-            out var hasAudioUrlProperty,
-            out var hasDocumentFileIdProperty,
-            out var hasDocumentUrlProperty,
-            out var hasGifFileIdProperty,
-            out var hasGifUrlProperty,
-            out var hasIdProperty,
-            out var hasMimeTypeProperty,
-            out var hasMpeg4FileIdProperty,
-            out var hasMpeg4UrlProperty,
-            out var hasPhotoFileIdProperty,
-            out var hasPhotoUrlProperty,
-            out var hasThumbnailUrlProperty,
-            out var hasTitleProperty,
-            out var typeDiscriminator,
-            out var hasTypeProperty,
-            out var hasVideoFileIdProperty,
-            out var hasVideoUrlProperty,
-            out var hasVoiceFileIdProperty,
-            out var hasVoiceUrlProperty);
+        using var document = JsonDocument.ParseValue(ref reader);
 
-        if (typeDiscriminator is not null)
+        if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
         {
-            switch (typeDiscriminator)
+            var discriminator = typeElement.GetString();
+            switch (discriminator)
             {
                 case "article":
-                    return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultArticle>(ref reader, options)
+                    return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultArticle>(options)
                         ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultArticle."));
                 case "audio":
-                    if (hasAudioUrlProperty && hasIdProperty && hasTitleProperty && hasTypeProperty)
+                    if (document.RootElement.TryGetProperty("audio_url", out _) && document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("title", out _) && document.RootElement.TryGetProperty("type", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultAudio>(ref reader, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultAudio>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultAudio."));
                     }
-                    if (hasAudioFileIdProperty && hasIdProperty && hasTypeProperty)
+                    if (document.RootElement.TryGetProperty("audio_file_id", out _) && document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("type", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultCachedAudio>(ref reader, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultCachedAudio>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultCachedAudio."));
                     }
                     throw new JsonException("Unable to refine discriminator value 'audio' for InlineQueryResult using required properties.");
                 case "contact":
-                    return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultContact>(ref reader, options)
+                    return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultContact>(options)
                         ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultContact."));
                 case "document":
-                    if (hasDocumentUrlProperty && hasIdProperty && hasMimeTypeProperty && hasTitleProperty && hasTypeProperty)
+                    if (document.RootElement.TryGetProperty("document_url", out _) && document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("mime_type", out _) && document.RootElement.TryGetProperty("title", out _) && document.RootElement.TryGetProperty("type", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultDocument>(ref reader, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultDocument>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultDocument."));
                     }
-                    if (hasDocumentFileIdProperty && hasIdProperty && hasTitleProperty && hasTypeProperty)
+                    if (document.RootElement.TryGetProperty("document_file_id", out _) && document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("title", out _) && document.RootElement.TryGetProperty("type", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultCachedDocument>(ref reader, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultCachedDocument>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultCachedDocument."));
                     }
                     throw new JsonException("Unable to refine discriminator value 'document' for InlineQueryResult using required properties.");
                 case "game":
-                    return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultGame>(ref reader, options)
+                    return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultGame>(options)
                         ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultGame."));
                 case "gif":
-                    if (hasGifUrlProperty && hasIdProperty && hasThumbnailUrlProperty && hasTypeProperty)
+                    if (document.RootElement.TryGetProperty("gif_url", out _) && document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("thumbnail_url", out _) && document.RootElement.TryGetProperty("type", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultGif>(ref reader, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultGif>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultGif."));
                     }
-                    if (hasGifFileIdProperty && hasIdProperty && hasTypeProperty)
+                    if (document.RootElement.TryGetProperty("gif_file_id", out _) && document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("type", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultCachedGif>(ref reader, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultCachedGif>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultCachedGif."));
                     }
                     throw new JsonException("Unable to refine discriminator value 'gif' for InlineQueryResult using required properties.");
                 case "location":
-                    return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultLocation>(ref reader, options)
+                    return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultLocation>(options)
                         ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultLocation."));
                 case "mpeg4_gif":
-                    if (hasIdProperty && hasMpeg4UrlProperty && hasThumbnailUrlProperty && hasTypeProperty)
+                    if (document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("mpeg4_url", out _) && document.RootElement.TryGetProperty("thumbnail_url", out _) && document.RootElement.TryGetProperty("type", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultMpeg4Gif>(ref reader, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultMpeg4Gif>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultMpeg4Gif."));
                     }
-                    if (hasIdProperty && hasMpeg4FileIdProperty && hasTypeProperty)
+                    if (document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("mpeg4_file_id", out _) && document.RootElement.TryGetProperty("type", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultCachedMpeg4Gif>(ref reader, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultCachedMpeg4Gif>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultCachedMpeg4Gif."));
                     }
                     throw new JsonException("Unable to refine discriminator value 'mpeg4_gif' for InlineQueryResult using required properties.");
                 case "photo":
-                    if (hasIdProperty && hasPhotoUrlProperty && hasThumbnailUrlProperty && hasTypeProperty)
+                    if (document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("photo_url", out _) && document.RootElement.TryGetProperty("thumbnail_url", out _) && document.RootElement.TryGetProperty("type", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultPhoto>(ref reader, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultPhoto>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultPhoto."));
                     }
-                    if (hasIdProperty && hasPhotoFileIdProperty && hasTypeProperty)
+                    if (document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("photo_file_id", out _) && document.RootElement.TryGetProperty("type", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultCachedPhoto>(ref reader, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultCachedPhoto>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultCachedPhoto."));
                     }
                     throw new JsonException("Unable to refine discriminator value 'photo' for InlineQueryResult using required properties.");
                 case "sticker":
-                    return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultCachedSticker>(ref reader, options)
+                    return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultCachedSticker>(options)
                         ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultCachedSticker."));
                 case "venue":
-                    return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultVenue>(ref reader, options)
+                    return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultVenue>(options)
                         ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultVenue."));
                 case "video":
-                    if (hasIdProperty && hasMimeTypeProperty && hasThumbnailUrlProperty && hasTitleProperty && hasTypeProperty && hasVideoUrlProperty)
+                    if (document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("mime_type", out _) && document.RootElement.TryGetProperty("thumbnail_url", out _) && document.RootElement.TryGetProperty("title", out _) && document.RootElement.TryGetProperty("type", out _) && document.RootElement.TryGetProperty("video_url", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultVideo>(ref reader, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultVideo>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultVideo."));
                     }
-                    if (hasIdProperty && hasTitleProperty && hasTypeProperty && hasVideoFileIdProperty)
+                    if (document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("title", out _) && document.RootElement.TryGetProperty("type", out _) && document.RootElement.TryGetProperty("video_file_id", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultCachedVideo>(ref reader, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultCachedVideo>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultCachedVideo."));
                     }
                     throw new JsonException("Unable to refine discriminator value 'video' for InlineQueryResult using required properties.");
                 case "voice":
-                    if (hasIdProperty && hasTitleProperty && hasTypeProperty && hasVoiceFileIdProperty)
+                    if (document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("title", out _) && document.RootElement.TryGetProperty("type", out _) && document.RootElement.TryGetProperty("voice_file_id", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultCachedVoice>(ref reader, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultCachedVoice>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultCachedVoice."));
                     }
-                    if (hasIdProperty && hasTitleProperty && hasTypeProperty && hasVoiceUrlProperty)
+                    if (document.RootElement.TryGetProperty("id", out _) && document.RootElement.TryGetProperty("title", out _) && document.RootElement.TryGetProperty("type", out _) && document.RootElement.TryGetProperty("voice_url", out _))
                     {
-                        return InlineQueryResult.From(JsonSerializer.Deserialize<InlineQueryResultVoice>(ref reader, options)
+                        return InlineQueryResult.From(document.RootElement.Deserialize<InlineQueryResultVoice>(options)
                             ?? throw new JsonException("Unable to deserialize InlineQueryResult as InlineQueryResultVoice."));
                     }
                     throw new JsonException("Unable to refine discriminator value 'voice' for InlineQueryResult using required properties.");
                 default:
-                    throw new JsonException($"Unknown discriminator value '{typeDiscriminator}' for InlineQueryResult.");
+                    throw new JsonException($"Unknown discriminator value '{discriminator}' for InlineQueryResult.");
             }
         }
 
         throw new JsonException("Unable to deserialize InlineQueryResult from the provided Telegram payload.");
-    }
-
-    private static void ReadObjectMetadata(
-        ref Utf8JsonReader reader,
-        out bool hasAudioFileIdProperty,
-        out bool hasAudioUrlProperty,
-        out bool hasDocumentFileIdProperty,
-        out bool hasDocumentUrlProperty,
-        out bool hasGifFileIdProperty,
-        out bool hasGifUrlProperty,
-        out bool hasIdProperty,
-        out bool hasMimeTypeProperty,
-        out bool hasMpeg4FileIdProperty,
-        out bool hasMpeg4UrlProperty,
-        out bool hasPhotoFileIdProperty,
-        out bool hasPhotoUrlProperty,
-        out bool hasThumbnailUrlProperty,
-        out bool hasTitleProperty,
-        out string? typeDiscriminator,
-        out bool hasTypeProperty,
-        out bool hasVideoFileIdProperty,
-        out bool hasVideoUrlProperty,
-        out bool hasVoiceFileIdProperty,
-        out bool hasVoiceUrlProperty)
-    {
-        hasAudioFileIdProperty = false;
-        hasAudioUrlProperty = false;
-        hasDocumentFileIdProperty = false;
-        hasDocumentUrlProperty = false;
-        hasGifFileIdProperty = false;
-        hasGifUrlProperty = false;
-        hasIdProperty = false;
-        hasMimeTypeProperty = false;
-        hasMpeg4FileIdProperty = false;
-        hasMpeg4UrlProperty = false;
-        hasPhotoFileIdProperty = false;
-        hasPhotoUrlProperty = false;
-        hasThumbnailUrlProperty = false;
-        hasTitleProperty = false;
-        typeDiscriminator = null;
-        hasTypeProperty = false;
-        hasVideoFileIdProperty = false;
-        hasVideoUrlProperty = false;
-        hasVoiceFileIdProperty = false;
-        hasVoiceUrlProperty = false;
-
-        while (reader.Read())
-        {
-            if (reader.TokenType == JsonTokenType.EndObject)
-            {
-                return;
-            }
-
-            if (reader.TokenType != JsonTokenType.PropertyName)
-            {
-                throw new JsonException("Unable to scan union object metadata: expected a JSON property name.");
-            }
-
-            if (reader.ValueTextEquals("audio_file_id"u8))
-            {
-                hasAudioFileIdProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("audio_url"u8))
-            {
-                hasAudioUrlProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("document_file_id"u8))
-            {
-                hasDocumentFileIdProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("document_url"u8))
-            {
-                hasDocumentUrlProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("gif_file_id"u8))
-            {
-                hasGifFileIdProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("gif_url"u8))
-            {
-                hasGifUrlProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("id"u8))
-            {
-                hasIdProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("mime_type"u8))
-            {
-                hasMimeTypeProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("mpeg4_file_id"u8))
-            {
-                hasMpeg4FileIdProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("mpeg4_url"u8))
-            {
-                hasMpeg4UrlProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("photo_file_id"u8))
-            {
-                hasPhotoFileIdProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("photo_url"u8))
-            {
-                hasPhotoUrlProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("thumbnail_url"u8))
-            {
-                hasThumbnailUrlProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("title"u8))
-            {
-                hasTitleProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("type"u8))
-            {
-                hasTypeProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                typeDiscriminator = null;
-                if (reader.TokenType == JsonTokenType.String)
-                {
-                    typeDiscriminator = reader.GetString();
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("video_file_id"u8))
-            {
-                hasVideoFileIdProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("video_url"u8))
-            {
-                hasVideoUrlProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("voice_file_id"u8))
-            {
-                hasVoiceFileIdProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("voice_url"u8))
-            {
-                hasVoiceUrlProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (!reader.Read())
-            {
-                throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-            }
-
-            reader.Skip();
-        }
-
-        throw new JsonException("Unable to scan union object metadata: object was not closed.");
     }
 
     public override void Write(Utf8JsonWriter writer, InlineQueryResult value, JsonSerializerOptions options)

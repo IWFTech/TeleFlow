@@ -129,76 +129,28 @@ file sealed class ChatBoostSourceJsonConverter : JsonConverter<ChatBoostSource>
             throw new JsonException("Unable to deserialize ChatBoostSource: unexpected JSON token.");
         }
 
-        var objectReader = reader;
-        ReadObjectMetadata(
-            ref objectReader,
-            out var sourceDiscriminator);
+        using var document = JsonDocument.ParseValue(ref reader);
 
-        if (sourceDiscriminator is not null)
+        if (document.RootElement.TryGetProperty("source", out var sourceElement) && sourceElement.ValueKind == JsonValueKind.String)
         {
-            switch (sourceDiscriminator)
+            var discriminator = sourceElement.GetString();
+            switch (discriminator)
             {
                 case "gift_code":
-                    return ChatBoostSource.From(JsonSerializer.Deserialize<ChatBoostSourceGiftCode>(ref reader, options)
+                    return ChatBoostSource.From(document.RootElement.Deserialize<ChatBoostSourceGiftCode>(options)
                         ?? throw new JsonException("Unable to deserialize ChatBoostSource as ChatBoostSourceGiftCode."));
                 case "giveaway":
-                    return ChatBoostSource.From(JsonSerializer.Deserialize<ChatBoostSourceGiveaway>(ref reader, options)
+                    return ChatBoostSource.From(document.RootElement.Deserialize<ChatBoostSourceGiveaway>(options)
                         ?? throw new JsonException("Unable to deserialize ChatBoostSource as ChatBoostSourceGiveaway."));
                 case "premium":
-                    return ChatBoostSource.From(JsonSerializer.Deserialize<ChatBoostSourcePremium>(ref reader, options)
+                    return ChatBoostSource.From(document.RootElement.Deserialize<ChatBoostSourcePremium>(options)
                         ?? throw new JsonException("Unable to deserialize ChatBoostSource as ChatBoostSourcePremium."));
                 default:
-                    throw new JsonException($"Unknown discriminator value '{sourceDiscriminator}' for ChatBoostSource.");
+                    throw new JsonException($"Unknown discriminator value '{discriminator}' for ChatBoostSource.");
             }
         }
 
         throw new JsonException("Unable to deserialize ChatBoostSource from the provided Telegram payload.");
-    }
-
-    private static void ReadObjectMetadata(
-        ref Utf8JsonReader reader,
-        out string? sourceDiscriminator)
-    {
-        sourceDiscriminator = null;
-
-        while (reader.Read())
-        {
-            if (reader.TokenType == JsonTokenType.EndObject)
-            {
-                return;
-            }
-
-            if (reader.TokenType != JsonTokenType.PropertyName)
-            {
-                throw new JsonException("Unable to scan union object metadata: expected a JSON property name.");
-            }
-
-            if (reader.ValueTextEquals("source"u8))
-            {
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                sourceDiscriminator = null;
-                if (reader.TokenType == JsonTokenType.String)
-                {
-                    sourceDiscriminator = reader.GetString();
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (!reader.Read())
-            {
-                throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-            }
-
-            reader.Skip();
-        }
-
-        throw new JsonException("Unable to scan union object metadata: object was not closed.");
     }
 
     public override void Write(Utf8JsonWriter writer, ChatBoostSource value, JsonSerializerOptions options)

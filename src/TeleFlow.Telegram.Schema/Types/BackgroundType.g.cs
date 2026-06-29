@@ -160,79 +160,31 @@ file sealed class BackgroundTypeJsonConverter : JsonConverter<BackgroundType>
             throw new JsonException("Unable to deserialize BackgroundType: unexpected JSON token.");
         }
 
-        var objectReader = reader;
-        ReadObjectMetadata(
-            ref objectReader,
-            out var typeDiscriminator);
+        using var document = JsonDocument.ParseValue(ref reader);
 
-        if (typeDiscriminator is not null)
+        if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
         {
-            switch (typeDiscriminator)
+            var discriminator = typeElement.GetString();
+            switch (discriminator)
             {
                 case "chat_theme":
-                    return BackgroundType.From(JsonSerializer.Deserialize<BackgroundTypeChatTheme>(ref reader, options)
+                    return BackgroundType.From(document.RootElement.Deserialize<BackgroundTypeChatTheme>(options)
                         ?? throw new JsonException("Unable to deserialize BackgroundType as BackgroundTypeChatTheme."));
                 case "fill":
-                    return BackgroundType.From(JsonSerializer.Deserialize<BackgroundTypeFill>(ref reader, options)
+                    return BackgroundType.From(document.RootElement.Deserialize<BackgroundTypeFill>(options)
                         ?? throw new JsonException("Unable to deserialize BackgroundType as BackgroundTypeFill."));
                 case "pattern":
-                    return BackgroundType.From(JsonSerializer.Deserialize<BackgroundTypePattern>(ref reader, options)
+                    return BackgroundType.From(document.RootElement.Deserialize<BackgroundTypePattern>(options)
                         ?? throw new JsonException("Unable to deserialize BackgroundType as BackgroundTypePattern."));
                 case "wallpaper":
-                    return BackgroundType.From(JsonSerializer.Deserialize<BackgroundTypeWallpaper>(ref reader, options)
+                    return BackgroundType.From(document.RootElement.Deserialize<BackgroundTypeWallpaper>(options)
                         ?? throw new JsonException("Unable to deserialize BackgroundType as BackgroundTypeWallpaper."));
                 default:
-                    throw new JsonException($"Unknown discriminator value '{typeDiscriminator}' for BackgroundType.");
+                    throw new JsonException($"Unknown discriminator value '{discriminator}' for BackgroundType.");
             }
         }
 
         throw new JsonException("Unable to deserialize BackgroundType from the provided Telegram payload.");
-    }
-
-    private static void ReadObjectMetadata(
-        ref Utf8JsonReader reader,
-        out string? typeDiscriminator)
-    {
-        typeDiscriminator = null;
-
-        while (reader.Read())
-        {
-            if (reader.TokenType == JsonTokenType.EndObject)
-            {
-                return;
-            }
-
-            if (reader.TokenType != JsonTokenType.PropertyName)
-            {
-                throw new JsonException("Unable to scan union object metadata: expected a JSON property name.");
-            }
-
-            if (reader.ValueTextEquals("type"u8))
-            {
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                typeDiscriminator = null;
-                if (reader.TokenType == JsonTokenType.String)
-                {
-                    typeDiscriminator = reader.GetString();
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (!reader.Read())
-            {
-                throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-            }
-
-            reader.Skip();
-        }
-
-        throw new JsonException("Unable to scan union object metadata: object was not closed.");
     }
 
     public override void Write(Utf8JsonWriter writer, BackgroundType value, JsonSerializerOptions options)

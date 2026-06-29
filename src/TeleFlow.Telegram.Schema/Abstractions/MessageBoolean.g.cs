@@ -98,89 +98,15 @@ file sealed class MessageBooleanJsonConverter : JsonConverter<MessageBoolean>
             throw new JsonException("Unable to deserialize MessageBoolean: unexpected JSON token.");
         }
 
-        var objectReader = reader;
-        ReadObjectMetadata(
-            ref objectReader,
-            out var hasChatProperty,
-            out var hasDateProperty,
-            out var hasMessageIdProperty);
+        using var document = JsonDocument.ParseValue(ref reader);
 
-        if (hasChatProperty && hasDateProperty && hasMessageIdProperty)
+        if (document.RootElement.TryGetProperty("chat", out _) && document.RootElement.TryGetProperty("date", out _) && document.RootElement.TryGetProperty("message_id", out _))
         {
-            return MessageBoolean.From(JsonSerializer.Deserialize<Message>(ref reader, options)
+            return MessageBoolean.From(document.RootElement.Deserialize<Message>(options)
                 ?? throw new JsonException("Unable to deserialize MessageBoolean as Message."));
         }
 
         throw new JsonException("Unable to deserialize MessageBoolean from the provided Telegram payload.");
-    }
-
-    private static void ReadObjectMetadata(
-        ref Utf8JsonReader reader,
-        out bool hasChatProperty,
-        out bool hasDateProperty,
-        out bool hasMessageIdProperty)
-    {
-        hasChatProperty = false;
-        hasDateProperty = false;
-        hasMessageIdProperty = false;
-
-        while (reader.Read())
-        {
-            if (reader.TokenType == JsonTokenType.EndObject)
-            {
-                return;
-            }
-
-            if (reader.TokenType != JsonTokenType.PropertyName)
-            {
-                throw new JsonException("Unable to scan union object metadata: expected a JSON property name.");
-            }
-
-            if (reader.ValueTextEquals("chat"u8))
-            {
-                hasChatProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("date"u8))
-            {
-                hasDateProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (reader.ValueTextEquals("message_id"u8))
-            {
-                hasMessageIdProperty = true;
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (!reader.Read())
-            {
-                throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-            }
-
-            reader.Skip();
-        }
-
-        throw new JsonException("Unable to scan union object metadata: object was not closed.");
     }
 
     public override void Write(Utf8JsonWriter writer, MessageBoolean value, JsonSerializerOptions options)

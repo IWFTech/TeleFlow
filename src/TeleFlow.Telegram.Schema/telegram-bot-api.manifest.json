@@ -2,8 +2,8 @@
   "manifestVersion": 1,
   "source": {
     "url": "https://core.telegram.org/bots/api",
-    "capturedAtUtc": "2026-06-25T21:26:37.7932248+00:00",
-    "sha256": "a9b6b2c2688a10e1da8ba1b24ad46269b20cf89c1602e971c1627bcd1fe754fe"
+    "capturedAtUtc": "2026-06-29T00:33:03.3690377+00:00",
+    "sha256": "cdf5cd8457093adf2816096c02d07685bc4247f3cfb6c79db96798800056d0db"
   },
   "telegramBotApi": {
     "version": "10.1",
@@ -12,7 +12,7 @@
     "changelogUrl": "https://core.telegram.org/bots/api-changelog#june-11-2026"
   },
   "pipeline": {
-    "schemaVersion": 6,
+    "schemaVersion": 7,
     "generatorVersion": 10
   }
 }

@@ -129,76 +129,28 @@ file sealed class ReactionTypeJsonConverter : JsonConverter<ReactionType>
             throw new JsonException("Unable to deserialize ReactionType: unexpected JSON token.");
         }
 
-        var objectReader = reader;
-        ReadObjectMetadata(
-            ref objectReader,
-            out var typeDiscriminator);
+        using var document = JsonDocument.ParseValue(ref reader);
 
-        if (typeDiscriminator is not null)
+        if (document.RootElement.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
         {
-            switch (typeDiscriminator)
+            var discriminator = typeElement.GetString();
+            switch (discriminator)
             {
                 case "custom_emoji":
-                    return ReactionType.From(JsonSerializer.Deserialize<ReactionTypeCustomEmoji>(ref reader, options)
+                    return ReactionType.From(document.RootElement.Deserialize<ReactionTypeCustomEmoji>(options)
                         ?? throw new JsonException("Unable to deserialize ReactionType as ReactionTypeCustomEmoji."));
                 case "emoji":
-                    return ReactionType.From(JsonSerializer.Deserialize<ReactionTypeEmoji>(ref reader, options)
+                    return ReactionType.From(document.RootElement.Deserialize<ReactionTypeEmoji>(options)
                         ?? throw new JsonException("Unable to deserialize ReactionType as ReactionTypeEmoji."));
                 case "paid":
-                    return ReactionType.From(JsonSerializer.Deserialize<ReactionTypePaid>(ref reader, options)
+                    return ReactionType.From(document.RootElement.Deserialize<ReactionTypePaid>(options)
                         ?? throw new JsonException("Unable to deserialize ReactionType as ReactionTypePaid."));
                 default:
-                    throw new JsonException($"Unknown discriminator value '{typeDiscriminator}' for ReactionType.");
+                    throw new JsonException($"Unknown discriminator value '{discriminator}' for ReactionType.");
             }
         }
 
         throw new JsonException("Unable to deserialize ReactionType from the provided Telegram payload.");
-    }
-
-    private static void ReadObjectMetadata(
-        ref Utf8JsonReader reader,
-        out string? typeDiscriminator)
-    {
-        typeDiscriminator = null;
-
-        while (reader.Read())
-        {
-            if (reader.TokenType == JsonTokenType.EndObject)
-            {
-                return;
-            }
-
-            if (reader.TokenType != JsonTokenType.PropertyName)
-            {
-                throw new JsonException("Unable to scan union object metadata: expected a JSON property name.");
-            }
-
-            if (reader.ValueTextEquals("type"u8))
-            {
-                if (!reader.Read())
-                {
-                    throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-                }
-
-                typeDiscriminator = null;
-                if (reader.TokenType == JsonTokenType.String)
-                {
-                    typeDiscriminator = reader.GetString();
-                }
-
-                reader.Skip();
-                continue;
-            }
-
-            if (!reader.Read())
-            {
-                throw new JsonException("Unable to scan union object metadata: expected a JSON property value.");
-            }
-
-            reader.Skip();
-        }
-
-        throw new JsonException("Unable to scan union object metadata: object was not closed.");
     }
 
     public override void Write(Utf8JsonWriter writer, ReactionType value, JsonSerializerOptions options)
