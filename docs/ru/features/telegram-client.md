@@ -187,6 +187,32 @@ public Task Album(MessageContext ctx, CancellationToken ct)
 
 Telegram media group должен содержать от 2 до 10 элементов. TeleFlow валидирует это до отправки request.
 
+## Константы схемы
+
+Объединения Telegram-объектов остаются типизированными wrapper-моделями. Например, `ChatMember` всё ещё является wrapper над `ChatMemberOwner`, `ChatMemberAdministrator`, `ChatMemberMember` и другими конкретными DTO.
+
+Строковые значения discriminator-полей генерируются отдельно в `TeleFlow.Telegram.Schema.Constants`:
+
+```csharp
+using TeleFlow.Telegram.Schema.Abstractions;
+using TeleFlow.Telegram.Schema.Constants;
+using TeleFlow.Telegram.Schema.Types;
+
+if (chatMember.ChatMemberAdministrator?.Status == ChatMemberStatuses.Administrator)
+{
+    // Telegram admin.
+}
+
+var scope = new BotCommandScopeChatMember
+{
+    Type = BotCommandScopeTypes.ChatMember,
+    ChatId = IntegerString.From(chatId),
+    UserId = userId
+};
+```
+
+Используй эти константы там, где Telegram принимает или возвращает известные строковые значения: статусы участников, типы command scope, типы inline result, источники passport errors, источники chat boost и похожие discriminator-семейства.
+
 ## Schema package
 
 Package `IWF.TeleFlow.Telegram.Schema` содержит generated Telegram DTOs, method models и abstractions. Большинство приложений получают его транзитивно через client или framework packages.
