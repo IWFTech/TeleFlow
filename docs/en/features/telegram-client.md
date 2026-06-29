@@ -187,6 +187,32 @@ public Task Album(MessageContext ctx, CancellationToken ct)
 
 Telegram media groups must contain 2 to 10 items. TeleFlow validates that before sending the request.
 
+## Schema Constants
+
+Telegram object unions stay generated as typed wrapper models. For example, `ChatMember` is still a wrapper over `ChatMemberOwner`, `ChatMemberAdministrator`, `ChatMemberMember`, and the other concrete DTO cases.
+
+String discriminator values are generated separately under `TeleFlow.Telegram.Schema.Constants`:
+
+```csharp
+using TeleFlow.Telegram.Schema.Abstractions;
+using TeleFlow.Telegram.Schema.Constants;
+using TeleFlow.Telegram.Schema.Types;
+
+if (chatMember.ChatMemberAdministrator?.Status == ChatMemberStatuses.Administrator)
+{
+    // Telegram admin.
+}
+
+var scope = new BotCommandScopeChatMember
+{
+    Type = BotCommandScopeTypes.ChatMember,
+    ChatId = IntegerString.From(chatId),
+    UserId = userId
+};
+```
+
+Use these constants when Telegram expects or returns known string literals: member statuses, command scope types, inline result types, passport error sources, chat boost sources, and similar discriminator families.
+
 ## Schema Package
 
 The `IWF.TeleFlow.Telegram.Schema` package contains generated Telegram DTOs, method models, and abstractions. Most applications get it transitively through client or framework packages.

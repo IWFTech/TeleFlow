@@ -36,6 +36,8 @@ public sealed class TelegramSchemaTests
         Assert.True(IoFile.Exists(Path.Combine(RepositoryRoot, "src", "TeleFlow.Telegram.Schema", "Types", "Update.g.cs")));
         Assert.True(IoFile.Exists(Path.Combine(RepositoryRoot, "src", "TeleFlow.Telegram.Schema", "Methods", "SendMessage.g.cs")));
         Assert.True(IoFile.Exists(Path.Combine(RepositoryRoot, "src", "TeleFlow.Telegram.Schema", "Constants", "ButtonStyles.g.cs")));
+        Assert.True(IoFile.Exists(Path.Combine(RepositoryRoot, "src", "TeleFlow.Telegram.Schema", "Constants", "BotCommandScopeTypes.g.cs")));
+        Assert.True(IoFile.Exists(Path.Combine(RepositoryRoot, "src", "TeleFlow.Telegram.Schema", "Constants", "ChatMemberStatuses.g.cs")));
         Assert.False(IoFile.Exists(Path.Combine(RepositoryRoot, "src", "TeleFlow.Telegram.Schema", "Methods", "SendMessageRequest.g.cs")));
     }
 
@@ -568,6 +570,22 @@ public sealed class TelegramSchemaTests
     }
 
     [Fact]
+    public void GeneratedConstants_UseReadableGroupNamesForDiscriminatorFamilies()
+    {
+        var constantsRoot = Path.Combine(RepositoryRoot, "src", "TeleFlow.Telegram.Schema", "Constants");
+
+        Assert.True(IoFile.Exists(Path.Combine(constantsRoot, "BackgroundTypes.g.cs")));
+        Assert.True(IoFile.Exists(Path.Combine(constantsRoot, "ChatBoostSources.g.cs")));
+        Assert.True(IoFile.Exists(Path.Combine(constantsRoot, "ReactionTypes.g.cs")));
+        Assert.True(IoFile.Exists(Path.Combine(constantsRoot, "StoryAreaTypes.g.cs")));
+
+        Assert.False(IoFile.Exists(Path.Combine(constantsRoot, "BackgroundTypeTypes.g.cs")));
+        Assert.False(IoFile.Exists(Path.Combine(constantsRoot, "ChatBoostSourceSources.g.cs")));
+        Assert.False(IoFile.Exists(Path.Combine(constantsRoot, "ReactionTypeTypes.g.cs")));
+        Assert.False(IoFile.Exists(Path.Combine(constantsRoot, "StoryAreaTypeTypes.g.cs")));
+    }
+
+    [Fact]
     public void GeneratedConstants_ExposeKnownBotApiStringValues()
     {
         Assert.Equal("danger", ButtonStyles.Danger);
@@ -583,6 +601,27 @@ public sealed class TelegramSchemaTests
         Assert.Equal("custom_emoji", ReactionTypes.CustomEmoji);
         Assert.Equal("emoji", ReactionTypes.Emoji);
         Assert.Equal("paid", ReactionTypes.Paid);
+
+        Assert.Equal("all_private_chats", BotCommandScopeTypes.AllPrivateChats);
+        Assert.Equal("chat_member", BotCommandScopeTypes.ChatMember);
+        Assert.Equal("default", BotCommandScopeTypes.Default);
+
+        Assert.Equal("administrator", ChatMemberStatuses.Administrator);
+        Assert.Equal("creator", ChatMemberStatuses.Creator);
+        Assert.Equal("kicked", ChatMemberStatuses.Kicked);
+        Assert.Equal("left", ChatMemberStatuses.Left);
+        Assert.Equal("member", ChatMemberStatuses.Member);
+        Assert.Equal("restricted", ChatMemberStatuses.Restricted);
+
+        Assert.Equal("gift_code", ChatBoostSources.GiftCode);
+        Assert.Equal("giveaway", ChatBoostSources.Giveaway);
+        Assert.Equal("premium", ChatBoostSources.Premium);
+
+        Assert.Equal("photo", InlineQueryResultTypes.Photo);
+        Assert.Equal("photo", InlineQueryResultTypes.CachedPhoto);
+
+        Assert.Equal("data", PassportElementErrorSources.Data);
+        Assert.Equal("file", PassportElementErrorSources.File);
     }
 
     [Fact]
@@ -606,8 +645,8 @@ public sealed class TelegramSchemaTests
         Assert.Equal("2026-06-11", telegramBotApi.GetProperty("releasedAt").GetString());
         Assert.Equal("june-11-2026", telegramBotApi.GetProperty("changelogAnchor").GetString());
         Assert.Equal("https://core.telegram.org/bots/api-changelog#june-11-2026", telegramBotApi.GetProperty("changelogUrl").GetString());
-        Assert.Equal(7, pipeline.GetProperty("schemaVersion").GetInt32());
-        Assert.Equal(10, pipeline.GetProperty("generatorVersion").GetInt32());
+        Assert.Equal(8, pipeline.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(11, pipeline.GetProperty("generatorVersion").GetInt32());
     }
 
     [Fact]
