@@ -87,6 +87,7 @@ Core:
 services.AddUpdateDispatcher<MyDispatcher>();
 services.AddUpdateSource<MySource>();
 services.AddUpdateMiddleware<MyMiddleware>();
+services.AddSingletonUpdateMiddleware<MyStatelessMiddleware>();
 services.AddDefaultUpdateRateLimiting();
 services.AddUpdateRateLimiter<MyLimiter>();
 ```

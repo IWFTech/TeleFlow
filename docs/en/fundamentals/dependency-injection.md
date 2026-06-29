@@ -90,7 +90,7 @@ Use these intentionally. A replacement point is not a reason to customize everyt
 
 - Use singleton for stateless services and thread-safe repositories.
 - Use singleton for in-memory demo repositories only when process-local data is acceptable.
-- Use scoped services only when the surrounding host provides scopes in the way your application expects.
+- Use scoped services for update-scoped application work. TeleFlow creates one DI scope per update when the update goes through the framework pipeline, and scoped middleware plus handlers share that scope.
 - Avoid mutable singleton state for production workflows unless it is explicitly synchronized and process-local by design.
 
 TeleFlow itself does not turn DI into an application architecture. Keep your own boundaries clear.

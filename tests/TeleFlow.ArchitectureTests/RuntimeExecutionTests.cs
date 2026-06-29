@@ -64,10 +64,11 @@ public sealed class RuntimeExecutionTests
         var application = CreateApplication(
             services =>
             {
+                services.AddSingleton(trace);
                 services.AddSingleton<IUpdateSource>(source);
                 services.AddSingleton<IUpdateDispatcher>(dispatcher);
-                services.AddSingleton<IUpdateMiddleware>(new ProbeMiddleware("mw-1", trace));
-                services.AddSingleton<IUpdateMiddleware>(new ProbeMiddleware("mw-2", trace));
+                services.AddUpdateMiddleware<FirstProbeMiddleware>();
+                services.AddUpdateMiddleware<SecondProbeMiddleware>();
             });
 
         await application.RunAsync();
@@ -92,9 +93,10 @@ public sealed class RuntimeExecutionTests
         var application = CreateApplication(
             services =>
             {
+                services.AddSingleton(trace);
                 services.AddSingleton<IUpdateSource>(source);
                 services.AddSingleton<IUpdateDispatcher>(dispatcher);
-                services.AddSingleton<IUpdateMiddleware>(new ProbeMiddleware("stop", trace, shortCircuit: true));
+                services.AddUpdateMiddleware<ShortCircuitMiddleware>();
             });
 
         await application.RunAsync();
@@ -104,28 +106,62 @@ public sealed class RuntimeExecutionTests
     }
 
     [Fact]
+    public void Build_FailsClearlyForDirectMiddlewareServiceRegistration()
+    {
+        var builder = TeleFlowApplication.CreateBuilder();
+
+        builder.Services.AddSingleton<IUpdateSource>(new RecordingUpdateSource([]));
+        builder.Services.AddSingleton<IUpdateDispatcher>(new RecordingDispatcher());
+        builder.Services.AddSingleton<IUpdateMiddleware, DirectMiddleware>();
+
+        var exception = Assert.Throws<InvalidOperationException>(() => builder.Build());
+
+        Assert.Contains(nameof(IUpdateMiddleware), exception.Message);
+        Assert.Contains(nameof(ServiceCollectionMiddlewareExtensions.AddUpdateMiddleware), exception.Message);
+        Assert.Contains(nameof(ServiceCollectionMiddlewareExtensions.AddSingletonUpdateMiddleware), exception.Message);
+    }
+
+    [Fact]
     public async Task Dispatcher_ReceivesSameContextSeenByMiddleware()
     {
         var source = new RecordingUpdateSource([new TestUpdatePayload("only")]);
         var dispatcher = new RecordingDispatcher();
-        UpdateContext? middlewareContext = null;
+        var recorder = new ContextRecorder();
 
         var application = CreateApplication(
             services =>
             {
+                services.AddSingleton(recorder);
                 services.AddSingleton<IUpdateSource>(source);
                 services.AddSingleton<IUpdateDispatcher>(dispatcher);
-                services.AddSingleton<IUpdateMiddleware>(
-                    new DelegateMiddleware((context, next) =>
-                    {
-                        middlewareContext = context;
-                        return next(context);
-                    }));
+                services.AddUpdateMiddleware<ContextRecordingMiddleware>();
             });
 
         await application.RunAsync();
 
-        Assert.Same(middlewareContext, dispatcher.Contexts.Single());
+        Assert.Same(recorder.Context, dispatcher.Contexts.Single());
+    }
+
+    [Fact]
+    public async Task AddUpdateMiddleware_AllowsScopedConstructorDependencies()
+    {
+        var source = new RecordingUpdateSource([new TestUpdatePayload("only")]);
+        var dispatcher = new ScopedProbeDispatcher();
+        var recorder = new ScopedProbeRecorder();
+
+        var application = CreateApplication(
+            services =>
+            {
+                services.AddSingleton(recorder);
+                services.AddScoped<ScopedProbe>();
+                services.AddSingleton<IUpdateSource>(source);
+                services.AddSingleton<IUpdateDispatcher>(dispatcher);
+                services.AddUpdateMiddleware<ScopedConstructorMiddleware>();
+            });
+
+        await application.RunAsync();
+
+        Assert.Equal(dispatcher.ProbeIds.Single(), recorder.MiddlewareProbeIds.Single());
     }
 
     [Fact]
@@ -136,35 +172,52 @@ public sealed class RuntimeExecutionTests
             new TestUpdatePayload("first"),
             new TestUpdatePayload("second")
         ]);
-        var dispatcher = new RecordingDispatcher();
+        var dispatcher = new ScopedProbeDispatcher();
+        var recorder = new ScopedProbeRecorder();
 
         var application = CreateApplication(
             services =>
             {
+                services.AddSingleton(recorder);
                 services.AddScoped<ScopedProbe>();
                 services.AddSingleton<IUpdateSource>(source);
                 services.AddSingleton<IUpdateDispatcher>(dispatcher);
-                services.AddSingleton<IUpdateMiddleware>(
-                    new DelegateMiddleware((context, next) =>
-                    {
-                        var probeFromFirstResolution = context.Services.GetRequiredService<ScopedProbe>();
-                        var probeFromSecondResolution = context.Services.GetRequiredService<ScopedProbe>();
-
-                        context.Items["scoped-first"] = probeFromFirstResolution.Id;
-                        context.Items["scoped-second"] = probeFromSecondResolution.Id;
-
-                        return next(context);
-                    }));
+                services.AddUpdateMiddleware<ScopedConstructorMiddleware>();
             });
 
         await application.RunAsync();
 
-        var firstContext = dispatcher.Contexts[0];
-        var secondContext = dispatcher.Contexts[1];
+        Assert.Collection(
+            recorder.MiddlewareProbeIds.Zip(dispatcher.ProbeIds),
+            pair => Assert.Equal(pair.First, pair.Second),
+            pair => Assert.Equal(pair.First, pair.Second));
+        Assert.NotEqual(recorder.MiddlewareProbeIds[0], recorder.MiddlewareProbeIds[1]);
+    }
 
-        Assert.Equal(firstContext.Items["scoped-first"], firstContext.Items["scoped-second"]);
-        Assert.Equal(secondContext.Items["scoped-first"], secondContext.Items["scoped-second"]);
-        Assert.NotEqual(firstContext.Items["scoped-first"], secondContext.Items["scoped-first"]);
+    [Fact]
+    public async Task AddSingletonUpdateMiddleware_ReusesMiddlewareAcrossUpdates()
+    {
+        var source = new RecordingUpdateSource(
+        [
+            new TestUpdatePayload("first"),
+            new TestUpdatePayload("second")
+        ]);
+        var dispatcher = new RecordingDispatcher();
+        var recorder = new SingletonMiddlewareRecorder();
+
+        var application = CreateApplication(
+            services =>
+            {
+                services.AddSingleton(recorder);
+                services.AddSingleton<IUpdateSource>(source);
+                services.AddSingleton<IUpdateDispatcher>(dispatcher);
+                services.AddSingletonUpdateMiddleware<SingletonRecordingMiddleware>();
+            });
+
+        await application.RunAsync();
+
+        Assert.Equal(2, recorder.MiddlewareInstanceIds.Count);
+        Assert.Equal(recorder.MiddlewareInstanceIds[0], recorder.MiddlewareInstanceIds[1]);
     }
 
     [Fact]
@@ -199,7 +252,8 @@ public sealed class RuntimeExecutionTests
             {
                 services.AddSingleton<IUpdateSource>(source);
                 services.AddSingleton<IUpdateDispatcher>(dispatcher);
-                services.AddSingleton<IUpdateMiddleware>(new ThrowingMiddleware(exception));
+                services.AddSingleton(exception);
+                services.AddUpdateMiddleware<ThrowingMiddleware>();
             });
 
         var thrown = await Assert.ThrowsAsync<InvalidOperationException>(() => application.RunAsync());
@@ -233,9 +287,10 @@ public sealed class RuntimeExecutionTests
         var dispatcher = new RecordingDispatcher(trace);
         var services = new ServiceCollection();
 
+        services.AddSingleton(trace);
         services.AddSingleton<IUpdateDispatcher>(dispatcher);
-        services.AddSingleton<IUpdateMiddleware>(new ProbeMiddleware("mw-1", trace));
-        services.AddSingleton<IUpdateMiddleware>(new ProbeMiddleware("mw-2", trace));
+        services.AddUpdateMiddleware<FirstProbeMiddleware>();
+        services.AddUpdateMiddleware<SecondProbeMiddleware>();
         services.AddSingleton<IUpdateProcessor, DefaultUpdateProcessor>();
 
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions
@@ -265,14 +320,11 @@ public sealed class RuntimeExecutionTests
         var dispatcher = new RecordingDispatcher();
         var services = new ServiceCollection();
 
+        var recorder = new ScopedProbeRecorder();
+        services.AddSingleton(recorder);
         services.AddScoped<ScopedProbe>();
         services.AddSingleton<IUpdateDispatcher>(dispatcher);
-        services.AddSingleton<IUpdateMiddleware>(
-            new DelegateMiddleware((context, next) =>
-            {
-                context.Items["scope"] = context.Services.GetRequiredService<ScopedProbe>().Id;
-                return next(context);
-            }));
+        services.AddUpdateMiddleware<ScopedConstructorMiddleware>();
         services.AddSingleton<IUpdateProcessor, DefaultUpdateProcessor>();
 
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions
@@ -286,7 +338,7 @@ public sealed class RuntimeExecutionTests
         await processor.ProcessAsync(new TestUpdatePayload("first"));
         await processor.ProcessAsync(new TestUpdatePayload("second"));
 
-        Assert.NotEqual(dispatcher.Contexts[0].Items["scope"], dispatcher.Contexts[1].Items["scope"]);
+        Assert.NotEqual(recorder.MiddlewareProbeIds[0], recorder.MiddlewareProbeIds[1]);
     }
 
     private static ITeleFlowApplication CreateApplication(Action<IServiceCollection> configureServices)
@@ -347,13 +399,24 @@ public sealed class RuntimeExecutionTests
         }
     }
 
-    private sealed class ProbeMiddleware : IUpdateMiddleware
+    private sealed class ScopedProbeDispatcher : IUpdateDispatcher
+    {
+        public List<Guid> ProbeIds { get; } = [];
+
+        public Task DispatchAsync(UpdateContext context, CancellationToken cancellationToken = default)
+        {
+            ProbeIds.Add(context.Services.GetRequiredService<ScopedProbe>().Id);
+            return Task.CompletedTask;
+        }
+    }
+
+    private abstract class ProbeMiddleware : IUpdateMiddleware
     {
         private readonly string _name;
         private readonly List<string> _trace;
         private readonly bool _shortCircuit;
 
-        public ProbeMiddleware(string name, List<string> trace, bool shortCircuit = false)
+        protected ProbeMiddleware(string name, List<string> trace, bool shortCircuit = false)
         {
             _name = name;
             _trace = trace;
@@ -375,27 +438,72 @@ public sealed class RuntimeExecutionTests
         }
     }
 
-    private sealed class DelegateMiddleware : IUpdateMiddleware
+    private sealed class FirstProbeMiddleware(List<string> trace) : ProbeMiddleware("mw-1", trace);
+
+    private sealed class SecondProbeMiddleware(List<string> trace) : ProbeMiddleware("mw-2", trace);
+
+    private sealed class ShortCircuitMiddleware(List<string> trace) : ProbeMiddleware("stop", trace, shortCircuit: true);
+
+    private sealed class ContextRecordingMiddleware(ContextRecorder recorder) : IUpdateMiddleware
     {
-        private readonly Func<UpdateContext, UpdateDelegate, Task> _handler;
-
-        public DelegateMiddleware(Func<UpdateContext, UpdateDelegate, Task> handler)
-        {
-            _handler = handler;
-        }
-
         public Task InvokeAsync(UpdateContext context, UpdateDelegate next)
         {
-            return _handler(context, next);
+            recorder.Context = context;
+            return next(context);
         }
     }
 
-    private sealed class ThrowingMiddleware(Exception exception) : IUpdateMiddleware
+    private sealed class DirectMiddleware : IUpdateMiddleware
+    {
+        public Task InvokeAsync(UpdateContext context, UpdateDelegate next)
+        {
+            return next(context);
+        }
+    }
+
+    private sealed class ScopedConstructorMiddleware(
+        ScopedProbe probe,
+        ScopedProbeRecorder recorder) : IUpdateMiddleware
+    {
+        public Task InvokeAsync(UpdateContext context, UpdateDelegate next)
+        {
+            recorder.MiddlewareProbeIds.Add(probe.Id);
+            return next(context);
+        }
+    }
+
+    private sealed class SingletonRecordingMiddleware(SingletonMiddlewareRecorder recorder) : IUpdateMiddleware
+    {
+        private readonly Guid _instanceId = Guid.NewGuid();
+
+        public Task InvokeAsync(UpdateContext context, UpdateDelegate next)
+        {
+            recorder.MiddlewareInstanceIds.Add(_instanceId);
+            return next(context);
+        }
+    }
+
+    private sealed class ThrowingMiddleware(InvalidOperationException exception) : IUpdateMiddleware
     {
         public Task InvokeAsync(UpdateContext context, UpdateDelegate next)
         {
             return Task.FromException(exception);
         }
+    }
+
+    private sealed class ContextRecorder
+    {
+        public UpdateContext? Context { get; set; }
+    }
+
+    private sealed class ScopedProbeRecorder
+    {
+        public List<Guid> MiddlewareProbeIds { get; } = [];
+    }
+
+    private sealed class SingletonMiddlewareRecorder
+    {
+        public List<Guid> MiddlewareInstanceIds { get; } = [];
     }
 
     private sealed class ScopedProbe
