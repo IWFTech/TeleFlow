@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -928,6 +929,47 @@ public sealed class TelegramRuntimeIntegrationTests
         Assert.StartsWith("multipart/form-data", request.ContentType, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("name=photo", request.Body);
         Assert.Contains("filename=photo.png", request.Body);
+    }
+
+    [Fact]
+    public async Task Executor_UsesJsonForUploadCapableMethodWithExistingFileId()
+    {
+        var handler = new RecordingHttpMessageHandler(
+            CreateJsonResponse(
+                """{"ok":true,"result":{"message_id":10,"date":0,"chat":{"id":123,"type":"private"}}}"""));
+
+        using var serviceProvider = CreateTelegramServiceProvider(handler);
+        var client = serviceProvider.GetRequiredService<ITelegramClient>();
+
+        await client.SendAsync(
+            new SendPhoto
+            {
+                ChatId = IntegerString.From(123),
+                Photo = InputFileString.From("photo-file-id")
+            });
+
+        var request = handler.Requests.Single();
+        Assert.StartsWith("application/json", request.ContentType, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("\"photo\":\"photo-file-id\"", request.Body);
+    }
+
+    [Fact]
+    public async Task Executor_UsesJsonFastPathForPayloadTypesThatCannotContainInputFiles()
+    {
+        var handler = new RecordingHttpMessageHandler(
+            CreateJsonResponse("""{"ok":true,"result":true}"""));
+
+        using var serviceProvider = CreateTelegramServiceProvider(handler);
+        var client = serviceProvider.GetRequiredService<ITelegramClient>();
+
+        var result = await client.SendAsync(new JsonOnlyProbeMethod { Value = "ok" });
+
+        var request = handler.Requests.Single();
+        Assert.True(result);
+        Assert.EndsWith("/jsonOnlyProbe", request.RequestUri, StringComparison.Ordinal);
+        Assert.StartsWith("application/json", request.ContentType, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("\"value\":\"ok\"", request.Body);
+        Assert.DoesNotContain("poison", request.Body, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -3282,6 +3324,18 @@ public sealed class TelegramRuntimeIntegrationTests
 
             return _responses.Dequeue();
         }
+    }
+
+    private sealed partial record class JsonOnlyProbeMethod : ITelegramApiMethod<bool>
+    {
+        public static string MethodName => "jsonOnlyProbe";
+
+        [JsonPropertyName("value")]
+        public required string Value { get; init; }
+
+        [JsonIgnore]
+        public object Poison =>
+            throw new InvalidOperationException("JSON-only request content should not scan ignored properties.");
     }
 
     private sealed class RecordingTelegramTransport : ITelegramTransport
