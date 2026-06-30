@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using TeleFlow.Core.Application;
+using TeleFlow.Core.DependencyInjection;
 using TeleFlow.Core.Dispatching;
 using TeleFlow.Core.Middleware;
 using TeleFlow.Core.Updates;
@@ -24,6 +25,186 @@ public sealed class RuntimeExecutionTests
         await application.RunAsync();
 
         Assert.Equal(1, source.StartCallCount);
+    }
+
+    [Fact]
+    public async Task StartupTasks_ExecuteBeforeUpdateSourceInRegistrationOrder()
+    {
+        var trace = new List<string>();
+        var source = new RecordingUpdateSource([new TestUpdatePayload("only")], trace);
+        var dispatcher = new RecordingDispatcher(trace);
+
+        var application = CreateApplication(
+            services =>
+            {
+                services.AddSingleton(trace);
+                services.AddSingleton<IUpdateSource>(source);
+                services.AddSingleton<IUpdateDispatcher>(dispatcher);
+                services.AddTeleFlowStartupTask<FirstStartupTask>();
+                services.AddTeleFlowStartupTask<SecondStartupTask>();
+            });
+
+        await application.RunAsync();
+
+        Assert.Equal(
+        [
+            "startup:1",
+            "startup:2",
+            "source:start",
+            "dispatch"
+        ], trace);
+    }
+
+    [Fact]
+    public async Task StartupTaskFailure_PreventsUpdateSourceAndShutdownTasks()
+    {
+        var trace = new List<string>();
+        var source = new RecordingUpdateSource([], trace);
+        var dispatcher = new RecordingDispatcher(trace);
+        var exception = new InvalidOperationException("startup failed");
+
+        var application = CreateApplication(
+            services =>
+            {
+                services.AddSingleton(trace);
+                services.AddSingleton(exception);
+                services.AddSingleton<IUpdateSource>(source);
+                services.AddSingleton<IUpdateDispatcher>(dispatcher);
+                services.AddTeleFlowStartupTask<ThrowingStartupTask>();
+                services.AddTeleFlowShutdownTask<FirstShutdownTask>();
+            });
+
+        var thrown = await Assert.ThrowsAsync<InvalidOperationException>(() => application.RunAsync());
+
+        Assert.Same(exception, thrown);
+        Assert.Equal(0, source.StartCallCount);
+        Assert.Equal(["startup:throw"], trace);
+    }
+
+    [Fact]
+    public async Task ShutdownTasks_ExecuteAfterUpdateSourceInReverseRegistrationOrder()
+    {
+        var trace = new List<string>();
+        var source = new RecordingUpdateSource([], trace);
+        var dispatcher = new RecordingDispatcher(trace);
+
+        var application = CreateApplication(
+            services =>
+            {
+                services.AddSingleton(trace);
+                services.AddSingleton<IUpdateSource>(source);
+                services.AddSingleton<IUpdateDispatcher>(dispatcher);
+                services.AddTeleFlowShutdownTask<FirstShutdownTask>();
+                services.AddTeleFlowShutdownTask<SecondShutdownTask>();
+            });
+
+        await application.RunAsync();
+
+        Assert.Equal(
+        [
+            "source:start",
+            "shutdown:2",
+            "shutdown:1"
+        ], trace);
+    }
+
+    [Fact]
+    public async Task ShutdownTasks_RunWhenUpdateSourceFails()
+    {
+        var trace = new List<string>();
+        var exception = new InvalidOperationException("source failed");
+        var source = new ThrowingUpdateSource(trace, exception);
+        var dispatcher = new RecordingDispatcher(trace);
+
+        var application = CreateApplication(
+            services =>
+            {
+                services.AddSingleton(trace);
+                services.AddSingleton<IUpdateSource>(source);
+                services.AddSingleton<IUpdateDispatcher>(dispatcher);
+                services.AddTeleFlowShutdownTask<FirstShutdownTask>();
+            });
+
+        var thrown = await Assert.ThrowsAsync<InvalidOperationException>(() => application.RunAsync());
+
+        Assert.Same(exception, thrown);
+        Assert.Equal(["source:throw", "shutdown:1"], trace);
+    }
+
+    [Fact]
+    public async Task ShutdownTaskFailureAfterUpdateSourceFailure_PreservesBothFailures()
+    {
+        var trace = new List<string>();
+        var sourceException = new InvalidOperationException("source failed");
+        var shutdownException = new ApplicationException("shutdown failed");
+        var source = new ThrowingUpdateSource(trace, sourceException);
+        var dispatcher = new RecordingDispatcher(trace);
+
+        var application = CreateApplication(
+            services =>
+            {
+                services.AddSingleton(trace);
+                services.AddSingleton(shutdownException);
+                services.AddSingleton<IUpdateSource>(source);
+                services.AddSingleton<IUpdateDispatcher>(dispatcher);
+                services.AddTeleFlowShutdownTask<ThrowingShutdownTask>();
+            });
+
+        var thrown = await Assert.ThrowsAsync<AggregateException>(() => application.RunAsync());
+
+        Assert.Contains(sourceException, thrown.InnerExceptions);
+        Assert.Contains(shutdownException, thrown.InnerExceptions);
+        Assert.Equal(["source:throw", "shutdown:throw"], trace);
+    }
+
+    [Fact]
+    public async Task LifecycleTasks_CanUseScopedConstructorDependencies()
+    {
+        var source = new RecordingUpdateSource([]);
+        var dispatcher = new RecordingDispatcher();
+        var recorder = new ScopedProbeRecorder();
+
+        var application = CreateApplication(
+            services =>
+            {
+                services.AddSingleton(recorder);
+                services.AddScoped<ScopedProbe>();
+                services.AddSingleton<IUpdateSource>(source);
+                services.AddSingleton<IUpdateDispatcher>(dispatcher);
+                services.AddTeleFlowStartupTask<ScopedStartupTask>();
+                services.AddTeleFlowStartupTask<SecondScopedStartupTask>();
+                services.AddTeleFlowShutdownTask<ScopedShutdownTask>();
+            });
+
+        await application.RunAsync();
+
+        Assert.Equal(2, recorder.StartupProbeIds.Count);
+        Assert.Single(recorder.ShutdownProbeIds);
+        Assert.NotEqual(recorder.StartupProbeIds[0], recorder.StartupProbeIds[1]);
+    }
+
+    [Fact]
+    public async Task LifecycleTasks_ReceiveRunCancellationToken()
+    {
+        var source = new RecordingUpdateSource([]);
+        var dispatcher = new RecordingDispatcher();
+        var recorder = new CancellationTokenRecorder();
+        using var cancellation = new CancellationTokenSource();
+
+        var application = CreateApplication(
+            services =>
+            {
+                services.AddSingleton(recorder);
+                services.AddSingleton<IUpdateSource>(source);
+                services.AddSingleton<IUpdateDispatcher>(dispatcher);
+                services.AddTeleFlowStartupTask<TokenRecordingStartupTask>();
+                services.AddTeleFlowShutdownTask<TokenRecordingShutdownTask>();
+            });
+
+        await application.RunAsync(cancellation.Token);
+
+        Assert.Equal(cancellation.Token, recorder.StartupToken);
+        Assert.Equal(cancellation.Token, recorder.ShutdownToken);
     }
 
     [Fact]
@@ -119,6 +300,36 @@ public sealed class RuntimeExecutionTests
         Assert.Contains(nameof(IUpdateMiddleware), exception.Message);
         Assert.Contains(nameof(ServiceCollectionMiddlewareExtensions.AddUpdateMiddleware), exception.Message);
         Assert.Contains(nameof(ServiceCollectionMiddlewareExtensions.AddSingletonUpdateMiddleware), exception.Message);
+    }
+
+    [Fact]
+    public void Build_FailsClearlyForDirectStartupTaskServiceRegistration()
+    {
+        var builder = TeleFlowApplication.CreateBuilder();
+
+        builder.Services.AddSingleton<IUpdateSource>(new RecordingUpdateSource([]));
+        builder.Services.AddSingleton<IUpdateDispatcher>(new RecordingDispatcher());
+        builder.Services.AddSingleton<ITeleFlowStartupTask, DirectStartupTask>();
+
+        var exception = Assert.Throws<InvalidOperationException>(() => builder.Build());
+
+        Assert.Contains(nameof(ITeleFlowStartupTask), exception.Message);
+        Assert.Contains(nameof(ApplicationLifecycleServiceCollectionExtensions.AddTeleFlowStartupTask), exception.Message);
+    }
+
+    [Fact]
+    public void Build_FailsClearlyForDirectShutdownTaskServiceRegistration()
+    {
+        var builder = TeleFlowApplication.CreateBuilder();
+
+        builder.Services.AddSingleton<IUpdateSource>(new RecordingUpdateSource([]));
+        builder.Services.AddSingleton<IUpdateDispatcher>(new RecordingDispatcher());
+        builder.Services.AddSingleton<ITeleFlowShutdownTask, DirectShutdownTask>();
+
+        var exception = Assert.Throws<InvalidOperationException>(() => builder.Build());
+
+        Assert.Contains(nameof(ITeleFlowShutdownTask), exception.Message);
+        Assert.Contains(nameof(ApplicationLifecycleServiceCollectionExtensions.AddTeleFlowShutdownTask), exception.Message);
     }
 
     [Fact]
@@ -350,7 +561,9 @@ public sealed class RuntimeExecutionTests
 
     private sealed record TestUpdatePayload(string Name) : IUpdatePayload;
 
-    private sealed class RecordingUpdateSource(IReadOnlyList<IUpdatePayload> payloads) : IUpdateSource
+    private sealed class RecordingUpdateSource(
+        IReadOnlyList<IUpdatePayload> payloads,
+        List<string>? trace = null) : IUpdateSource
     {
         public int StartCallCount { get; private set; }
 
@@ -362,11 +575,25 @@ public sealed class RuntimeExecutionTests
         {
             StartCallCount++;
             ReceivedCancellationToken = cancellationToken;
+            trace?.Add("source:start");
 
             foreach (var payload in payloads)
             {
                 await updateHandler(payload, cancellationToken);
             }
+        }
+    }
+
+    private sealed class ThrowingUpdateSource(
+        List<string> trace,
+        Exception exception) : IUpdateSource
+    {
+        public Task StartAsync(
+            Func<IUpdatePayload, CancellationToken, Task> updateHandler,
+            CancellationToken cancellationToken = default)
+        {
+            trace.Add("source:throw");
+            return Task.FromException(exception);
         }
     }
 
@@ -499,6 +726,10 @@ public sealed class RuntimeExecutionTests
     private sealed class ScopedProbeRecorder
     {
         public List<Guid> MiddlewareProbeIds { get; } = [];
+
+        public List<Guid> StartupProbeIds { get; } = [];
+
+        public List<Guid> ShutdownProbeIds { get; } = [];
     }
 
     private sealed class SingletonMiddlewareRecorder
@@ -509,5 +740,137 @@ public sealed class RuntimeExecutionTests
     private sealed class ScopedProbe
     {
         public Guid Id { get; } = Guid.NewGuid();
+    }
+
+    private sealed class CancellationTokenRecorder
+    {
+        public CancellationToken StartupToken { get; set; }
+
+        public CancellationToken ShutdownToken { get; set; }
+    }
+
+    private sealed class FirstStartupTask(List<string> trace) : ITeleFlowStartupTask
+    {
+        public ValueTask ExecuteAsync(CancellationToken cancellationToken = default)
+        {
+            trace.Add("startup:1");
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class SecondStartupTask(List<string> trace) : ITeleFlowStartupTask
+    {
+        public ValueTask ExecuteAsync(CancellationToken cancellationToken = default)
+        {
+            trace.Add("startup:2");
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class ThrowingStartupTask(
+        List<string> trace,
+        InvalidOperationException exception) : ITeleFlowStartupTask
+    {
+        public ValueTask ExecuteAsync(CancellationToken cancellationToken = default)
+        {
+            trace.Add("startup:throw");
+            return ValueTask.FromException(exception);
+        }
+    }
+
+    private sealed class FirstShutdownTask(List<string> trace) : ITeleFlowShutdownTask
+    {
+        public ValueTask ExecuteAsync(CancellationToken cancellationToken = default)
+        {
+            trace.Add("shutdown:1");
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class SecondShutdownTask(List<string> trace) : ITeleFlowShutdownTask
+    {
+        public ValueTask ExecuteAsync(CancellationToken cancellationToken = default)
+        {
+            trace.Add("shutdown:2");
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class ThrowingShutdownTask(
+        List<string> trace,
+        ApplicationException exception) : ITeleFlowShutdownTask
+    {
+        public ValueTask ExecuteAsync(CancellationToken cancellationToken = default)
+        {
+            trace.Add("shutdown:throw");
+            return ValueTask.FromException(exception);
+        }
+    }
+
+    private sealed class ScopedStartupTask(
+        ScopedProbe probe,
+        ScopedProbeRecorder recorder) : ITeleFlowStartupTask
+    {
+        public ValueTask ExecuteAsync(CancellationToken cancellationToken = default)
+        {
+            recorder.StartupProbeIds.Add(probe.Id);
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class SecondScopedStartupTask(
+        ScopedProbe probe,
+        ScopedProbeRecorder recorder) : ITeleFlowStartupTask
+    {
+        public ValueTask ExecuteAsync(CancellationToken cancellationToken = default)
+        {
+            recorder.StartupProbeIds.Add(probe.Id);
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class ScopedShutdownTask(
+        ScopedProbe probe,
+        ScopedProbeRecorder recorder) : ITeleFlowShutdownTask
+    {
+        public ValueTask ExecuteAsync(CancellationToken cancellationToken = default)
+        {
+            recorder.ShutdownProbeIds.Add(probe.Id);
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class TokenRecordingStartupTask(CancellationTokenRecorder recorder) : ITeleFlowStartupTask
+    {
+        public ValueTask ExecuteAsync(CancellationToken cancellationToken = default)
+        {
+            recorder.StartupToken = cancellationToken;
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class TokenRecordingShutdownTask(CancellationTokenRecorder recorder) : ITeleFlowShutdownTask
+    {
+        public ValueTask ExecuteAsync(CancellationToken cancellationToken = default)
+        {
+            recorder.ShutdownToken = cancellationToken;
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class DirectStartupTask : ITeleFlowStartupTask
+    {
+        public ValueTask ExecuteAsync(CancellationToken cancellationToken = default)
+        {
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class DirectShutdownTask : ITeleFlowShutdownTask
+    {
+        public ValueTask ExecuteAsync(CancellationToken cancellationToken = default)
+        {
+            return ValueTask.CompletedTask;
+        }
     }
 }

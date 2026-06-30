@@ -43,6 +43,46 @@ Dispatcher выбирает и вызывает подходящий handler. Te
 
 Handler - обычный class с method, который TeleFlow может вызвать. Routing metadata задаётся атрибутами.
 
+## Application lifecycle
+
+TeleFlow lifecycle tasks выполняются вокруг update source:
+
+1. startup tasks запускаются в порядке регистрации;
+2. update source стартует и обрабатывает updates;
+3. shutdown tasks запускаются в обратном порядке регистрации после остановки update source.
+
+Используй lifecycle tasks для startup/shutdown работы, которая принадлежит процессу бота:
+
+```csharp
+builder.Services.AddTeleFlowStartupTask<ConfigureBotCommands>();
+builder.Services.AddTeleFlowShutdownTask<FlushMetrics>();
+```
+
+```csharp
+public sealed class ConfigureBotCommands(ITelegramClient bot) : ITeleFlowStartupTask
+{
+    public async ValueTask ExecuteAsync(CancellationToken ct = default)
+    {
+        await bot.SetMyCommandsAsync(
+            commands:
+            [
+                new BotCommand
+                {
+                    Command = "start",
+                    Description = "Start"
+                }
+            ],
+            cancellationToken: ct);
+    }
+}
+```
+
+Lifecycle tasks не являются Telegram handlers. Они не получают `MessageContext`, `CallbackQueryContext` или fake updates. TeleFlow создаёт их через dependency injection в отдельном lifecycle scope, поэтому scoped application services можно использовать безопасно.
+
+Если startup task падает, update processing не стартует. Если update source падает уже после успешного startup, shutdown tasks всё равно выполняются, а исходная ошибка пробрасывается наружу. Если shutdown тоже падает, TeleFlow сообщает обе ошибки.
+
+Не используй lifecycle tasks для long-running background jobs. Для отдельной фоновой работы используй обычные .NET primitives: `IHostedService` или `BackgroundService`.
+
 ## Telegram contexts
 
 Telegram handlers получают context objects, в которых есть текущий update, Telegram client, state и небольшие action helpers.
@@ -171,6 +211,8 @@ services.AddStateStore<MyStateStore>();
 services.AddStateDataStore<MyStateDataStore>();
 services.AddStateHistoryStore<MyHistoryStore>();
 services.AddStateKeyFactory<MyStateKeyFactory>();
+services.AddTeleFlowStartupTask<MyStartupTask>();
+services.AddTeleFlowShutdownTask<MyShutdownTask>();
 ```
 
 Это advanced APIs. Большинству приложений лучше начать с framework transports и memory storage, а потом заменить только то, что стало инфраструктурным требованием.

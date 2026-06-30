@@ -92,6 +92,31 @@ dotnet publish -c Release -o publish
 
 Long polling containers обычно должны работать в одном replica на bot token. Webhook containers можно масштабировать горизонтально, если handlers и storage готовы к concurrency.
 
+## Lifecycle tasks в production
+
+TeleFlow startup и shutdown tasks выполняются на каждом application instance:
+
+```csharp
+builder.Services.AddTeleFlowStartupTask<ConfigureBotCommands>();
+builder.Services.AddTeleFlowShutdownTask<FlushMetrics>();
+```
+
+Хорошие примеры startup tasks:
+
+- настроить Telegram bot commands;
+- прогреть local caches;
+- проверить обязательные external dependencies;
+- подготовить process-local resources.
+
+Плохие примеры startup tasks:
+
+- non-idempotent database migrations;
+- создание global resources без distributed lock;
+- long-running background loops;
+- работа, которая должна жить в deployment infrastructure.
+
+В multi-replica deployments каждая replica запускает одни и те же startup tasks. Делай их idempotent или защищай infrastructure-level coordination. Shutdown tasks выполняются после остановки update source и должны укладываться в graceful shutdown window платформы.
+
 ## systemd
 
 Для небольшого Linux host можно запустить long polling под `systemd`:
@@ -140,4 +165,3 @@ Current public TeleFlow docs не заявляют `drop_pending_updates` option
 - logs и errors observable;
 - CI запускает build и tests;
 - smoke test покрывает `/start`, один callback, один state flow и один Telegram API call.
-

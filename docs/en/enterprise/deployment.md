@@ -92,6 +92,31 @@ For containers:
 
 Long polling containers should usually run as one replica per bot token. Webhook containers can scale horizontally if your handlers and storage are safe for concurrency.
 
+## Lifecycle Tasks In Production
+
+TeleFlow startup and shutdown tasks run per application instance:
+
+```csharp
+builder.Services.AddTeleFlowStartupTask<ConfigureBotCommands>();
+builder.Services.AddTeleFlowShutdownTask<FlushMetrics>();
+```
+
+Good startup task examples:
+
+- configure Telegram bot commands;
+- warm local caches;
+- validate required external dependencies;
+- prepare process-local resources.
+
+Bad startup task examples:
+
+- non-idempotent database migrations;
+- global resource creation without a distributed lock;
+- long-running background loops;
+- work that should belong to deployment infrastructure.
+
+In multi-replica deployments, every replica runs the same startup tasks. Keep them idempotent or guard them with infrastructure-level coordination. Shutdown tasks run after the update source stops and should stay short enough to fit the platform's graceful shutdown window.
+
 ## systemd
 
 For a small Linux host, run long polling under `systemd`:
@@ -140,4 +165,3 @@ Before production:
 - logs and errors are observable;
 - CI runs build and tests;
 - smoke test covers `/start`, one callback, one state flow, and one Telegram API call.
-
