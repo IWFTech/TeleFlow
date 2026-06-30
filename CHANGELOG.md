@@ -4,10 +4,36 @@ TeleFlow follows SemVer for published NuGet packages and documented public behav
 
 ## Unreleased
 
+No changes yet.
+
+## 1.0.0-alpha.5 - 2026-06-30
+
+This alpha focuses on handler registration semantics, compile-time filter metadata, route dispatch indexing, and typed callback keyboard packing.
+
+### Added
+
+- Parameterized custom filter attributes with generated metadata, constructor arguments, and named arguments.
+- Generator diagnostics for handler methods that define state, role, chat member, or filter metadata without any route attribute.
+
 ### Changed
 
-- Typed inline keyboard callback payloads now serialize through the configured `ICallbackDataSerializer` via `InlineKeyboardBuilder.Build(callbackData)`, while raw callback strings are preserved exactly.
-- Handler registration docs and API comments now define generated assembly registration, explicit direct registration, and deprecated reflection assembly registration as separate contracts.
+- Handler route candidates are pre-indexed once and reused during dispatch to reduce repeated per-update scans.
+- Generated assembly registration, explicit direct registration, and deprecated reflection assembly registration are now documented as separate contracts.
+- Explicit handler and module registration semantics are documented for manual registration without generated metadata.
+- Typed inline keyboard callback payloads now pack through `[CallbackData]` metadata with `InlineKeyboardBuilder.Build()`, while raw callback strings are preserved exactly.
+- Callback keyboard serialization ownership is explicit: custom `ICallbackDataSerializer` remains available for advanced callback serialization and route deserialization, while typed keyboard buttons use callback metadata directly.
+
+### Fixed
+
+- Filter-only handler methods are reported at build time instead of being silently ignored by generated registration.
+
+### Deprecated
+
+- Reflection-based assembly handler registration is deprecated in favor of generated registration or explicit direct registration.
+
+### Breaking Changes
+
+- `InlineKeyboardBuilder.Build(ICallbackDataSerializer)` was removed. Use `InlineKeyboardBuilder.Build()` and pass the resulting native `InlineKeyboardMarkup` to Telegram methods or message helpers.
 
 ## 1.0.0-alpha.4 - 2026-06-30
 
