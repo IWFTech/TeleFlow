@@ -124,6 +124,14 @@ Regex стоит использовать только когда форма inp
 | `[TelegramModule]` | Marks module type. |
 | `[UseFilter<TFilter>]` | Adds custom filter. |
 
+## Base types для custom filter attributes
+
+| Type | Purpose |
+| --- | --- |
+| `TelegramFilterAttribute<TFilter>` | Base class для parameterized custom filter attributes. |
+| `ITelegramFilter<TContext>` | Custom filter contract без attribute metadata. |
+| `ITelegramFilter<TContext, TAttribute>` | Custom filter contract с attribute metadata. |
+
 ## Рекомендация
 
 Используй самый specific attribute, который ясно выражает route. Templates обычно лучше regex, если input structure подходит. Broad catch-all handlers должны быть intentional last-resort behavior.

@@ -1,4 +1,5 @@
 using System.Text;
+using Microsoft.CodeAnalysis;
 
 namespace TeleFlow.Generators;
 
@@ -240,7 +241,17 @@ public sealed partial class TelegramHandlerSourceGenerator
     {
         if (filter.CustomTypeName is not null)
         {
-            builder.AppendLine($"                new global::TeleFlow.Telegram.TelegramGeneratedFilterDescriptor(typeof({filter.CustomTypeName})),");
+            if (filter.CustomAttributeExpression is null)
+            {
+                builder.AppendLine(
+                    $"                new global::TeleFlow.Telegram.TelegramGeneratedFilterDescriptor(typeof({filter.CustomTypeName}), typeof({filter.CustomContextTypeName})),");
+            }
+            else
+            {
+                builder.AppendLine(
+                    $"                new global::TeleFlow.Telegram.TelegramGeneratedFilterDescriptor(typeof({filter.CustomTypeName}), typeof({filter.CustomContextTypeName}), {filter.CustomAttributeExpression}),");
+            }
+
             return;
         }
 
@@ -411,5 +422,150 @@ public sealed partial class TelegramHandlerSourceGenerator
     private static string ToBoolLiteral(bool value)
     {
         return value ? "true" : "false";
+    }
+
+    private static string ToAttributeCreationExpression(AttributeData attribute)
+    {
+        if (attribute.AttributeClass is null)
+        {
+            return "null!";
+        }
+
+        StringBuilder builder = new StringBuilder();
+        builder.Append("new ");
+        builder.Append(attribute.AttributeClass.ToDisplayString(FullyQualifiedFormat));
+        builder.Append('(');
+
+        for (int index = 0; index < attribute.ConstructorArguments.Length; index++)
+        {
+            if (index > 0)
+            {
+                builder.Append(", ");
+            }
+
+            builder.Append(ToAttributeArgumentExpression(attribute.ConstructorArguments[index]));
+        }
+
+        builder.Append(')');
+
+        if (attribute.NamedArguments.Length > 0)
+        {
+            builder.Append(" { ");
+
+            for (int index = 0; index < attribute.NamedArguments.Length; index++)
+            {
+                if (index > 0)
+                {
+                    builder.Append(", ");
+                }
+
+                KeyValuePair<string, TypedConstant> argument = attribute.NamedArguments[index];
+                builder.Append(argument.Key);
+                builder.Append(" = ");
+                builder.Append(ToAttributeArgumentExpression(argument.Value));
+            }
+
+            builder.Append(" }");
+        }
+
+        return builder.ToString();
+    }
+
+    private static string ToAttributeArgumentExpression(TypedConstant constant)
+    {
+        if (constant.IsNull)
+        {
+            return "null";
+        }
+
+        return constant.Kind switch
+        {
+            TypedConstantKind.Primitive => ToPrimitiveLiteral(constant.Value, constant.Type),
+            TypedConstantKind.Enum => ToEnumLiteral(constant),
+            TypedConstantKind.Type => constant.Value is ITypeSymbol type
+                ? $"typeof({type.ToDisplayString(FullyQualifiedFormat)})"
+                : "null",
+            TypedConstantKind.Array => ToArrayLiteral(constant),
+            _ => "null"
+        };
+    }
+
+    private static string ToPrimitiveLiteral(
+        object? value,
+        ITypeSymbol? type)
+    {
+        return value switch
+        {
+            string stringValue => ToLiteral(stringValue),
+            char charValue => ToCharLiteral(charValue),
+            bool boolValue => ToBoolLiteral(boolValue),
+            byte byteValue => byteValue.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            sbyte sbyteValue => sbyteValue.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            short shortValue => shortValue.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ushort ushortValue => ushortValue.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            int intValue => intValue.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            uint uintValue => uintValue.ToString(System.Globalization.CultureInfo.InvariantCulture) + "U",
+            long longValue => longValue.ToString(System.Globalization.CultureInfo.InvariantCulture) + "L",
+            ulong ulongValue => ulongValue.ToString(System.Globalization.CultureInfo.InvariantCulture) + "UL",
+            float floatValue => floatValue.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + "F",
+            double doubleValue => doubleValue.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + "D",
+            _ when type?.SpecialType == SpecialType.System_Object => "null",
+            _ => value?.ToString() ?? "null"
+        };
+    }
+
+    private static string ToCharLiteral(char value)
+    {
+        string escaped = value switch
+        {
+            '\'' => "\\'",
+            '\\' => "\\\\",
+            '\r' => "\\r",
+            '\n' => "\\n",
+            '\t' => "\\t",
+            _ => value.ToString()
+        };
+
+        return $"'{escaped}'";
+    }
+
+    private static string ToEnumLiteral(TypedConstant constant)
+    {
+        var enumType = constant.Type?.ToDisplayString(FullyQualifiedFormat) ?? "int";
+        var value = constant.Value switch
+        {
+            ulong ulongValue => ulongValue.ToString(System.Globalization.CultureInfo.InvariantCulture) + "UL",
+            long longValue => longValue.ToString(System.Globalization.CultureInfo.InvariantCulture) + "L",
+            uint uintValue => uintValue.ToString(System.Globalization.CultureInfo.InvariantCulture) + "U",
+            _ => Convert.ToString(constant.Value, System.Globalization.CultureInfo.InvariantCulture) ?? "0"
+        };
+
+        return $"({enumType}){value}";
+    }
+
+    private static string ToArrayLiteral(TypedConstant constant)
+    {
+        var elementType = constant.Type is IArrayTypeSymbol arrayType
+            ? arrayType.ElementType.ToDisplayString(FullyQualifiedFormat)
+            : "object";
+        StringBuilder builder = new StringBuilder();
+
+        builder.Append("new ");
+        builder.Append(elementType);
+        builder.Append("[] { ");
+
+        for (int index = 0; index < constant.Values.Length; index++)
+        {
+            if (index > 0)
+            {
+                builder.Append(", ");
+            }
+
+            builder.Append(ToAttributeArgumentExpression(constant.Values[index]));
+        }
+
+        builder.Append(" }");
+
+        return builder.ToString();
     }
 }

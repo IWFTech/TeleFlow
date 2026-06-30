@@ -29,9 +29,44 @@ public sealed class TelegramGeneratedFilterDescriptor
         LongValues = [];
     }
 
+    public TelegramGeneratedFilterDescriptor(
+        Type customFilterType,
+        Type customFilterContextType)
+        : this(customFilterType)
+    {
+        ArgumentNullException.ThrowIfNull(customFilterContextType);
+
+        CustomFilterContextType = customFilterContextType;
+    }
+
+    public TelegramGeneratedFilterDescriptor(
+        Type customFilterType,
+        Attribute customFilterAttribute)
+        : this(customFilterType)
+    {
+        ArgumentNullException.ThrowIfNull(customFilterAttribute);
+
+        CustomFilterAttribute = customFilterAttribute;
+    }
+
+    public TelegramGeneratedFilterDescriptor(
+        Type customFilterType,
+        Type customFilterContextType,
+        Attribute customFilterAttribute)
+        : this(customFilterType, customFilterContextType)
+    {
+        ArgumentNullException.ThrowIfNull(customFilterAttribute);
+
+        CustomFilterAttribute = customFilterAttribute;
+    }
+
     public TelegramGeneratedFilterKind Kind { get; }
 
     public Type? CustomFilterType { get; }
+
+    public Type? CustomFilterContextType { get; }
+
+    public Attribute? CustomFilterAttribute { get; }
 
     public IReadOnlyList<string> StringValues { get; }
 

@@ -124,6 +124,14 @@ Use regex only when the input shape cannot be expressed as a template clearly.
 | `[TelegramModule]` | Marks a module type. |
 | `[UseFilter<TFilter>]` | Adds a custom filter. |
 
+## Custom Filter Attribute Base Types
+
+| Type | Purpose |
+| --- | --- |
+| `TelegramFilterAttribute<TFilter>` | Base class for parameterized custom filter attributes. |
+| `ITelegramFilter<TContext>` | Custom filter contract without attribute metadata. |
+| `ITelegramFilter<TContext, TAttribute>` | Custom filter contract with attribute metadata. |
+
 ## Recommendation
 
 Use the most specific attribute that expresses the route clearly. Prefer templates over regex when possible, and avoid broad catch-all handlers unless they are intentionally last-resort behavior.

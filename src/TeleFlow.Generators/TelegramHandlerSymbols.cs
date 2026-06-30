@@ -57,6 +57,7 @@ internal static class TelegramHandlerSymbols
     public const string HasCallbackDataAttribute = "TeleFlow.Annotations.HasCallbackDataAttribute";
     public const string CallbackDataPrefixAttribute = "TeleFlow.Annotations.CallbackDataPrefixAttribute";
     public const string GenericUseFilterAttribute = "TeleFlow.Annotations.UseFilterAttribute<TFilter>";
+    public const string GenericTelegramFilterAttribute = "TeleFlow.Annotations.TelegramFilterAttribute<TFilter>";
     public const string TextMatchMode = "TeleFlow.Annotations.TextMatchMode";
     public const string State = "TeleFlow.Core.States.State";
     public const string MessageContext = "TeleFlow.Telegram.MessageContext";
@@ -70,6 +71,7 @@ internal static class TelegramHandlerSymbols
     public const string GenericCallbackHandler = "TeleFlow.Telegram.CallbackHandler<TPayload>";
     public const string ChatMemberUpdateHandler = "TeleFlow.Telegram.ChatMemberUpdateHandler";
     public const string GenericTelegramFilter = "TeleFlow.Telegram.ITelegramFilter<TContext>";
+    public const string GenericParameterizedTelegramFilter = "TeleFlow.Telegram.ITelegramFilter<TContext, TAttribute>";
     public const string Task = "System.Threading.Tasks.Task";
     public const string ValueTask = "System.Threading.Tasks.ValueTask";
     public const string CancellationToken = "System.Threading.CancellationToken";
@@ -146,6 +148,44 @@ internal static class TelegramHandlerSymbols
             symbol.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
             metadataName,
             StringComparison.Ordinal);
+    }
+
+    public static IReadOnlyList<AttributeData> GetTelegramFilterAttributes(
+        ISymbol symbol,
+        bool inherit = false)
+    {
+        return GetAttributesCore(
+            symbol,
+            static attribute => TryGetTelegramFilterAttributeFilterType(attribute, out _),
+            inherit,
+            allowMultiple: true);
+    }
+
+    public static bool TryGetTelegramFilterAttributeFilterType(
+        AttributeData attribute,
+        out ITypeSymbol filterType)
+    {
+        filterType = null!;
+
+        if (attribute.AttributeClass is not { } attributeType)
+        {
+            return false;
+        }
+
+        for (INamedTypeSymbol? current = attributeType; current is not null; current = current.BaseType)
+        {
+            if (string.Equals(
+                    current.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
+                    GenericTelegramFilterAttribute,
+                    StringComparison.Ordinal) &&
+                current.TypeArguments.Length == 1)
+            {
+                filterType = current.TypeArguments[0];
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public static bool HasAnyRouteAttribute(ISymbol symbol)
@@ -275,6 +315,7 @@ internal static class TelegramHandlerSymbols
             StateAttribute or
             GenericStateAttribute or
             GenericUseFilterAttribute or
+            GenericTelegramFilterAttribute or
             ErrorAttribute or
             GenericErrorAttribute;
     }

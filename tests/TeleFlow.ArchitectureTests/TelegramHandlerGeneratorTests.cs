@@ -842,8 +842,78 @@ public sealed class TelegramHandlerGeneratorTests
             .ToArray();
 
         Assert.Empty(errors);
-        Assert.Contains("new global::TeleFlow.Telegram.TelegramGeneratedFilterDescriptor(typeof(global::Bot.AllowUpdateFilter))", generatedSource);
-        Assert.Contains("new global::TeleFlow.Telegram.TelegramGeneratedFilterDescriptor(typeof(global::Bot.AllowMessageFilter))", generatedSource);
+        Assert.Contains("new global::TeleFlow.Telegram.TelegramGeneratedFilterDescriptor(typeof(global::Bot.AllowUpdateFilter), typeof(global::TeleFlow.Telegram.TelegramUpdateContext))", generatedSource);
+        Assert.Contains("new global::TeleFlow.Telegram.TelegramGeneratedFilterDescriptor(typeof(global::Bot.AllowMessageFilter), typeof(global::TeleFlow.Telegram.MessageContext))", generatedSource);
+    }
+
+    [Fact]
+    public void Generator_EmitsParameterizedCustomFilterMetadata()
+    {
+        var compilation = CreateCompilation(
+            """
+            using System;
+            using System.Threading;
+            using System.Threading.Tasks;
+            using TeleFlow.Annotations;
+            using TeleFlow.Telegram;
+
+            namespace Bot;
+
+            public sealed class FilteredHandlers
+            {
+                [Message]
+                [RequireText("hello", IgnoreCase = true)]
+                public Task Handle(MessageContext context)
+                {
+                    return Task.CompletedTask;
+                }
+            }
+
+            [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
+            public sealed class RequireTextAttribute : TelegramFilterAttribute<RequireTextFilter>
+            {
+                public RequireTextAttribute(string text)
+                {
+                    Text = text;
+                }
+
+                public string Text { get; }
+
+                public bool IgnoreCase { get; set; }
+            }
+
+            public sealed class RequireTextFilter : ITelegramFilter<MessageContext, RequireTextAttribute>
+            {
+                public ValueTask<bool> MatchesAsync(
+                    MessageContext context,
+                    RequireTextAttribute attribute,
+                    CancellationToken cancellationToken = default)
+                {
+                    return ValueTask.FromResult(true);
+                }
+            }
+            """);
+
+        var driver = CSharpGeneratorDriver.Create(new TelegramHandlerSourceGenerator());
+        driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out var generatedCompilation,
+            out var diagnostics);
+
+        var generatedSource = generatedCompilation.SyntaxTrees
+            .Single(tree => tree.FilePath.EndsWith("TeleFlow.Telegram.GeneratedHandlers.g.cs", StringComparison.Ordinal))
+            .ToString();
+        var errors = generatedCompilation.GetDiagnostics()
+            .Concat(diagnostics)
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+
+        Assert.Empty(errors);
+        Assert.Contains("new global::TeleFlow.Telegram.TelegramGeneratedFilterDescriptor(", generatedSource);
+        Assert.Contains("typeof(global::Bot.RequireTextFilter)", generatedSource);
+        Assert.Contains("typeof(global::TeleFlow.Telegram.MessageContext)", generatedSource);
+        Assert.Contains("new global::Bot.RequireTextAttribute(\"hello\")", generatedSource);
+        Assert.Contains("IgnoreCase = true", generatedSource);
     }
 
     [Fact]
@@ -1320,6 +1390,7 @@ public sealed class TelegramHandlerGeneratorTests
     {
         var diagnostics = await GetAnalyzerDiagnosticsAsync(
             """
+            using System;
             using System.Threading;
             using System.Threading.Tasks;
             using TeleFlow.Annotations;
@@ -1349,6 +1420,12 @@ public sealed class TelegramHandlerGeneratorTests
 
                 [UseFilter<AllowMessageFilter>]
                 public Task CustomFilter(MessageContext context)
+                {
+                    return Task.CompletedTask;
+                }
+
+                [RequireText("hello")]
+                public Task ParameterizedCustomFilter(MessageContext context)
                 {
                     return Task.CompletedTask;
                 }
@@ -1387,10 +1464,32 @@ public sealed class TelegramHandlerGeneratorTests
                     return ValueTask.FromResult(true);
                 }
             }
+
+            [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
+            public sealed class RequireTextAttribute : TelegramFilterAttribute<RequireTextFilter>
+            {
+                public RequireTextAttribute(string text)
+                {
+                    Text = text;
+                }
+
+                public string Text { get; }
+            }
+
+            public sealed class RequireTextFilter : ITelegramFilter<MessageContext, RequireTextAttribute>
+            {
+                public ValueTask<bool> MatchesAsync(
+                    MessageContext context,
+                    RequireTextAttribute attribute,
+                    CancellationToken cancellationToken = default)
+                {
+                    return ValueTask.FromResult(true);
+                }
+            }
             """);
 
         Assert.True(
-            diagnostics.Count(diagnostic => diagnostic.Id == TelegramHandlerAnalyzer.MissingRouteAttributeId) >= 7,
+            diagnostics.Count(diagnostic => diagnostic.Id == TelegramHandlerAnalyzer.MissingRouteAttributeId) >= 8,
             "Expected route-less state, built-in filter, custom filter, role, and chat-member transition diagnostics.");
     }
 
@@ -2230,6 +2329,51 @@ public sealed class TelegramHandlerGeneratorTests
         Assert.True(
             diagnostics.Count(diagnostic => diagnostic.Id == TelegramHandlerAnalyzer.InvalidFilterId) >= 4,
             "Expected filter diagnostics for incompatible, abstract, and non-filter custom filter types.");
+    }
+
+    [Fact]
+    public async Task Analyzer_ReportsParameterizedCustomFilterWithoutTypedContract()
+    {
+        var diagnostics = await GetAnalyzerDiagnosticsAsync(
+            """
+            using System;
+            using System.Threading;
+            using System.Threading.Tasks;
+            using TeleFlow.Annotations;
+            using TeleFlow.Telegram;
+
+            public sealed class MessageHandler
+            {
+                [Message]
+                [RequireText("hello")]
+                public Task Handle(MessageContext context) => Task.CompletedTask;
+            }
+
+            [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
+            public sealed class RequireTextAttribute : TelegramFilterAttribute<RequireTextFilter>
+            {
+                public RequireTextAttribute(string text)
+                {
+                    Text = text;
+                }
+
+                public string Text { get; }
+            }
+
+            public sealed class RequireTextFilter : ITelegramFilter<MessageContext>
+            {
+                public ValueTask<bool> MatchesAsync(
+                    MessageContext context,
+                    CancellationToken cancellationToken = default)
+                {
+                    return ValueTask.FromResult(true);
+                }
+            }
+            """);
+
+        AssertInvalidFilterDiagnostic(
+            diagnostics,
+            "Parameterized custom Telegram filter attributes require a filter type that implements ITelegramFilter<TContext, TAttribute>.");
     }
 
     [Fact]

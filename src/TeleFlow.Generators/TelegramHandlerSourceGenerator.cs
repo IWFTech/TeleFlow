@@ -471,13 +471,15 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
 
         if (hasChatMemberRoute)
         {
-            if (filters.Any(static filter => filter.CustomTypeName is null &&
+            if (!TryPrepareCustomFilters(filters, GeneratedHandlerKind.ChatMember, out ImmutableArray<GeneratedFilter> chatMemberFilters) ||
+                chatMemberFilters.Any(static filter => filter.CustomTypeName is null &&
                                              !SupportsGeneratedFilter(filter, GeneratedHandlerKind.ChatMember)) ||
                 !TryBuildChatMemberTransitions(method, out ImmutableArray<GeneratedChatMemberTransition> transitions))
             {
                 return [];
             }
 
+            filters = chatMemberFilters;
             ImmutableArray<GeneratedRoute>.Builder chatMemberRoutes = ImmutableArray.CreateBuilder<GeneratedRoute>();
 
             if (hasChatMemberUpdated)
@@ -519,12 +521,14 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
 
         if (hasRawCallback || callbackPayloadType is not null)
         {
-            if (filters.Any(static filter => filter.CustomTypeName is null &&
+            if (!TryPrepareCustomFilters(filters, GeneratedHandlerKind.Callback, out ImmutableArray<GeneratedFilter> callbackFilters) ||
+                callbackFilters.Any(static filter => filter.CustomTypeName is null &&
                                              !SupportsGeneratedFilter(filter, GeneratedHandlerKind.Callback)))
             {
                 return [];
             }
 
+            filters = callbackFilters;
             return
             [
                 new GeneratedRoute(
@@ -543,12 +547,14 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
             ];
         }
 
-        if (filters.Any(static filter => filter.CustomTypeName is null &&
+        if (!TryPrepareCustomFilters(filters, GeneratedHandlerKind.Message, out ImmutableArray<GeneratedFilter> messageFilters) ||
+            messageFilters.Any(static filter => filter.CustomTypeName is null &&
                                          !SupportsGeneratedFilter(filter, GeneratedHandlerKind.Message)))
         {
             return [];
         }
 
+        filters = messageFilters;
         ImmutableArray<GeneratedRoute>.Builder routes = ImmutableArray.CreateBuilder<GeneratedRoute>();
 
         foreach (AttributeData attribute in GetRouteAttributes(
@@ -912,7 +918,10 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
         {
             if (attribute.AttributeClass is not { TypeArguments.Length: 1 } filterAttributeType ||
                 IsInvalidCustomFilterType(filterAttributeType.TypeArguments[0]) ||
-                !ImplementsTelegramFilter(filterAttributeType.TypeArguments[0]))
+                !TryGetTelegramFilterContextTypes(
+                    filterAttributeType.TypeArguments[0],
+                    attributeType: null,
+                    out ImmutableArray<string> contextMetadataNames))
             {
                 return false;
             }
@@ -921,7 +930,30 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
                 "Custom",
                 StringValues: [],
                 LongValues: [],
-                filterAttributeType.TypeArguments[0].ToDisplayString(FullyQualifiedFormat)));
+                filterAttributeType.TypeArguments[0].ToDisplayString(FullyQualifiedFormat),
+                CustomContextMetadataNames: contextMetadataNames));
+        }
+
+        foreach (AttributeData attribute in TelegramHandlerSymbols.GetTelegramFilterAttributes(symbol, inherit: true))
+        {
+            if (attribute.AttributeClass is not { IsGenericType: false } attributeType ||
+                !TelegramHandlerSymbols.TryGetTelegramFilterAttributeFilterType(attribute, out ITypeSymbol filterType) ||
+                IsInvalidCustomFilterType(filterType) ||
+                !TryGetTelegramFilterContextTypes(
+                    filterType,
+                    attributeType,
+                    out ImmutableArray<string> contextMetadataNames))
+            {
+                return false;
+            }
+
+            builder.Add(new GeneratedFilter(
+                "Custom",
+                StringValues: [],
+                LongValues: [],
+                filterType.ToDisplayString(FullyQualifiedFormat),
+                ToAttributeCreationExpression(attribute),
+                CustomContextMetadataNames: contextMetadataNames));
         }
 
         return true;
@@ -944,6 +976,67 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
     {
         return TelegramBuiltInFilterFacts.TryGetSpecByGeneratedKind(filter.Kind, out TelegramBuiltInFilterSpec spec) &&
                TelegramBuiltInFilterFacts.SupportsRouteKind(spec.Target, ToMetadataRouteKind(handlerKind));
+    }
+
+    private static bool TryPrepareCustomFilters(
+        ImmutableArray<GeneratedFilter> filters,
+        GeneratedHandlerKind handlerKind,
+        out ImmutableArray<GeneratedFilter> preparedFilters)
+    {
+        ImmutableArray<GeneratedFilter>.Builder builder = ImmutableArray.CreateBuilder<GeneratedFilter>(filters.Length);
+
+        foreach (GeneratedFilter filter in filters)
+        {
+            if (filter.CustomTypeName is null)
+            {
+                builder.Add(filter);
+                continue;
+            }
+
+            if (!TryResolveCustomFilterContextType(filter, handlerKind, out string contextTypeName))
+            {
+                preparedFilters = [];
+                return false;
+            }
+
+            builder.Add(filter with { CustomContextTypeName = contextTypeName });
+        }
+
+        preparedFilters = builder.ToImmutable();
+        return true;
+    }
+
+    private static bool TryResolveCustomFilterContextType(
+        GeneratedFilter filter,
+        GeneratedHandlerKind handlerKind,
+        out string contextTypeName)
+    {
+        string expectedContext = handlerKind switch
+        {
+            GeneratedHandlerKind.Callback => TelegramHandlerSymbols.CallbackQueryContext,
+            GeneratedHandlerKind.ChatMember => TelegramHandlerSymbols.ChatMemberUpdatedContext,
+            _ => TelegramHandlerSymbols.MessageContext
+        };
+
+        if (filter.CustomContextMetadataNames.Contains(expectedContext, StringComparer.Ordinal))
+        {
+            contextTypeName = ToFullyQualifiedTypeName(expectedContext);
+            return true;
+        }
+
+        if (filter.CustomContextMetadataNames.Contains(TelegramHandlerSymbols.TelegramUpdateContext, StringComparer.Ordinal))
+        {
+            contextTypeName = ToFullyQualifiedTypeName(TelegramHandlerSymbols.TelegramUpdateContext);
+            return true;
+        }
+
+        contextTypeName = string.Empty;
+        return false;
+    }
+
+    private static string ToFullyQualifiedTypeName(string metadataName)
+    {
+        return $"global::{metadataName}";
     }
 
     private static string CanonicalizeChatUsername(string? username)
@@ -1051,13 +1144,42 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
         return IsInvalidConcreteNamedType(type);
     }
 
-    private static bool ImplementsTelegramFilter(ITypeSymbol type)
+    private static bool TryGetTelegramFilterContextTypes(
+        ITypeSymbol type,
+        ITypeSymbol? attributeType,
+        out ImmutableArray<string> contextTypes)
     {
-        return type.AllInterfaces.Any(static candidate =>
-            string.Equals(
-                candidate.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
-                TelegramHandlerSymbols.GenericTelegramFilter,
-                StringComparison.Ordinal));
+        ImmutableArray<string>.Builder builder = ImmutableArray.CreateBuilder<string>();
+
+        foreach (INamedTypeSymbol candidate in type.AllInterfaces)
+        {
+            if (attributeType is null)
+            {
+                if (string.Equals(
+                        candidate.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
+                        TelegramHandlerSymbols.GenericTelegramFilter,
+                        StringComparison.Ordinal) &&
+                    candidate.TypeArguments.Length == 1)
+                {
+                    builder.Add(candidate.TypeArguments[0].ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat));
+                }
+
+                continue;
+            }
+
+            if (string.Equals(
+                    candidate.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
+                    TelegramHandlerSymbols.GenericParameterizedTelegramFilter,
+                    StringComparison.Ordinal) &&
+                candidate.TypeArguments.Length == 2 &&
+                SymbolEqualityComparer.Default.Equals(candidate.TypeArguments[1], attributeType))
+            {
+                builder.Add(candidate.TypeArguments[0].ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat));
+            }
+        }
+
+        contextTypes = builder.ToImmutable();
+        return contextTypes.Length > 0;
     }
 
     private static string? GetModuleName(INamedTypeSymbol handlerType)

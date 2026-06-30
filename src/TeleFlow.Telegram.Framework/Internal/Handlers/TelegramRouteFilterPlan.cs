@@ -7,26 +7,26 @@ namespace TeleFlow.Telegram.Internal.Handlers;
 internal sealed class TelegramRouteFilterPlan
 {
     private static readonly IReadOnlyList<TelegramFilterDescriptor> EmptyBuiltInFilters = [];
-    private static readonly IReadOnlyList<Type> EmptyCustomFilterTypes = [];
+    private static readonly IReadOnlyList<TelegramCustomFilterCallSite> EmptyCustomFilters = [];
     private static readonly IReadOnlyList<TelegramRoleRequirementDescriptor> EmptyRoleRequirements = [];
     private static readonly TelegramRouteFilterPlan Empty = new(
         EmptyBuiltInFilters,
-        EmptyCustomFilterTypes,
+        EmptyCustomFilters,
         EmptyRoleRequirements);
 
     private TelegramRouteFilterPlan(
         IReadOnlyList<TelegramFilterDescriptor> builtInFilters,
-        IReadOnlyList<Type> customFilterTypes,
+        IReadOnlyList<TelegramCustomFilterCallSite> customFilters,
         IReadOnlyList<TelegramRoleRequirementDescriptor> roleRequirements)
     {
         BuiltInFilters = builtInFilters;
-        CustomFilterTypes = customFilterTypes;
+        CustomFilters = customFilters;
         RoleRequirements = roleRequirements;
     }
 
     public IReadOnlyList<TelegramFilterDescriptor> BuiltInFilters { get; }
 
-    public IReadOnlyList<Type> CustomFilterTypes { get; }
+    public IReadOnlyList<TelegramCustomFilterCallSite> CustomFilters { get; }
 
     public IReadOnlyList<TelegramRoleRequirementDescriptor> RoleRequirements { get; }
 
@@ -34,10 +34,11 @@ internal sealed class TelegramRouteFilterPlan
     {
         ArgumentNullException.ThrowIfNull(route);
 
-        return Create(route.Filters, route.RoleRequirements);
+        return Create(route.Kind, route.Filters, route.RoleRequirements);
     }
 
     private static TelegramRouteFilterPlan Create(
+        TelegramHandlerKind handlerKind,
         IReadOnlyList<TelegramFilterDescriptor> filters,
         IReadOnlyList<TelegramRoleRequirementDescriptor> roleRequirements)
     {
@@ -50,7 +51,7 @@ internal sealed class TelegramRouteFilterPlan
         }
 
         List<TelegramFilterDescriptor>? builtInFilters = null;
-        List<Type>? customFilterTypes = null;
+        List<TelegramCustomFilterCallSite>? customFilters = null;
 
         for (var index = 0; index < filters.Count; index++)
         {
@@ -58,8 +59,12 @@ internal sealed class TelegramRouteFilterPlan
 
             if (filter.CustomFilterType is { } customFilterType)
             {
-                customFilterTypes ??= [];
-                customFilterTypes.Add(customFilterType);
+                customFilters ??= [];
+                customFilters.Add(TelegramCustomFilterCallSite.Create(
+                    customFilterType,
+                    filter.CustomFilterContextType,
+                    filter.CustomFilterAttribute,
+                    handlerKind));
                 continue;
             }
 
@@ -69,7 +74,7 @@ internal sealed class TelegramRouteFilterPlan
 
         return new TelegramRouteFilterPlan(
             builtInFilters?.ToArray() ?? EmptyBuiltInFilters,
-            customFilterTypes?.ToArray() ?? EmptyCustomFilterTypes,
+            customFilters?.ToArray() ?? EmptyCustomFilters,
             roleRequirements);
     }
 }

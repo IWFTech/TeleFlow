@@ -1402,6 +1402,25 @@ public sealed class TelegramHandlerDispatcherTests
     }
 
     [Fact]
+    public async Task ParameterizedCustomMessageFilter_ReceivesAttributeMetadata()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.AddSingleton<RequireMessageTextFilter>();
+                services.AddTelegramHandler<ParameterizedCustomFilterMessageHandler>();
+                services.AddTelegramHandler<AnyMessageHandler>();
+            });
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("CUSTOM"));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("other"));
+
+        Assert.Equal(["parameterized-filter:CUSTOM", "message:other"], probe.Events);
+    }
+
+    [Fact]
     public async Task CustomMessageFilter_FalseFallsThrough()
     {
         using var serviceProvider = CreateServiceProvider(
@@ -4034,6 +4053,17 @@ public sealed class TelegramHandlerDispatcherTests
         }
     }
 
+    public sealed class ParameterizedCustomFilterMessageHandler
+    {
+        [Message]
+        [RequireMessageText("custom", IgnoreCase = true)]
+        public Task Handle(MessageContext context, HandlerProbe probe)
+        {
+            probe.Events.Add($"parameterized-filter:{context.TelegramMessage.Text}");
+            return Task.CompletedTask;
+        }
+    }
+
     [UseFilter<AllowUpdateFilter>]
     public sealed class AndCustomFilterMessageHandler
     {
@@ -4923,6 +4953,34 @@ public sealed class TelegramHandlerDispatcherTests
             CancellationToken cancellationToken = default)
         {
             return ValueTask.FromResult(false);
+        }
+    }
+
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
+    public sealed class RequireMessageTextAttribute : TelegramFilterAttribute<RequireMessageTextFilter>
+    {
+        public RequireMessageTextAttribute(string text)
+        {
+            Text = text;
+        }
+
+        public string Text { get; }
+
+        public bool IgnoreCase { get; set; }
+    }
+
+    public sealed class RequireMessageTextFilter : ITelegramFilter<MessageContext, RequireMessageTextAttribute>
+    {
+        public ValueTask<bool> MatchesAsync(
+            MessageContext context,
+            RequireMessageTextAttribute attribute,
+            CancellationToken cancellationToken = default)
+        {
+            var comparison = attribute.IgnoreCase
+                ? StringComparison.OrdinalIgnoreCase
+                : StringComparison.Ordinal;
+            var matches = string.Equals(context.TelegramMessage.Text, attribute.Text, comparison);
+            return ValueTask.FromResult(matches);
         }
     }
 

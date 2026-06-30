@@ -454,9 +454,9 @@ internal static class TelegramHandlerDescriptorBuilder
                 longValues: []));
         }
 
-        foreach (var customFilterType in GetCustomFilterTypes(member))
+        foreach (var customFilter in GetCustomFilters(member))
         {
-            filters.Add(new TelegramFilterDescriptor(customFilterType));
+            filters.Add(customFilter);
         }
     }
 
@@ -474,14 +474,42 @@ internal static class TelegramHandlerDescriptorBuilder
         }
     }
 
-    private static IEnumerable<Type> GetCustomFilterTypes(MemberInfo member)
+    private static IEnumerable<TelegramFilterDescriptor> GetCustomFilters(MemberInfo member)
     {
-        return member
-            .GetCustomAttributes(inherit: true)
-            .Select(static attribute => attribute.GetType())
-            .Where(static type => type.IsGenericType &&
-                                  type.GetGenericTypeDefinition() == typeof(UseFilterAttribute<>))
-            .Select(static type => type.GetGenericArguments()[0]);
+        foreach (var attribute in member.GetCustomAttributes(inherit: true))
+        {
+            var attributeType = attribute.GetType();
+
+            if (attributeType.IsGenericType &&
+                attributeType.GetGenericTypeDefinition() == typeof(UseFilterAttribute<>))
+            {
+                yield return new TelegramFilterDescriptor(attributeType.GetGenericArguments()[0]);
+                continue;
+            }
+
+            if (TryGetTelegramFilterAttributeFilterType(attributeType, out var filterType))
+            {
+                yield return new TelegramFilterDescriptor(filterType, (Attribute)attribute);
+            }
+        }
+    }
+
+    private static bool TryGetTelegramFilterAttributeFilterType(
+        Type attributeType,
+        out Type filterType)
+    {
+        for (var current = attributeType; current is not null; current = current.BaseType)
+        {
+            if (current.IsGenericType &&
+                current.GetGenericTypeDefinition() == typeof(TelegramFilterAttribute<>))
+            {
+                filterType = current.GetGenericArguments()[0];
+                return true;
+            }
+        }
+
+        filterType = null!;
+        return false;
     }
 
     private static void ValidateCustomFilters(
@@ -502,20 +530,6 @@ internal static class TelegramHandlerDescriptorBuilder
                     $"Custom Telegram filter type '{filterType.FullName}' must be a concrete closed type.");
             }
 
-            var contextTypes = filterType
-                .GetInterfaces()
-                .Where(static type => type.IsGenericType &&
-                                      type.GetGenericTypeDefinition() == typeof(ITelegramFilter<>))
-                .Select(static type => type.GetGenericArguments()[0])
-                .ToArray();
-
-            if (contextTypes.Length == 0)
-            {
-                throw CreateSignatureException(
-                    method,
-                    $"Custom Telegram filter type '{filterType.FullName}' must implement ITelegramFilter<TContext>.");
-            }
-
             var expectedContextType = kind switch
             {
                 TelegramHandlerKind.Callback => typeof(CallbackQueryContext),
@@ -523,14 +537,83 @@ internal static class TelegramHandlerDescriptorBuilder
                 _ => typeof(MessageContext)
             };
 
-            if (!contextTypes.Contains(expectedContextType) &&
-                !contextTypes.Contains(typeof(TelegramUpdateContext)))
+            if (filter.CustomFilterAttribute is null)
+            {
+                var contextTypes = GetCustomFilterContextTypes(filterType, attributeType: null);
+
+                if (contextTypes.Length == 0)
+                {
+                    throw CreateSignatureException(
+                        method,
+                        $"Custom Telegram filter type '{filterType.FullName}' must implement ITelegramFilter<TContext>.");
+                }
+
+                if (!SupportsContextType(contextTypes, expectedContextType))
+                {
+                    throw CreateSignatureException(
+                        method,
+                        $"Custom Telegram filter type '{filterType.FullName}' is not compatible with {expectedContextType.Name} handlers.");
+                }
+
+                continue;
+            }
+
+            var attributeType = filter.CustomFilterAttribute.GetType();
+
+            if (attributeType.IsGenericType)
+            {
+                throw CreateSignatureException(
+                    method,
+                    $"Custom Telegram filter attribute type '{attributeType.FullName}' must be non-generic.");
+            }
+
+            var typedContextTypes = GetCustomFilterContextTypes(filterType, attributeType);
+
+            if (typedContextTypes.Length == 0)
+            {
+                throw CreateSignatureException(
+                    method,
+                    "Parameterized custom Telegram filter attributes require a filter type that implements ITelegramFilter<TContext, TAttribute>.");
+            }
+
+            if (!SupportsContextType(typedContextTypes, expectedContextType))
             {
                 throw CreateSignatureException(
                     method,
                     $"Custom Telegram filter type '{filterType.FullName}' is not compatible with {expectedContextType.Name} handlers.");
             }
         }
+    }
+
+    private static Type[] GetCustomFilterContextTypes(
+        Type filterType,
+        Type? attributeType)
+    {
+        var interfaces = filterType.GetInterfaces();
+
+        if (attributeType is null)
+        {
+            return interfaces
+                .Where(static type => type.IsGenericType &&
+                                      type.GetGenericTypeDefinition() == typeof(ITelegramFilter<>))
+                .Select(static type => type.GetGenericArguments()[0])
+                .ToArray();
+        }
+
+        return interfaces
+            .Where(type => type.IsGenericType &&
+                           type.GetGenericTypeDefinition() == typeof(ITelegramFilter<,>) &&
+                           type.GetGenericArguments()[1] == attributeType)
+            .Select(static type => type.GetGenericArguments()[0])
+            .ToArray();
+    }
+
+    private static bool SupportsContextType(
+        IReadOnlyCollection<Type> contextTypes,
+        Type expectedContextType)
+    {
+        return contextTypes.Contains(expectedContextType) ||
+               contextTypes.Contains(typeof(TelegramUpdateContext));
     }
 
     private static string? GetModuleName(Type handlerType)

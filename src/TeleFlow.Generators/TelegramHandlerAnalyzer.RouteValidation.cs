@@ -494,6 +494,51 @@ public sealed partial class TelegramHandlerAnalyzer
                     "Custom Telegram filter context type is not compatible with the handler route kind."));
             }
         }
+
+        foreach (AttributeData attribute in TelegramHandlerSymbols.GetTelegramFilterAttributes(method.ContainingType, inherit: true)
+                     .Concat(TelegramHandlerSymbols.GetTelegramFilterAttributes(method, inherit: true)))
+        {
+            if (attribute.AttributeClass is not { } attributeType ||
+                !TelegramHandlerSymbols.TryGetTelegramFilterAttributeFilterType(attribute, out ITypeSymbol filterType))
+            {
+                continue;
+            }
+
+            if (attributeType.IsGenericType)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    InvalidFilter,
+                    location,
+                    "Parameterized custom Telegram filter attribute types must be non-generic."));
+                continue;
+            }
+
+            if (IsInvalidCustomFilterType(filterType))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    InvalidFilter,
+                    location,
+                    "Custom Telegram filter type must be a concrete closed type."));
+                continue;
+            }
+
+            if (!TryGetParameterizedTelegramFilterContextTypes(filterType, attributeType, out IReadOnlyList<string> typedContextTypes))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    InvalidFilter,
+                    location,
+                    "Parameterized custom Telegram filter attributes require a filter type that implements ITelegramFilter<TContext, TAttribute>."));
+                continue;
+            }
+
+            if (!CustomFilterSupportsRouteKind(typedContextTypes, routeKind))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    InvalidFilter,
+                    location,
+                    "Custom Telegram filter context type is not compatible with the handler route kind."));
+            }
+        }
     }
 
     private static TelegramHandlerMetadataRouteKind ToMetadataRouteKind(HandlerKind routeKind)
@@ -554,6 +599,26 @@ public sealed partial class TelegramHandlerAnalyzer
                     candidate.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
                     TelegramHandlerSymbols.GenericTelegramFilter,
                     StringComparison.Ordinal))
+            .Select(static candidate => candidate.TypeArguments[0].ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat))
+            .ToArray();
+
+        contextTypes = values;
+        return values.Length > 0;
+    }
+
+    private static bool TryGetParameterizedTelegramFilterContextTypes(
+        ITypeSymbol filterType,
+        ITypeSymbol attributeType,
+        out IReadOnlyList<string> contextTypes)
+    {
+        string[] values = filterType.AllInterfaces
+            .Where(candidate =>
+                string.Equals(
+                    candidate.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
+                    TelegramHandlerSymbols.GenericParameterizedTelegramFilter,
+                    StringComparison.Ordinal) &&
+                candidate.TypeArguments.Length == 2 &&
+                SymbolEqualityComparer.Default.Equals(candidate.TypeArguments[1], attributeType))
             .Select(static candidate => candidate.TypeArguments[0].ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat))
             .ToArray();
 

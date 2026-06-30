@@ -26,13 +26,13 @@ internal static class TelegramFilterEvaluator
             }
         }
 
-        var customFilterTypes = filterPlan.CustomFilterTypes;
+        var customFilters = filterPlan.CustomFilters;
 
-        for (var index = 0; index < customFilterTypes.Count; index++)
+        for (var index = 0; index < customFilters.Count; index++)
         {
-            var filterType = customFilterTypes[index];
+            var customFilter = customFilters[index];
 
-            if (!await MatchesCustomFilterAsync(context, filterType, cancellationToken).ConfigureAwait(false))
+            if (!await customFilter.MatchesAsync(context, cancellationToken).ConfigureAwait(false))
             {
                 return false;
             }
@@ -110,40 +110,6 @@ internal static class TelegramFilterEvaluator
             TelegramFilterKind.ReplyToBot => message.ReplyToMessage?.From?.IsBot == true,
             _ => false
         };
-    }
-
-    private static async ValueTask<bool> MatchesCustomFilterAsync(
-        TelegramUpdateContext context,
-        Type filterType,
-        CancellationToken cancellationToken)
-    {
-        var filter = context.Services.GetRequiredService(filterType);
-
-        if (filter is ITelegramFilter<MessageContext> messageFilter &&
-            context is MessageContext messageContext)
-        {
-            return await messageFilter.MatchesAsync(messageContext, cancellationToken).ConfigureAwait(false);
-        }
-
-        if (filter is ITelegramFilter<CallbackQueryContext> callbackFilter &&
-            context is CallbackQueryContext callbackContext)
-        {
-            return await callbackFilter.MatchesAsync(callbackContext, cancellationToken).ConfigureAwait(false);
-        }
-
-        if (filter is ITelegramFilter<ChatMemberUpdatedContext> chatMemberFilter &&
-            context is ChatMemberUpdatedContext chatMemberContext)
-        {
-            return await chatMemberFilter.MatchesAsync(chatMemberContext, cancellationToken).ConfigureAwait(false);
-        }
-
-        if (filter is ITelegramFilter<TelegramUpdateContext> updateFilter)
-        {
-            return await updateFilter.MatchesAsync(context, cancellationToken).ConfigureAwait(false);
-        }
-
-        throw new InvalidOperationException(
-            $"Telegram filter '{filterType.FullName}' must implement ITelegramFilter<TelegramUpdateContext>, ITelegramFilter<MessageContext>, ITelegramFilter<CallbackQueryContext>, or ITelegramFilter<ChatMemberUpdatedContext>.");
     }
 
     private static async ValueTask<bool> MatchesRoleRequirementsAsync(
