@@ -9,18 +9,16 @@ internal static class TelegramFilterEvaluator
 {
     public static async ValueTask<bool> MatchesAsync(
         TelegramUpdateContext context,
-        IReadOnlyList<TelegramFilterDescriptor> filters,
-        IReadOnlyList<TelegramRoleRequirementDescriptor> roleRequirements,
+        TelegramRouteFilterPlan filterPlan,
         CancellationToken cancellationToken)
     {
-        for (var index = 0; index < filters.Count; index++)
-        {
-            var filter = filters[index];
+        ArgumentNullException.ThrowIfNull(filterPlan);
 
-            if (filter.CustomFilterType is not null)
-            {
-                continue;
-            }
+        var builtInFilters = filterPlan.BuiltInFilters;
+
+        for (var index = 0; index < builtInFilters.Count; index++)
+        {
+            var filter = builtInFilters[index];
 
             if (!MatchesBuiltInFilter(context, filter))
             {
@@ -28,14 +26,11 @@ internal static class TelegramFilterEvaluator
             }
         }
 
-        for (var index = 0; index < filters.Count; index++)
-        {
-            var filterType = filters[index].CustomFilterType;
+        var customFilterTypes = filterPlan.CustomFilterTypes;
 
-            if (filterType is null)
-            {
-                continue;
-            }
+        for (var index = 0; index < customFilterTypes.Count; index++)
+        {
+            var filterType = customFilterTypes[index];
 
             if (!await MatchesCustomFilterAsync(context, filterType, cancellationToken).ConfigureAwait(false))
             {
@@ -43,20 +38,12 @@ internal static class TelegramFilterEvaluator
             }
         }
 
-        if (!await MatchesRoleRequirementsAsync(context, roleRequirements, cancellationToken).ConfigureAwait(false))
+        if (!await MatchesRoleRequirementsAsync(context, filterPlan.RoleRequirements, cancellationToken).ConfigureAwait(false))
         {
             return false;
         }
 
         return true;
-    }
-
-    public static ValueTask<bool> MatchesAsync(
-        TelegramUpdateContext context,
-        IReadOnlyList<TelegramFilterDescriptor> filters,
-        CancellationToken cancellationToken)
-    {
-        return MatchesAsync(context, filters, roleRequirements: [], cancellationToken);
     }
 
     private static bool MatchesBuiltInFilter(

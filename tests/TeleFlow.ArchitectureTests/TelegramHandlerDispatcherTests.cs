@@ -2648,6 +2648,32 @@ public sealed class TelegramHandlerDispatcherTests
     }
 
     [Fact]
+    public async Task MultiStateHandler_DispatchesFromEachDeclaredState()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.AddMemoryStateStorage();
+                services.AddTelegramHandler<MultiStateMessageHandler>();
+                services.AddTelegramHandler<AnyMessageHandler>();
+            });
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+        var stateKey = StateKey.Create("telegram", "user:5", "chat:100");
+        var stateStore = serviceProvider.GetRequiredService<IStateStore>();
+
+        await stateStore.SetStateAsync(stateKey, MultiState.First.Id);
+        await DispatchThroughMiddlewareAsync(serviceProvider, CreateMessageUpdate("one"));
+
+        await stateStore.SetStateAsync(stateKey, MultiState.Second.Id);
+        await DispatchThroughMiddlewareAsync(serviceProvider, CreateMessageUpdate("two"));
+
+        await stateStore.SetStateAsync(stateKey, "other");
+        await DispatchThroughMiddlewareAsync(serviceProvider, CreateMessageUpdate("fallback"));
+
+        Assert.Equal(["multi-state:one", "multi-state:two", "message:fallback"], probe.Events);
+    }
+
+    [Fact]
     public async Task SceneStep_DispatchesBySceneStateAndUsesStateData()
     {
         using var serviceProvider = CreateServiceProvider(
@@ -4262,6 +4288,26 @@ public sealed class TelegramHandlerDispatcherTests
         public Task Handle(MessageContext context, HandlerProbe probe)
         {
             probe.Events.Add($"typed-state:{context.TelegramMessage.Text}");
+            return Task.CompletedTask;
+        }
+    }
+
+    [StateGroup("multi")]
+    public sealed class MultiState
+    {
+        public static State First => State.Create("multi:first");
+
+        public static State Second => State.Create("multi:second");
+    }
+
+    public sealed class MultiStateMessageHandler
+    {
+        [Message]
+        [State<MultiState>(nameof(MultiState.First))]
+        [State<MultiState>(nameof(MultiState.Second))]
+        public Task Handle(MessageContext context, HandlerProbe probe)
+        {
+            probe.Events.Add($"multi-state:{context.TelegramMessage.Text}");
             return Task.CompletedTask;
         }
     }

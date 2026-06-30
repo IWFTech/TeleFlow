@@ -22,7 +22,15 @@ internal sealed class TelegramHandlerTable
         ChatMemberHandlers = OrderForRouteSelection(orderedDescriptors
             .Where(static descriptor => descriptor.Kind == TelegramHandlerKind.ChatMember)
             .ToArray());
-        HasStatefulHandlers = orderedDescriptors.Any(static descriptor => descriptor.States.Count > 0);
+
+        CommandHandlerCandidates = TelegramHandlerCandidateSet.Create(CommandHandlers);
+        MessageHandlerCandidates = TelegramHandlerCandidateSet.Create(MessageHandlers);
+        CallbackHandlerCandidates = TelegramCallbackHandlerCandidateSet.Create(CallbackHandlers);
+        ChatMemberHandlerCandidates = TelegramHandlerCandidateSet.Create(ChatMemberHandlers);
+        HasStatefulHandlers = CommandHandlerCandidates.HasStatefulCandidates ||
+                              MessageHandlerCandidates.HasStatefulCandidates ||
+                              CallbackHandlerCandidates.HasStatefulCandidates ||
+                              ChatMemberHandlerCandidates.HasStatefulCandidates;
 
         EnsureNoDuplicateCallbackPrefixes(CallbackHandlers);
     }
@@ -34,6 +42,14 @@ internal sealed class TelegramHandlerTable
     public IReadOnlyList<TelegramHandlerDescriptor> CallbackHandlers { get; }
 
     public IReadOnlyList<TelegramHandlerDescriptor> ChatMemberHandlers { get; }
+
+    public TelegramHandlerCandidateSet CommandHandlerCandidates { get; }
+
+    public TelegramHandlerCandidateSet MessageHandlerCandidates { get; }
+
+    public TelegramCallbackHandlerCandidateSet CallbackHandlerCandidates { get; }
+
+    public TelegramHandlerCandidateSet ChatMemberHandlerCandidates { get; }
 
     public bool HasStatefulHandlers { get; }
 
