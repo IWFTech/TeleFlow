@@ -153,7 +153,9 @@ builder.Services.AddTelegramHandler<StartHandler>();
 builder.Services.AddTelegramModule<AdminHandlers>();
 ```
 
-Используй её для маленьких apps, tests или узких modules.
+Используй её для маленьких apps, tests или узких modules. Direct registration
+регистрирует только указанный handler или module type и не сканирует assembly
+вокруг него.
 
 ## Assembly registration
 

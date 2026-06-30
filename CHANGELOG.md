@@ -7,6 +7,7 @@ TeleFlow follows SemVer for published NuGet packages and documented public behav
 ### Changed
 
 - Typed inline keyboard callback payloads now serialize through the configured `ICallbackDataSerializer` via `InlineKeyboardBuilder.Build(callbackData)`, while raw callback strings are preserved exactly.
+- Handler registration docs and API comments now define generated assembly registration, explicit direct registration, and deprecated reflection assembly registration as separate contracts.
 
 ## 1.0.0-alpha.4 - 2026-06-30
 

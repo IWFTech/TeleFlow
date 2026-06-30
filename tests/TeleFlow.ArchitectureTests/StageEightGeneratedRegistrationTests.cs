@@ -317,6 +317,28 @@ public sealed class StageEightGeneratedRegistrationTests
     }
 
     [Fact]
+    public async Task AddTelegramModule_FallsBackToDirectRegistrationWithoutScanningAssembly()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTelegramBot(options => options.Token = "test-token");
+        services.AddSingleton<GeneratedHandlerProbe>();
+        services.AddTelegramModule<DirectOnlyGeneratedAssemblyModule>();
+
+        using var serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateOnBuild = true,
+            ValidateScopes = true
+        });
+        var probe = serviceProvider.GetRequiredService<GeneratedHandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/direct-module"));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/reflection-only"));
+
+        Assert.Equal(["direct-module:/direct-module"], probe.Events);
+    }
+
+    [Fact]
     public async Task GeneratedRouteValueParameter_FailsClearlyWhenRouteDoesNotProvideValue()
     {
         using var serviceProvider = CreateServiceProvider();
@@ -1576,6 +1598,17 @@ public sealed class GeneratedModuleHandler
     public Task Handle(MessageContext context, GeneratedHandlerProbe probe)
     {
         probe.Events.Add($"module:{context.TelegramMessage.Text}");
+        return Task.CompletedTask;
+    }
+}
+
+[TelegramModule("direct-only")]
+public sealed class DirectOnlyGeneratedAssemblyModule
+{
+    [Command("direct-module")]
+    public Task Handle(MessageContext context, GeneratedHandlerProbe probe)
+    {
+        probe.Events.Add($"direct-module:{context.TelegramMessage.Text}");
         return Task.CompletedTask;
     }
 }

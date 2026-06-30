@@ -10,6 +10,9 @@ using TeleFlow.Telegram.Internal.Options;
 
 namespace TeleFlow.Telegram;
 
+/// <summary>
+/// Registers Telegram bot framework services, handler metadata, and Telegram-specific extension points.
+/// </summary>
 public static class TelegramServiceCollectionExtensions
 {
     private const string ReflectionAssemblyRegistrationObsoleteDiagnosticId = "TLF900";
@@ -89,6 +92,10 @@ public static class TelegramServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>
+    /// Registers all generated Telegram handler metadata from an assembly.
+    /// This API requires build-time metadata from <c>IWF.TeleFlow.Generators</c> and never falls back to assembly scanning.
+    /// </summary>
     public static IServiceCollection AddTelegramHandlersFromAssembly(
         this IServiceCollection services,
         Assembly assembly)
@@ -111,6 +118,10 @@ public static class TelegramServiceCollectionExtensions
             $"Use {nameof(AddTelegramHandler)}<THandler>() or {nameof(AddTelegramModule)}<TModule>() for explicit direct registration.");
     }
 
+    /// <summary>
+    /// Registers all Telegram handler types discovered by scanning an assembly at startup.
+    /// This API is a deprecated migration path and should not be used by new applications.
+    /// </summary>
     [Obsolete(
         ReflectionAssemblyRegistrationObsoleteMessage,
         DiagnosticId = ReflectionAssemblyRegistrationObsoleteDiagnosticId)]
@@ -133,6 +144,9 @@ public static class TelegramServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>
+    /// Registers one explicitly named handler type by building its metadata at startup without scanning its assembly.
+    /// </summary>
     public static IServiceCollection AddTelegramHandler<THandler>(this IServiceCollection services)
         where THandler : class
     {
@@ -144,6 +158,10 @@ public static class TelegramServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>
+    /// Registers one explicitly named Telegram module type. Generated metadata is used when available; otherwise
+    /// metadata is built at startup for the named module type only.
+    /// </summary>
     public static IServiceCollection AddTelegramModule<TModule>(this IServiceCollection services)
         where TModule : class
     {

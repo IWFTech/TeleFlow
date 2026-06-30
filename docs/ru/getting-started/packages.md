@@ -110,6 +110,11 @@ services.AddTelegramHandler<StartHandler>();
 services.AddTelegramModule<AdminModule>();
 ```
 
+Direct registration регистрирует только указанный type. Он строит metadata для
+этого type на startup и не сканирует containing assembly. `AddTelegramModule<T>()`
+использует generated metadata, когда она доступна, а затем fallback на direct
+metadata только для указанного module type.
+
 Reflection assembly registration объявлен deprecated и будет удалён до `1.0`:
 
 ```csharp
