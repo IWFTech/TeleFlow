@@ -38,6 +38,35 @@ builder.Services.AddTelegramModule<AdminHandlers>();
 
 Do not switch to deprecated reflection assembly registration to fix missing generated metadata.
 
+## `TLF027`: handler is missing a route attribute
+
+State and filter attributes constrain a handler, but they do not route updates by themselves.
+
+Wrong:
+
+```csharp
+[State("registration:name")]
+[HasText]
+public Task Name(MessageContext ctx, CancellationToken ct)
+{
+    return Task.CompletedTask;
+}
+```
+
+Correct:
+
+```csharp
+[Message]
+[State("registration:name")]
+[HasText]
+public Task Name(MessageContext ctx, CancellationToken ct)
+{
+    return Task.CompletedTask;
+}
+```
+
+Use `[Message]`, `[Command]`, `[Callback]`, `[ChatMemberUpdated]`, or another explicit route attribute before adding state and filter constraints.
+
 ## Can I Read The Token From `appsettings.json`?
 
 Yes. TeleFlow does not care where the token comes from. Read it through normal .NET configuration and pass the resolved value explicitly:

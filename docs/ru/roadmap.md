@@ -173,6 +173,7 @@ Non-goals для первой реализации:
 Возможная форма public API:
 
 ```csharp
+[Message]
 [State("quiz:question")]
 [HasText]
 public async Task Answer(

@@ -31,6 +31,7 @@ public sealed partial class TelegramHandlerAnalyzer
     public const string InvalidAutoAnswerCallbackId = "TLF024";
     public const string InvalidClassBasedHandlerId = "TLF025";
     public const string InvalidErrorHandlerId = "TLF026";
+    public const string MissingRouteAttributeId = "TLF027";
 
     private static readonly DiagnosticDescriptor MultipleRouteAttributes = CreateDescriptor(
         MultipleRouteAttributesId,
@@ -188,6 +189,12 @@ public sealed partial class TelegramHandlerAnalyzer
         "{0}",
         "Usage");
 
+    private static readonly DiagnosticDescriptor MissingRouteAttribute = CreateDescriptor(
+        MissingRouteAttributeId,
+        "Telegram handler is missing a route attribute",
+        "Telegram handler method '{0}' uses state or filter attributes but has no route attribute. Add [Message], [Command], [Callback], [ChatMemberUpdated], or another explicit Telegram route attribute.",
+        "Usage");
+
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } =
         ImmutableArray.Create(
             MultipleRouteAttributes,
@@ -215,7 +222,8 @@ public sealed partial class TelegramHandlerAnalyzer
             InvalidSceneStep,
             InvalidAutoAnswerCallback,
             InvalidClassBasedHandler,
-            InvalidErrorHandler);
+            InvalidErrorHandler,
+            MissingRouteAttribute);
 
     private static DiagnosticDescriptor CreateDescriptor(
         string id,

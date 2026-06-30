@@ -38,6 +38,7 @@ public sealed class RegistrationHandlers
         await ctx.Message.AnswerAsync("What is your name?", ct);
     }
 
+    [Message]
     [State(RegistrationStates.Name)]
     [HasText]
     public async Task Name(MessageContext ctx, CancellationToken ct)
@@ -47,6 +48,7 @@ public sealed class RegistrationHandlers
         await ctx.Message.AnswerAsync("How old are you?", ct);
     }
 
+    [Message]
     [State(RegistrationStates.Age)]
     [HasText]
     public async Task Age(MessageContext ctx, CancellationToken ct)
@@ -107,6 +109,7 @@ public sealed class TicketWizard
         await ctx.Message.AnswerAsync("Choose category.", ct);
     }
 
+    [Message]
     [State("ticket:category")]
     [HasText]
     public async Task Category(MessageContext ctx, CancellationToken ct)
@@ -116,6 +119,7 @@ public sealed class TicketWizard
         await ctx.Message.AnswerAsync("Describe the issue.", ct);
     }
 
+    [Message]
     [State("ticket:description")]
     [Text("back")]
     public async Task Back(MessageContext ctx, CancellationToken ct)
@@ -155,6 +159,7 @@ public sealed class TicketScene
         await ctx.Message.AnswerAsync("Choose category.", ct);
     }
 
+    [Message]
     [SceneStep(nameof(Category))]
     [HasText]
     public Task CategoryStep(MessageContext ctx, CancellationToken ct)

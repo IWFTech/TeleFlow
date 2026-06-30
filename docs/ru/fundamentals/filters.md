@@ -27,6 +27,8 @@ Filter attributes добавляют условия, которые должны
 [UseFilter<AdminOnlyFilter>]
 ```
 
+Filters не являются routes. Handler с filters или state constraints всё равно должен иметь явный route attribute: `[Message]`, `[Command]`, `[Callback]` или `[ChatMemberUpdated]`.
+
 Например:
 
 ```csharp
