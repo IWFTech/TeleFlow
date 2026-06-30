@@ -329,7 +329,6 @@ public sealed class AdminTicketHandlers
     public async Task Show(
         MessageContext ctx,
         long id,
-        ICallbackDataSerializer callbackData,
         CancellationToken ct)
     {
         if (ctx.Sender is null || !_admins.IsAdmin(ctx.Sender.Id))
@@ -354,7 +353,7 @@ public sealed class AdminTicketHandlers
                 "Resolve",
                 new TicketAction(ticket.Id, "resolve"),
                 new InlineKeyboardButtonOptions { Style = ButtonStyles.Success })
-            .Build(callbackData);
+            .Build();
 
         await ctx.Message.AnswerAsync(
             $"Ticket #{ticket.Id}\nStatus: {ticket.Status}\n{ticket.Description}",

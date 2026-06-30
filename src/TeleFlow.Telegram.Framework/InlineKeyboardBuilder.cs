@@ -1,5 +1,4 @@
-using System.Text;
-using TeleFlow.Core.Callbacks;
+using TeleFlow.Telegram.Internal;
 using TeleFlow.Telegram.Schema.Types;
 
 namespace TeleFlow.Telegram;
@@ -10,8 +9,6 @@ namespace TeleFlow.Telegram;
 /// </summary>
 public sealed class InlineKeyboardBuilder
 {
-    private const int MaxTelegramCallbackDataBytes = 64;
-
     private readonly List<List<InlineKeyboardButtonIntent>> _rows = [[]];
 
     private InlineKeyboardBuilder()
@@ -96,22 +93,15 @@ public sealed class InlineKeyboardBuilder
 
     public InlineKeyboardMarkup Build()
     {
-        return BuildCore(callbackData: null);
+        return BuildCore();
     }
 
-    public InlineKeyboardMarkup Build(ICallbackDataSerializer callbackData)
-    {
-        ArgumentNullException.ThrowIfNull(callbackData);
-
-        return BuildCore(callbackData);
-    }
-
-    private InlineKeyboardMarkup BuildCore(ICallbackDataSerializer? callbackData)
+    private InlineKeyboardMarkup BuildCore()
     {
         var rows = _rows
             .Where(static row => row.Count > 0)
             .Select(row => row
-                .Select(intent => intent.ToButton(callbackData))
+                .Select(static intent => intent.ToButton())
                 .ToArray())
             .ToArray();
 
@@ -139,16 +129,7 @@ public sealed class InlineKeyboardBuilder
 
     private static void ValidateCallbackData(string callbackData)
     {
-        if (string.IsNullOrWhiteSpace(callbackData))
-        {
-            throw new InvalidOperationException("Telegram callback data must not be empty.");
-        }
-
-        if (Encoding.UTF8.GetByteCount(callbackData) > MaxTelegramCallbackDataBytes)
-        {
-            throw new InvalidOperationException(
-                $"Telegram callback data must be at most {MaxTelegramCallbackDataBytes} UTF-8 bytes.");
-        }
+        CallbackDataCodec.ValidateCallbackData(callbackData, "Telegram callback data");
     }
 
     private static void ValidateOptions(InlineKeyboardButtonOptions? options)
@@ -171,7 +152,7 @@ public sealed class InlineKeyboardBuilder
 
     private sealed record InlineKeyboardButtonIntent(
         string Text,
-        Func<ICallbackDataSerializer, string>? SerializePayload,
+        object? Payload,
         Type? PayloadType,
         string? CallbackData,
         string? Url,
@@ -182,10 +163,12 @@ public sealed class InlineKeyboardBuilder
             TPayload payload,
             InlineKeyboardButtonOptions? options)
         {
+            ArgumentNullException.ThrowIfNull(payload);
+
             return new InlineKeyboardButtonIntent(
                 text,
-                serializer => serializer.Serialize(payload),
-                typeof(TPayload),
+                payload,
+                payload.GetType(),
                 CallbackData: null,
                 Url: null,
                 options);
@@ -198,7 +181,7 @@ public sealed class InlineKeyboardBuilder
         {
             return new InlineKeyboardButtonIntent(
                 text,
-                SerializePayload: null,
+                Payload: null,
                 PayloadType: null,
                 callbackData,
                 Url: null,
@@ -212,26 +195,23 @@ public sealed class InlineKeyboardBuilder
         {
             return new InlineKeyboardButtonIntent(
                 text,
-                SerializePayload: null,
+                Payload: null,
                 PayloadType: null,
                 CallbackData: null,
                 url,
                 options);
         }
 
-        public InlineKeyboardButton ToButton(ICallbackDataSerializer? callbackData)
+        public InlineKeyboardButton ToButton()
         {
-            if (SerializePayload is not null)
+            if (Payload is not null)
             {
-                if (callbackData is null)
+                if (PayloadType is null)
                 {
-                    throw new InvalidOperationException(
-                        $"Inline keyboard typed callback payload '{PayloadType?.FullName}' requires ICallbackDataSerializer. " +
-                        "Use Build(callbackData) or pass raw string callback data.");
+                    throw new InvalidOperationException("Inline keyboard typed callback payload type is missing.");
                 }
 
-                var serializedPayload = SerializePayload(callbackData);
-                ValidateCallbackData(serializedPayload);
+                var serializedPayload = CallbackDataCodec.PackRequired(Payload, PayloadType);
 
                 return ApplyOptions(new InlineKeyboardButton
                 {

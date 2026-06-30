@@ -2044,6 +2044,24 @@ public sealed class TelegramHandlerDispatcherTests
     }
 
     [Fact]
+    public async Task InlineKeyboardBuilder_CompactCallbackData_DispatchesToTypedCallbackHandler()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services => services.AddTelegramHandler<CompactCallbackHandler>());
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        var keyboard = InlineKeyboardBuilder.Create()
+            .Button("Delete", new CompactDeleteCallback("x", 7))
+            .Build();
+        var callbackData = keyboard.InlineKeyboard[0][0].CallbackData;
+
+        await DispatchAsync(serviceProvider, CreateCallbackUpdate(callbackData));
+
+        Assert.Equal("del:x:7", callbackData);
+        Assert.Equal(["compact-callback:x:7"], probe.Events);
+    }
+
+    [Fact]
     public async Task TypedCallbackHandler_RunsBeforeRawFallback()
     {
         using var serviceProvider = CreateServiceProvider(

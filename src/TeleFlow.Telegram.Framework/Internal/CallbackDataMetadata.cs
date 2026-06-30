@@ -6,6 +6,10 @@ using TeleFlow.Annotations;
 
 namespace TeleFlow.Telegram.Internal;
 
+/// <summary>
+/// Caches compact callback payload metadata discovered from <see cref="CallbackDataAttribute"/>
+/// so typed callback routing and keyboard packing share one prefix-plus-fields contract.
+/// </summary>
 internal sealed class CallbackDataMetadata
 {
     private static readonly ConcurrentDictionary<Type, Lazy<MetadataLookup>> MetadataCache = new();

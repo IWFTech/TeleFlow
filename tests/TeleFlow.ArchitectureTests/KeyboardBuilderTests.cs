@@ -1,6 +1,4 @@
-using System.Text.Json;
 using TeleFlow.Annotations;
-using TeleFlow.Core.Callbacks;
 using TeleFlow.Telegram;
 using TeleFlow.Telegram.Schema.Constants;
 using TeleFlow.Telegram.Schema.Types;
@@ -24,7 +22,7 @@ public sealed class KeyboardBuilderTests
             .Button("Raw", "raw:42", new InlineKeyboardButtonOptions { Style = ButtonStyles.Primary })
             .Row()
             .Url("Open", "https://example.com", new InlineKeyboardButtonOptions { Style = ButtonStyles.Success })
-            .Build(CreateDefaultCallbackDataSerializer());
+            .Build();
 
         Assert.Equal(2, markup.InlineKeyboard.Count);
         Assert.Equal("del:42", markup.InlineKeyboard[0][0].CallbackData);
@@ -47,68 +45,47 @@ public sealed class KeyboardBuilderTests
     }
 
     [Fact]
-    public void InlineKeyboardBuilder_TypedCallbackPayload_RequiresSerializer()
-    {
-        var keyboard = InlineKeyboardBuilder.Create()
-            .Button("Delete", new InlineKeyboardDeleteCallback(42));
-
-        var exception = Assert.Throws<InvalidOperationException>(() => keyboard.Build());
-
-        Assert.Contains(nameof(ICallbackDataSerializer), exception.Message);
-        Assert.Contains("Build(callbackData)", exception.Message);
-        Assert.Contains("raw string callback data", exception.Message);
-    }
-
-    [Fact]
-    public void InlineKeyboardBuilder_TypedCallbackPayload_UsesDefaultCompactSerializer()
+    public void InlineKeyboardBuilder_TypedCallbackPayload_BuildsCompactCallbackData()
     {
         var markup = InlineKeyboardBuilder.Create()
             .Button("Delete", new InlineKeyboardDeleteCallback(42))
-            .Build(CreateDefaultCallbackDataSerializer());
+            .Build();
 
         Assert.Equal("del:42", markup.InlineKeyboard[0][0].CallbackData);
     }
 
     [Fact]
-    public void InlineKeyboardBuilder_TypedCallbackPayload_UsesCustomSerializer()
+    public void InlineKeyboardBuilder_TypedCallbackPayload_UsesRuntimePayloadType()
     {
-        var markup = InlineKeyboardBuilder.Create()
-            .Button("Delete", new InlineKeyboardDeleteCallback(42))
-            .Build(new CustomInlineKeyboardCallbackDataSerializer());
+        object payload = new InlineKeyboardDeleteCallback(42);
 
-        Assert.Equal("custom:42", markup.InlineKeyboard[0][0].CallbackData);
+        var markup = InlineKeyboardBuilder.Create()
+            .Button("Delete", payload)
+            .Build();
+
+        Assert.Equal("del:42", markup.InlineKeyboard[0][0].CallbackData);
     }
 
     [Fact]
-    public void InlineKeyboardBuilder_TypedCallbackPayload_SupportsJsonFallbackThroughDefaultSerializer()
+    public void InlineKeyboardBuilder_UnannotatedTypedCallbackPayload_FailsClearly()
     {
-        var markup = InlineKeyboardBuilder.Create()
-            .Button("Json", new UnannotatedInlineKeyboardCallback(42))
-            .Build(CreateDefaultCallbackDataSerializer());
+        var keyboard = InlineKeyboardBuilder.Create()
+            .Button("Json", new UnannotatedInlineKeyboardCallback(42));
 
-        Assert.Equal("""{"id":42}""", markup.InlineKeyboard[0][0].CallbackData);
+        var exception = Assert.Throws<InvalidOperationException>(() => keyboard.Build());
+
+        Assert.Contains(nameof(CallbackDataAttribute), exception.Message);
+        Assert.Contains("raw string callback data", exception.Message);
     }
 
     [Fact]
-    public void InlineKeyboardBuilder_RawCallbackData_DoesNotUseSerializer()
+    public void InlineKeyboardBuilder_RawCallbackData_DoesNotRequireCallbackDataAttribute()
     {
         var markup = InlineKeyboardBuilder.Create()
             .Button("Raw", "raw:42")
-            .Build(new ThrowingInlineKeyboardCallbackDataSerializer());
+            .Build();
 
         Assert.Equal("raw:42", markup.InlineKeyboard[0][0].CallbackData);
-    }
-
-    [Fact]
-    public void InlineKeyboardBuilder_RejectsEmptySerializedTypedCallbackData()
-    {
-        var keyboard = InlineKeyboardBuilder.Create()
-            .Button("Empty", new InlineKeyboardDeleteCallback(42));
-
-        var exception = Assert.Throws<InvalidOperationException>(
-            () => keyboard.Build(new EmptyInlineKeyboardCallbackDataSerializer()));
-
-        Assert.Contains("must not be empty", exception.Message);
     }
 
     [Fact]
@@ -126,7 +103,7 @@ public sealed class KeyboardBuilderTests
         var keyboard = InlineKeyboardBuilder.Create()
             .Button("Large", new LargeInlineKeyboardCallback(new string('x', 80)));
 
-        var exception = Assert.Throws<InvalidOperationException>(() => keyboard.Build(CreateDefaultCallbackDataSerializer()));
+        var exception = Assert.Throws<InvalidOperationException>(() => keyboard.Build());
 
         Assert.Contains("64", exception.Message);
     }
@@ -242,50 +219,4 @@ public sealed class KeyboardBuilderTests
     private sealed record LargeInlineKeyboardCallback(string Value);
 
     private sealed record UnannotatedInlineKeyboardCallback(int Id);
-
-    private static ICallbackDataSerializer CreateDefaultCallbackDataSerializer()
-    {
-        return new JsonCallbackDataSerializer(TelegramJsonOptions.CreateDefault());
-    }
-
-    private sealed class CustomInlineKeyboardCallbackDataSerializer : ICallbackDataSerializer
-    {
-        public string Serialize<TPayload>(TPayload payload)
-        {
-            return payload is InlineKeyboardDeleteCallback callback
-                ? $"custom:{callback.Id}"
-                : throw new InvalidOperationException("Unexpected callback payload type.");
-        }
-
-        public TPayload Deserialize<TPayload>(string serializedPayload)
-        {
-            throw new JsonException("This test serializer only supports serialization.");
-        }
-    }
-
-    private sealed class ThrowingInlineKeyboardCallbackDataSerializer : ICallbackDataSerializer
-    {
-        public string Serialize<TPayload>(TPayload payload)
-        {
-            throw new InvalidOperationException("Raw callback data must not use callback data serializer.");
-        }
-
-        public TPayload Deserialize<TPayload>(string serializedPayload)
-        {
-            throw new JsonException("This test serializer only supports serialization.");
-        }
-    }
-
-    private sealed class EmptyInlineKeyboardCallbackDataSerializer : ICallbackDataSerializer
-    {
-        public string Serialize<TPayload>(TPayload payload)
-        {
-            return string.Empty;
-        }
-
-        public TPayload Deserialize<TPayload>(string serializedPayload)
-        {
-            throw new JsonException("This test serializer only supports serialization.");
-        }
-    }
 }
