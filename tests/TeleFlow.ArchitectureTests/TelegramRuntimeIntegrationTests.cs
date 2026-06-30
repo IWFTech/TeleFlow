@@ -2057,12 +2057,13 @@ public sealed class TelegramRuntimeIntegrationTests
                     }
                 }));
 
+        var messageContext = context.GetMessageContext();
         var keyboard = InlineKeyboardBuilder.Create()
             .Button("Delete", new KeyboardDeleteCallback(42))
             .Url("Open", "https://example.com")
-            .Build();
+            .Build(messageContext.CallbackData);
 
-        await context.GetMessageContext().Message.AnswerAsync("choose", keyboard);
+        await messageContext.Message.AnswerAsync("choose", keyboard);
 
         var sendMessage = Assert.IsType<SendMessage>(fakeClient.Methods.Single());
         Assert.Null(sendMessage.ReplyParameters);
@@ -2319,11 +2320,12 @@ public sealed class TelegramRuntimeIntegrationTests
         using var serviceProvider = CreateTelegramServiceProvider(clientOverride: fakeClient);
         var context = CreateScopedMessageUpdateContext(serviceProvider);
 
+        var messageContext = context.GetMessageContext();
         var keyboard = InlineKeyboardBuilder.Create()
             .Button("Delete", new KeyboardDeleteCallback(42))
-            .Build();
+            .Build(messageContext.CallbackData);
 
-        await context.GetMessageContext().Message.AnswerPhotoAsync(
+        await messageContext.Message.AnswerPhotoAsync(
             InputFileString.From("photo-file-id"),
             ReplyMarkup.From(keyboard),
             caption: "choose");
@@ -2868,11 +2870,12 @@ public sealed class TelegramRuntimeIntegrationTests
                     }
                 }));
 
+        var callbackContext = context.GetCallbackQueryContext();
         var keyboard = InlineKeyboardBuilder.Create()
             .Button("Next", new KeyboardDeleteCallback(99))
-            .Build();
+            .Build(callbackContext.CallbackData);
 
-        await context.GetCallbackQueryContext().Callback.EditTextAsync("edited", keyboard);
+        await callbackContext.Callback.EditTextAsync("edited", keyboard);
 
         var edit = Assert.IsType<EditMessageText>(fakeClient.Methods.Single());
         Assert.Equal("inline-42", edit.InlineMessageId);

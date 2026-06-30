@@ -47,7 +47,11 @@ public sealed record TicketAction(long Id, string Action);
 
 ```csharp
 [CommandTemplate("ticket {id:long}")]
-public Task Ticket(MessageContext ctx, long id, CancellationToken ct)
+public Task Ticket(
+    MessageContext ctx,
+    long id,
+    ICallbackDataSerializer callbackData,
+    CancellationToken ct)
 {
     var keyboard = InlineKeyboardBuilder.Create()
         .Button(
@@ -58,7 +62,7 @@ public Task Ticket(MessageContext ctx, long id, CancellationToken ct)
             "Resolve",
             new TicketAction(id, "resolve"),
             new InlineKeyboardButtonOptions { Style = ButtonStyles.Success })
-        .Build();
+        .Build(callbackData);
 
     return ctx.Message.AnswerAsync($"Ticket #{id}", keyboard, ct);
 }
@@ -82,7 +86,10 @@ public async Task Handle(
 
 Telegram callback data ограничен 64 UTF-8 bytes. Payloads должны быть компактными.
 
-`[CallbackData("ticket")]` включает compact serializer для этого payload type. Payload вроде `new TicketAction(42, "take")` сериализуется в короткую строку prefix-plus-fields вместо verbose JSON. Если serialized value превышает Telegram limit в 64 bytes, TeleFlow падает до отправки keyboard.
+Typed callback buttons используют настроенный `ICallbackDataSerializer`.
+Raw callback strings сохраняются как есть и не проходят через serializer.
+
+`[CallbackData("ticket")]` включает compact default serializer для этого payload type. Payload вроде `new TicketAction(42, "take")` сериализуется в короткую строку prefix-plus-fields вместо verbose JSON. Если serialized value превышает Telegram limit в 64 bytes, TeleFlow падает до отправки keyboard.
 
 Invalid typed callback data не матчится с typed handler. Serializer failures, которые не являются обычными parse/format failures, считаются реальными failures и остаются observable.
 
