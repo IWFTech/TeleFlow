@@ -113,6 +113,50 @@ builder.Services.AddUpdateMiddleware<UserGateMiddleware>();
 
 `AddUpdateMiddleware<T>()` добавляет middleware в update pipeline и создаёт его из текущего update scope. Поэтому middleware может принимать scoped-зависимости в конструкторе: repositories, unit-of-work services, database contexts и другие update-scoped application services.
 
+Если middleware нужна application configuration, используй обычный .NET options pattern. В минимальном console-проекте пакет с options лучше добавить явно:
+
+```bash
+dotnet add package Microsoft.Extensions.Options
+```
+
+```csharp
+using Microsoft.Extensions.Options;
+
+public sealed class UserGateOptions
+{
+    public bool RecordStatistics { get; set; } = true;
+
+    public TimeSpan BlockCacheWindow { get; set; } = TimeSpan.FromSeconds(15);
+}
+
+builder.Services.Configure<UserGateOptions>(options =>
+{
+    options.RecordStatistics = true;
+    options.BlockCacheWindow = TimeSpan.FromSeconds(15);
+});
+```
+
+Затем передай `IOptions<TOptions>` в constructor middleware:
+
+```csharp
+public sealed class UserGateMiddleware(
+    IUserRepository users,
+    IAntiSpamService antiSpam,
+    IOptions<UserGateOptions> options) : IUpdateMiddleware
+{
+    public async Task InvokeAsync(UpdateContext context, UpdateDelegate next)
+    {
+        var configuration = options.Value;
+
+        // Use configuration together with scoped services.
+
+        await next(context);
+    }
+}
+```
+
+Не передавай заранее созданные middleware instances в pipeline. Пусть container создаёт middleware сам: так lifetimes, disposal и scoped services остаются предсказуемыми.
+
 `context.Services` используй только когда middleware намеренно нужен dynamic service resolution. Для обычных application dependencies рекомендуемый путь - constructor injection.
 
 Если middleware stateless и должен переиспользоваться как один process-wide instance, регистрируй это явно:
