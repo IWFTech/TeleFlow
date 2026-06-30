@@ -12,6 +12,12 @@ namespace TeleFlow.Telegram;
 
 public static class TelegramServiceCollectionExtensions
 {
+    private const string ReflectionAssemblyRegistrationObsoleteDiagnosticId = "TLF900";
+
+    private const string ReflectionAssemblyRegistrationObsoleteMessage =
+        "Reflection-based assembly handler registration is deprecated and will be removed before 1.0. " +
+        "Use AddTelegramHandlersFromAssembly with IWF.TeleFlow.Generators, or register handlers explicitly with AddTelegramHandler<THandler> / AddTelegramModule<TModule>.";
+
     public static IServiceCollection AddTelegramBot(
         this IServiceCollection services,
         Action<TelegramBotOptions> configure)
@@ -105,6 +111,9 @@ public static class TelegramServiceCollectionExtensions
             $"Use {nameof(AddTelegramHandler)}<THandler>() or {nameof(AddTelegramModule)}<TModule>() for explicit direct registration.");
     }
 
+    [Obsolete(
+        ReflectionAssemblyRegistrationObsoleteMessage,
+        DiagnosticId = ReflectionAssemblyRegistrationObsoleteDiagnosticId)]
     public static IServiceCollection AddTelegramHandlersFromAssemblyReflection(
         this IServiceCollection services,
         Assembly assembly)

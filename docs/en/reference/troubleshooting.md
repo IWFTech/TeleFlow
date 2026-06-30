@@ -30,11 +30,13 @@ If you intentionally do not want generated registration, use:
 builder.Services.AddTelegramHandler<StartHandler>();
 ```
 
-Or:
+Or register a module explicitly:
 
 ```csharp
-builder.Services.AddTelegramHandlersFromAssemblyReflection(typeof(Program).Assembly);
+builder.Services.AddTelegramModule<AdminHandlers>();
 ```
+
+Do not switch to deprecated reflection assembly registration to fix missing generated metadata.
 
 ## Can I Read The Token From `appsettings.json`?
 

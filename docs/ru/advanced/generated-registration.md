@@ -1,10 +1,11 @@
 # Generated registration
 
-В TeleFlow есть три пути регистрации handlers:
+В TeleFlow есть два поддерживаемых пути регистрации handlers для нового кода:
 
 1. generated assembly registration;
-2. explicit direct registration;
-3. explicit reflection assembly registration.
+2. explicit direct registration.
+
+Deprecated reflection assembly API остаётся только как временный migration path до `1.0`.
 
 Рекомендуемый default для application code - generated assembly registration.
 
@@ -16,7 +17,7 @@ Assembly scanning удобен, но runtime reflection как скрытый de
 
 - missing metadata ловится на startup;
 - generated metadata можно проверять analyzers;
-- reflection становится explicit opt-in path, а не silent fallback.
+- reflection не является silent fallback для assembly registration.
 
 ## Настройка
 
@@ -72,15 +73,15 @@ builder.Services.AddTelegramModule<AdminHandlers>();
 - manually composed modules;
 - случаев, когда handler list должен быть очевиден на registration site.
 
-## Reflection registration
+## Deprecated reflection registration
 
-Reflection registration существует как explicit API:
+Reflection assembly registration объявлен deprecated и будет удалён до `1.0`:
 
 ```csharp
 builder.Services.AddTelegramHandlersFromAssemblyReflection(typeof(Program).Assembly);
 ```
 
-Используй его только когда приложение осознанно выбирает reflection-based discovery.
+Не используй его в новых проектах. Для обычных приложений используй generated assembly registration, а для ручного контроля - direct registration с явным списком handlers/modules.
 
 ## Что генерируется
 
@@ -142,4 +143,4 @@ Generated metadata описывает:
 - используй generated assembly registration by default;
 - держи `IWF.TeleFlow.Generators` private через `PrivateAssets="all"`;
 - используй direct registration в tests, где это улучшает clarity;
-- избегай reflection registration, если нет documented reason.
+- используй reflection assembly registration только как deprecated migration path во время миграции.

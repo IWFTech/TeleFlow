@@ -30,11 +30,13 @@ builder.Services.AddLongPolling();
 builder.Services.AddTelegramHandler<StartHandler>();
 ```
 
-Или:
+Или зарегистрируй module явно:
 
 ```csharp
-builder.Services.AddTelegramHandlersFromAssemblyReflection(typeof(Program).Assembly);
+builder.Services.AddTelegramModule<AdminHandlers>();
 ```
+
+Не переходи на deprecated reflection assembly registration как способ починить missing generated metadata.
 
 ## Можно ли читать token из `appsettings.json`?
 

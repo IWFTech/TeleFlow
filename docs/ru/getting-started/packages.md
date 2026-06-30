@@ -110,13 +110,13 @@ services.AddTelegramHandler<StartHandler>();
 services.AddTelegramModule<AdminModule>();
 ```
 
-Reflection assembly registration существует как отдельный opt-in API:
+Reflection assembly registration объявлен deprecated и будет удалён до `1.0`:
 
 ```csharp
 services.AddTelegramHandlersFromAssemblyReflection(typeof(Program).Assembly);
 ```
 
-Используй его только если приложение осознанно принимает reflection-based discovery.
+Не используй его в новых проектах. Используй generated assembly registration, либо регистрируй handlers/modules явно, если список должен быть ручным.
 
 ## Client-only приложения
 

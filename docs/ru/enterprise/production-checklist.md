@@ -19,7 +19,7 @@
 - Use generated assembly registration by default.
 - Держи хотя бы один startup test, который проверяет generated registration.
 - Direct registration используй для узких tests.
-- Избегай reflection registration, если он не documented.
+- Избегай deprecated reflection assembly registration в новом production code.
 
 ## Транспорт
 

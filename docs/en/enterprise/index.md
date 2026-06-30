@@ -32,7 +32,7 @@ Or:
 builder.Services.AddWebhook(options => options.Path = "/telegram/webhook");
 ```
 
-Use generated registration as the default. Use reflection registration only when it is written down as an intentional decision.
+Use generated registration as the default. Use explicit handler/module registration for narrow manual composition. Deprecated reflection assembly registration should not be used in new production code.
 
 ## Boundaries
 
