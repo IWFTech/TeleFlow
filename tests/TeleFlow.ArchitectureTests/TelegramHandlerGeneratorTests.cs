@@ -1315,6 +1315,187 @@ public sealed class TelegramHandlerGeneratorTests
         Assert.Contains(diagnostics, diagnostic => diagnostic.Id == diagnosticId);
     }
 
+    [Fact]
+    public async Task Analyzer_ReportsHandlerConstraintAttributesWithoutRoute()
+    {
+        var diagnostics = await GetAnalyzerDiagnosticsAsync(
+            """
+            using System.Threading;
+            using System.Threading.Tasks;
+            using TeleFlow.Annotations;
+            using TeleFlow.Core.States;
+            using TeleFlow.Telegram;
+
+            public sealed class RouteLessHandlers
+            {
+                [State("registration:name")]
+                [HasText]
+                public Task StateAndText(MessageContext context, CancellationToken cancellationToken)
+                {
+                    return Task.CompletedTask;
+                }
+
+                [HasPhoto]
+                public Task Photo(MessageContext context)
+                {
+                    return Task.CompletedTask;
+                }
+
+                [CallbackDataPrefix("ticket:")]
+                public Task Callback(CallbackQueryContext context)
+                {
+                    return Task.CompletedTask;
+                }
+
+                [UseFilter<AllowMessageFilter>]
+                public Task CustomFilter(MessageContext context)
+                {
+                    return Task.CompletedTask;
+                }
+
+                [RequireTelegramRole(TelegramMemberStatusSet.IsAdmin)]
+                public Task AdminOnly(MessageContext context)
+                {
+                    return Task.CompletedTask;
+                }
+
+                [ChatMemberTransition(TelegramMemberTransition.Join)]
+                public Task Joined(ChatMemberUpdatedContext context)
+                {
+                    return Task.CompletedTask;
+                }
+
+                [State<RegistrationStates>(nameof(RegistrationStates.Name))]
+                public Task TypedState(MessageContext context)
+                {
+                    return Task.CompletedTask;
+                }
+            }
+
+            [StateGroup("registration")]
+            public sealed partial class RegistrationStates
+            {
+                public static partial State Name { get; }
+            }
+
+            public sealed class AllowMessageFilter : ITelegramFilter<MessageContext>
+            {
+                public ValueTask<bool> MatchesAsync(
+                    MessageContext context,
+                    CancellationToken cancellationToken = default)
+                {
+                    return ValueTask.FromResult(true);
+                }
+            }
+            """);
+
+        Assert.True(
+            diagnostics.Count(diagnostic => diagnostic.Id == TelegramHandlerAnalyzer.MissingRouteAttributeId) >= 7,
+            "Expected route-less state, built-in filter, custom filter, role, and chat-member transition diagnostics.");
+    }
+
+    [Fact]
+    public async Task Analyzer_AllowsExplicitRouteWithStateAndFilters()
+    {
+        var diagnostics = await GetAnalyzerDiagnosticsAsync(
+            """
+            using System.Threading.Tasks;
+            using TeleFlow.Annotations;
+            using TeleFlow.Telegram;
+
+            public sealed class RegistrationHandlers
+            {
+                [Message]
+                [State("registration:name")]
+                [HasText]
+                public Task Name(MessageContext context)
+                {
+                    return Task.CompletedTask;
+                }
+            }
+            """);
+
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id == TelegramHandlerAnalyzer.MissingRouteAttributeId);
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public async Task Analyzer_DoesNotReportRouteLessDiagnosticForErrorOnlyHandlers()
+    {
+        var diagnostics = await GetAnalyzerDiagnosticsAsync(
+            """
+            using System;
+            using TeleFlow.Annotations;
+            using TeleFlow.Telegram;
+
+            public sealed class ErrorHandlers
+            {
+                [Error]
+                public TelegramErrorHandlingResult Handle(Exception exception)
+                {
+                    return TelegramErrorHandlingResult.Handled;
+                }
+            }
+            """);
+
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id == TelegramHandlerAnalyzer.MissingRouteAttributeId);
+    }
+
+    [Fact]
+    public async Task Analyzer_DoesNotReportRouteLessDiagnosticForClassBasedHandlerWithClassRoute()
+    {
+        var diagnostics = await GetAnalyzerDiagnosticsAsync(
+            """
+            using System.Threading.Tasks;
+            using TeleFlow.Annotations;
+            using TeleFlow.Telegram;
+
+            [Message]
+            public sealed class NameHandler : MessageHandler
+            {
+                [State("registration:name")]
+                [HasText]
+                public Task HandleAsync(MessageContext context)
+                {
+                    return Task.CompletedTask;
+                }
+            }
+            """);
+
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id == TelegramHandlerAnalyzer.MissingRouteAttributeId);
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void Generator_DoesNotInferRoutesFromStateOrFilters()
+    {
+        var compilation = CreateCompilation(
+            """
+            using System.Threading.Tasks;
+            using TeleFlow.Annotations;
+            using TeleFlow.Telegram;
+
+            namespace Bot;
+
+            public sealed class RegistrationHandlers
+            {
+                [State("registration:name")]
+                [HasText]
+                public Task Name(MessageContext context)
+                {
+                    return Task.CompletedTask;
+                }
+            }
+            """);
+
+        var generatedCompilation = RunGenerator(compilation, out var diagnostics);
+        var generatedTree = generatedCompilation.SyntaxTrees
+            .FirstOrDefault(tree => tree.FilePath.EndsWith("TeleFlow.Telegram.GeneratedHandlers.g.cs", StringComparison.Ordinal));
+
+        Assert.Empty(diagnostics.Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error));
+        Assert.Null(generatedTree);
+    }
+
     [Theory]
     [InlineData("[Error] public Task Handle(Exception exception) => Task.CompletedTask;")]
     [InlineData("[Error] public TelegramErrorHandlingResult Handle(InvalidOperationException exception) => TelegramErrorHandlingResult.Handled;")]

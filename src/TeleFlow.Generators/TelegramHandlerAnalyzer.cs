@@ -117,6 +117,7 @@ public sealed partial class TelegramHandlerAnalyzer : DiagnosticAnalyzer
                     "SceneStepAttribute requires an explicit Telegram route attribute."));
             }
 
+            AnalyzeMissingRouteAttribute(context, method);
             AnalyzeAutoAnswerCallback(context, method, routeKind: null);
             return;
         }

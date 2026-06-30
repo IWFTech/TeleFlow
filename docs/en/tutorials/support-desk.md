@@ -266,6 +266,7 @@ public sealed class TicketCreationHandlers
         await ctx.Message.AnswerAsync("Choose ticket category.", keyboard, ct);
     }
 
+    [Message]
     [State(TicketStates.Category)]
     [HasText]
     public async Task Category(MessageContext ctx, CancellationToken ct)
@@ -278,6 +279,7 @@ public sealed class TicketCreationHandlers
             ct);
     }
 
+    [Message]
     [State(TicketStates.Description)]
     [HasText]
     public async Task Description(MessageContext ctx, CancellationToken ct)

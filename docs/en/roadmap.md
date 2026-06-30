@@ -173,6 +173,7 @@ Target state:
 Possible public shape:
 
 ```csharp
+[Message]
 [State("quiz:question")]
 [HasText]
 public async Task Answer(

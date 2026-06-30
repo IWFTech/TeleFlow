@@ -27,6 +27,8 @@ Filter attributes add conditions that must be true before that handler can run:
 [UseFilter<AdminOnlyFilter>]
 ```
 
+Filters are not routes. A handler that uses filters or state constraints still needs an explicit route attribute such as `[Message]`, `[Command]`, `[Callback]`, or `[ChatMemberUpdated]`.
+
 For example:
 
 ```csharp
