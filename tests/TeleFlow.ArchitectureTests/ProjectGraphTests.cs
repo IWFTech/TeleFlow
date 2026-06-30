@@ -21,6 +21,7 @@ public sealed class ProjectGraphTests
         Assert.Contains("TeleFlow.Telegram.Schema", solutionText);
         Assert.Contains("TeleFlow.Annotations", solutionText);
         Assert.Contains("TeleFlow.Generators", solutionText);
+        Assert.Contains("TeleFlow.Hosting", solutionText);
         Assert.Contains("TeleFlow.Storage.Memory", solutionText);
         Assert.Contains("TeleFlow.Telegram.Webhooks", solutionText);
         Assert.DoesNotContain("Project(\"{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}\") = \"TeleFlow\"", solutionText);
@@ -125,6 +126,14 @@ public sealed class ProjectGraphTests
         Assert.Equal(
             ["..\\TeleFlow.Core\\TeleFlow.Core.csproj"],
             GetProjectReferences("src/TeleFlow.Storage.Memory/TeleFlow.Storage.Memory.csproj"));
+    }
+
+    [Fact]
+    public void Hosting_ReferencesCoreOnly()
+    {
+        Assert.Equal(
+            ["..\\TeleFlow.Core\\TeleFlow.Core.csproj"],
+            GetProjectReferences("src/TeleFlow.Hosting/TeleFlow.Hosting.csproj"));
     }
 
     [Fact]

@@ -10,18 +10,21 @@ public sealed class TeleFlowApplication : ITeleFlowApplication
     private readonly IUpdateSource _updateSource;
     private readonly IUpdateProcessor _updateProcessor;
     private readonly TeleFlowApplicationLifecycleRunner _lifecycle;
+    private readonly bool _ownsServices;
     private bool _disposed;
 
     internal TeleFlowApplication(
         IServiceProvider services,
         IUpdateSource updateSource,
         IUpdateProcessor updateProcessor,
-        TeleFlowApplicationLifecycleRunner lifecycle)
+        TeleFlowApplicationLifecycleRunner lifecycle,
+        bool ownsServices)
     {
         _services = services ?? throw new ArgumentNullException(nameof(services));
         _updateSource = updateSource ?? throw new ArgumentNullException(nameof(updateSource));
         _updateProcessor = updateProcessor ?? throw new ArgumentNullException(nameof(updateProcessor));
         _lifecycle = lifecycle ?? throw new ArgumentNullException(nameof(lifecycle));
+        _ownsServices = ownsServices;
     }
 
     public static ITeleFlowApplicationBuilder CreateBuilder(string[]? args = null)
@@ -82,6 +85,11 @@ public sealed class TeleFlowApplication : ITeleFlowApplication
 
         _disposed = true;
 
+        if (!_ownsServices)
+        {
+            return;
+        }
+
         if (_services is IDisposable disposable)
         {
             disposable.Dispose();
@@ -96,6 +104,11 @@ public sealed class TeleFlowApplication : ITeleFlowApplication
         }
 
         _disposed = true;
+
+        if (!_ownsServices)
+        {
+            return;
+        }
 
         if (_services is IAsyncDisposable asyncDisposable)
         {

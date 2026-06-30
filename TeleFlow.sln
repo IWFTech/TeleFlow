@@ -26,6 +26,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TeleFlow.Telegram.Framework
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TeleFlow.Telegram.Framework.Webhooks", "src\TeleFlow.Telegram.Framework.Webhooks\TeleFlow.Telegram.Framework.Webhooks.csproj", "{F527F38E-F289-4972-B95A-06991D3A8F91}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TeleFlow.Hosting", "src\TeleFlow.Hosting\TeleFlow.Hosting.csproj", "{B6F62891-B781-4237-8CAA-C24A8024559B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -192,6 +194,18 @@ Global
 		{F527F38E-F289-4972-B95A-06991D3A8F91}.Release|x64.Build.0 = Release|Any CPU
 		{F527F38E-F289-4972-B95A-06991D3A8F91}.Release|x86.ActiveCfg = Release|Any CPU
 		{F527F38E-F289-4972-B95A-06991D3A8F91}.Release|x86.Build.0 = Release|Any CPU
+		{B6F62891-B781-4237-8CAA-C24A8024559B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B6F62891-B781-4237-8CAA-C24A8024559B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B6F62891-B781-4237-8CAA-C24A8024559B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B6F62891-B781-4237-8CAA-C24A8024559B}.Debug|x64.Build.0 = Debug|Any CPU
+		{B6F62891-B781-4237-8CAA-C24A8024559B}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B6F62891-B781-4237-8CAA-C24A8024559B}.Debug|x86.Build.0 = Debug|Any CPU
+		{B6F62891-B781-4237-8CAA-C24A8024559B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B6F62891-B781-4237-8CAA-C24A8024559B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B6F62891-B781-4237-8CAA-C24A8024559B}.Release|x64.ActiveCfg = Release|Any CPU
+		{B6F62891-B781-4237-8CAA-C24A8024559B}.Release|x64.Build.0 = Release|Any CPU
+		{B6F62891-B781-4237-8CAA-C24A8024559B}.Release|x86.ActiveCfg = Release|Any CPU
+		{B6F62891-B781-4237-8CAA-C24A8024559B}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -31,6 +31,7 @@
     <ProjectReference Include="..\..\src\TeleFlow.Annotations\TeleFlow.Annotations.csproj" />
     <ProjectReference Include="..\..\src\TeleFlow.Core\TeleFlow.Core.csproj" />
     <ProjectReference Include="..\..\src\TeleFlow.Generators\TeleFlow.Generators.csproj" />
+    <ProjectReference Include="..\..\src\TeleFlow.Hosting\TeleFlow.Hosting.csproj" />
     <ProjectReference Include="..\..\src\TeleFlow.Storage.Memory\TeleFlow.Storage.Memory.csproj" />
     <ProjectReference Include="..\..\src\TeleFlow.Telegram\TeleFlow.Telegram.csproj" />
     <ProjectReference Include="..\..\src\TeleFlow.Telegram.Client\TeleFlow.Telegram.Client.csproj" />
