@@ -2061,7 +2061,7 @@ public sealed class TelegramRuntimeIntegrationTests
         var keyboard = InlineKeyboardBuilder.Create()
             .Button("Delete", new KeyboardDeleteCallback(42))
             .Url("Open", "https://example.com")
-            .Build(messageContext.CallbackData);
+            .Build();
 
         await messageContext.Message.AnswerAsync("choose", keyboard);
 
@@ -2323,7 +2323,7 @@ public sealed class TelegramRuntimeIntegrationTests
         var messageContext = context.GetMessageContext();
         var keyboard = InlineKeyboardBuilder.Create()
             .Button("Delete", new KeyboardDeleteCallback(42))
-            .Build(messageContext.CallbackData);
+            .Build();
 
         await messageContext.Message.AnswerPhotoAsync(
             InputFileString.From("photo-file-id"),
@@ -2873,7 +2873,7 @@ public sealed class TelegramRuntimeIntegrationTests
         var callbackContext = context.GetCallbackQueryContext();
         var keyboard = InlineKeyboardBuilder.Create()
             .Button("Next", new KeyboardDeleteCallback(99))
-            .Build(callbackContext.CallbackData);
+            .Build();
 
         await callbackContext.Callback.EditTextAsync("edited", keyboard);
 

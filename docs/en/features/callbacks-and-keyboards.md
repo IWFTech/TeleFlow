@@ -50,7 +50,6 @@ Create buttons:
 public Task Ticket(
     MessageContext ctx,
     long id,
-    ICallbackDataSerializer callbackData,
     CancellationToken ct)
 {
     var keyboard = InlineKeyboardBuilder.Create()
@@ -62,7 +61,7 @@ public Task Ticket(
             "Resolve",
             new TicketAction(id, "resolve"),
             new InlineKeyboardButtonOptions { Style = ButtonStyles.Success })
-        .Build(callbackData);
+        .Build();
 
     return ctx.Message.AnswerAsync($"Ticket #{id}", keyboard, ct);
 }
@@ -86,10 +85,14 @@ public async Task Handle(
 
 Telegram callback data is limited to 64 UTF-8 bytes. Keep payloads compact.
 
-Typed callback buttons use the configured `ICallbackDataSerializer`.
-Raw callback strings are preserved exactly and do not go through the serializer.
+Typed callback buttons use `[CallbackData]` compact metadata directly.
+Raw callback strings are preserved exactly and do not go through typed payload packing.
 
-`[CallbackData("ticket")]` enables TeleFlow's compact default serializer for that payload type. A payload like `new TicketAction(42, "take")` is serialized as a short prefix-plus-fields string instead of verbose JSON. If the serialized value exceeds Telegram's 64-byte limit, TeleFlow fails before sending the keyboard.
+`[CallbackData("ticket")]` enables TeleFlow's compact callback data format for that payload type. A payload like `new TicketAction(42, "take")` is packed as a short prefix-plus-fields string instead of verbose JSON. If the packed value exceeds Telegram's 64-byte limit, TeleFlow fails before sending the keyboard.
+
+Typed inline keyboard payloads must be marked with `[CallbackData]`. If you need an external key, Redis key, or your own opaque format, pass raw string callback data instead.
+
+Custom `ICallbackDataSerializer` implementations remain available for advanced callback payload serialization and route deserialization, but typed inline keyboard buttons use `[CallbackData]` metadata directly.
 
 Invalid typed callback data does not match the typed handler. Serializer failures that are not normal parse/format failures are treated as real failures and remain observable.
 
