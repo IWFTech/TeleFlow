@@ -4,6 +4,8 @@ TeleFlow имеет намеренно простую dependency direction.
 
 ```text
 Application
+  -> TeleFlow.Hosting when using Microsoft.Extensions.Hosting
+      -> TeleFlow.Core
   -> TeleFlow.Telegram.Framework.LongPolling or Webhooks
       -> TeleFlow.Telegram.Framework
           -> TeleFlow.Telegram.Client
@@ -18,6 +20,7 @@ Application
 ## Владение пакетами
 
 - `TeleFlow.Core`: application, middleware, update processing, state contracts, replacement points.
+- `TeleFlow.Hosting`: Microsoft.Extensions.Hosting adapter, который запускает настроенное TeleFlow application как `IHostedService`.
 - `TeleFlow.Annotations`: compile-time metadata attributes. Файлы сгруппированы по ответственности, но все public annotation types остаются в стабильном namespace `TeleFlow.Annotations`.
 - `IWF.TeleFlow.Generators`: source generator and analyzer package.
 - `TeleFlow.Telegram.Schema`: generated Telegram DTOs and method models.

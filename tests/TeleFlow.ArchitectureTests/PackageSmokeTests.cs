@@ -17,6 +17,7 @@ public sealed class PackageSmokeTests
     [
         new("IWF.TeleFlow.Annotations", "src/TeleFlow.Annotations/TeleFlow.Annotations.csproj"),
         new("IWF.TeleFlow.Core", "src/TeleFlow.Core/TeleFlow.Core.csproj"),
+        new("IWF.TeleFlow.Hosting", "src/TeleFlow.Hosting/TeleFlow.Hosting.csproj"),
         new("IWF.TeleFlow.Storage.Memory", "src/TeleFlow.Storage.Memory/TeleFlow.Storage.Memory.csproj"),
         new("IWF.TeleFlow.Telegram.Schema", "src/TeleFlow.Telegram.Schema/TeleFlow.Telegram.Schema.csproj"),
         new("IWF.TeleFlow.Telegram.Client", "src/TeleFlow.Telegram.Client/TeleFlow.Telegram.Client.csproj"),
@@ -462,6 +463,51 @@ public sealed class PackageSmokeTests
                 ForbiddenPackages:
                 [
                     "IWF.TeleFlow.Annotations",
+                    "IWF.TeleFlow.Hosting",
+                    "IWF.TeleFlow.Telegram",
+                    "IWF.TeleFlow.Telegram.Client",
+                    "IWF.TeleFlow.Telegram.Framework",
+                    "IWF.TeleFlow.Telegram.Framework.LongPolling",
+                    "IWF.TeleFlow.Telegram.Framework.Webhooks",
+                    "IWF.TeleFlow.Telegram.LongPolling",
+                    "IWF.TeleFlow.Telegram.Schema",
+                    "IWF.TeleFlow.Telegram.Webhooks"
+                ]),
+
+            new PackageConsumerScenario(
+                Name: "HostingPackageConsumer",
+                PackageId: "IWF.TeleFlow.Hosting",
+                RequiresAspNetCore: false,
+                Source:
+                """
+                using System.Collections.Generic;
+                using System.Linq;
+                using Microsoft.Extensions.DependencyInjection;
+                using Microsoft.Extensions.Hosting;
+                using TeleFlow.Hosting;
+
+                public static class HostingPackageConsumer
+                {
+                    public static void Configure(IServiceCollection services)
+                    {
+                        services.AddTeleFlowHostedService();
+                    }
+
+                    public static int CountHostedServices(IEnumerable<IHostedService> services)
+                    {
+                        return services.Count();
+                    }
+                }
+                """,
+                ExpectedPackages:
+                [
+                    "IWF.TeleFlow.Core",
+                    "IWF.TeleFlow.Hosting"
+                ],
+                ForbiddenPackages:
+                [
+                    "IWF.TeleFlow.Annotations",
+                    "IWF.TeleFlow.Storage.Memory",
                     "IWF.TeleFlow.Telegram",
                     "IWF.TeleFlow.Telegram.Client",
                     "IWF.TeleFlow.Telegram.Framework",
@@ -507,6 +553,7 @@ public sealed class PackageSmokeTests
                 [
                     "IWF.TeleFlow.Annotations",
                     "IWF.TeleFlow.Core",
+                    "IWF.TeleFlow.Hosting",
                     "IWF.TeleFlow.Telegram",
                     "IWF.TeleFlow.Telegram.Framework",
                     "IWF.TeleFlow.Telegram.Framework.LongPolling",
@@ -553,6 +600,7 @@ public sealed class PackageSmokeTests
                 [
                     "IWF.TeleFlow.Annotations",
                     "IWF.TeleFlow.Core",
+                    "IWF.TeleFlow.Hosting",
                     "IWF.TeleFlow.Telegram",
                     "IWF.TeleFlow.Telegram.Framework",
                     "IWF.TeleFlow.Telegram.Framework.LongPolling",
@@ -597,6 +645,7 @@ public sealed class PackageSmokeTests
                 [
                     "IWF.TeleFlow.Annotations",
                     "IWF.TeleFlow.Core",
+                    "IWF.TeleFlow.Hosting",
                     "IWF.TeleFlow.Telegram",
                     "IWF.TeleFlow.Telegram.Framework",
                     "IWF.TeleFlow.Telegram.Framework.LongPolling",
@@ -642,6 +691,7 @@ public sealed class PackageSmokeTests
                 ],
                 ForbiddenPackages:
                 [
+                    "IWF.TeleFlow.Hosting",
                     "IWF.TeleFlow.Telegram",
                     "IWF.TeleFlow.Telegram.Framework.Webhooks",
                     "IWF.TeleFlow.Telegram.Webhooks"
@@ -686,6 +736,7 @@ public sealed class PackageSmokeTests
                 ],
                 ForbiddenPackages:
                 [
+                    "IWF.TeleFlow.Hosting",
                     "IWF.TeleFlow.Telegram",
                     "IWF.TeleFlow.Telegram.Framework.LongPolling",
                     "IWF.TeleFlow.Telegram.LongPolling"
@@ -727,6 +778,7 @@ public sealed class PackageSmokeTests
                 [
                     "IWF.TeleFlow.Annotations",
                     "IWF.TeleFlow.Core",
+                    "IWF.TeleFlow.Hosting",
                     "IWF.TeleFlow.Telegram.Framework",
                     "IWF.TeleFlow.Telegram.Framework.LongPolling",
                     "IWF.TeleFlow.Telegram.Framework.Webhooks",

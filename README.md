@@ -51,6 +51,7 @@ The documentation is available as a GitHub Pages site and as Markdown in this re
 - Typed callback payloads with compact callback data serialization.
 - State, state data, wizard navigation, and replaceable storage contracts.
 - Long polling and ASP.NET Core webhook framework adapters.
+- Optional Generic Host integration through `IWF.TeleFlow.Hosting`.
 - Raw long polling and raw webhook packages for applications that do not want the handler framework.
 - Normal .NET dependency injection for handlers, services, repositories, filters, storage, and infrastructure.
 
@@ -76,6 +77,12 @@ For direct Bot API access without the framework:
 
 ```bash
 dotnet add package IWF.TeleFlow.Telegram --prerelease
+```
+
+For a .NET worker that should run TeleFlow through Microsoft.Extensions.Hosting, also install:
+
+```bash
+dotnet add package IWF.TeleFlow.Hosting --prerelease
 ```
 
 ## First Bot

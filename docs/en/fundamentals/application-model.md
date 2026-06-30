@@ -21,6 +21,25 @@ await using var app = builder.Build();
 await app.RunAsync();
 ```
 
+For applications that already use Microsoft.Extensions.Hosting, register the optional hosting adapter instead of calling `Build()` on `TeleFlowApplication` yourself:
+
+```csharp
+using Microsoft.Extensions.Hosting;
+using TeleFlow.Hosting;
+
+var builder = Host.CreateApplicationBuilder(args);
+
+builder.Services.AddTelegramBot(options => options.Token = token);
+builder.Services.AddMemoryStateStorage();
+builder.Services.AddTelegramHandlersFromAssembly(typeof(Program).Assembly);
+builder.Services.AddLongPolling();
+builder.Services.AddTeleFlowHostedService();
+
+await builder.Build().RunAsync();
+```
+
+The hosted service uses the host's service provider. It does not create a second DI container and it does not own provider disposal. Do not use the hosted service for ASP.NET Core webhook apps; webhook processing is driven by endpoint routing.
+
 ## Core Concepts
 
 ### Update Source

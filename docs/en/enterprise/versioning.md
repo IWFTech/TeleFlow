@@ -16,6 +16,7 @@ IWF.TeleFlow.Telegram.Framework.Webhooks
 IWF.TeleFlow.Telegram.LongPolling
 IWF.TeleFlow.Telegram.Webhooks
 IWF.TeleFlow.Core
+IWF.TeleFlow.Hosting
 IWF.TeleFlow.Annotations
 IWF.TeleFlow.Generators
 IWF.TeleFlow.Storage.Memory

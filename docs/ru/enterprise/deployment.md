@@ -10,7 +10,26 @@ TeleFlow deployment - это обычный .NET deployment. Framework не тр
 
 ## Long polling worker
 
-Long polling проще всего deploy-ить как worker process:
+Long polling проще всего deploy-ить как worker process. В обычном .NET worker используй `IWF.TeleFlow.Hosting`, чтобы Generic Host владел startup, shutdown, logging и cancellation:
+
+```csharp
+using Microsoft.Extensions.Hosting;
+using TeleFlow.Hosting;
+using TeleFlow.Telegram;
+
+var builder = Host.CreateApplicationBuilder(args);
+
+builder.Services.AddTelegramBot(options => options.Token = token);
+builder.Services.AddTelegramHandlersFromAssembly(typeof(Program).Assembly);
+builder.Services.AddLongPolling();
+builder.Services.AddTeleFlowHostedService();
+
+await builder.Build().RunAsync();
+```
+
+Hosted service создаёт TeleFlow application из host service provider. Он не создаёт второй DI container и не dispose-ит provider, которым владеет host.
+
+Для маленького console process без Generic Host запускай TeleFlow application напрямую:
 
 ```csharp
 var builder = TeleFlowApplication.CreateBuilder(args);
@@ -51,6 +70,8 @@ app.MapTelegramWebhook();
 
 await app.RunAsync();
 ```
+
+Не добавляй `AddTeleFlowHostedService()` в webhook apps. Webhooks управляются ASP.NET Core endpoint routing, а process lifetime уже принадлежит `WebApplication`.
 
 Operational rules:
 

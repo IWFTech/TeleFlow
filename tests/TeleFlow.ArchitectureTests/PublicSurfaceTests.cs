@@ -130,6 +130,11 @@ public sealed class PublicSurfaceTests
         "TeleFlow.Storage.Memory.MemoryStateStore"
     ];
 
+    private static readonly string[] HostingTypeNames =
+    [
+        "TeleFlow.Hosting.TeleFlowHostingServiceCollectionExtensions"
+    ];
+
     private static readonly string[] ClientOnlyTeleFlowReferenceFileNames =
     [
         "TeleFlow.Telegram.Client.dll",
@@ -150,6 +155,12 @@ public sealed class PublicSurfaceTests
         "TeleFlow.Telegram.Client.dll",
         "TeleFlow.Telegram.LongPolling.dll",
         "TeleFlow.Telegram.Schema.dll"
+    ];
+
+    private static readonly string[] HostingOnlyTeleFlowReferenceFileNames =
+    [
+        "TeleFlow.Core.dll",
+        "TeleFlow.Hosting.dll"
     ];
 
     private static readonly string[] FrameworkLongPollingOnlyTeleFlowReferenceFileNames =
@@ -274,6 +285,37 @@ public sealed class PublicSurfaceTests
 
         Assert.Equal(
             MemoryStorageTypeNames.Order(StringComparer.Ordinal),
+            exportedTypeNames.Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void Hosting_DoesNotReferenceTelegramAssemblies()
+    {
+        var referencedAssemblies = LoadProjectAssembly("TeleFlow.Hosting")
+            .GetReferencedAssemblies()
+            .Select(static assembly => assembly.Name)
+            .ToArray();
+
+        Assert.Contains("TeleFlow.Core", referencedAssemblies);
+        Assert.DoesNotContain("TeleFlow.Telegram", referencedAssemblies);
+        Assert.DoesNotContain("TeleFlow.Telegram.Schema", referencedAssemblies);
+        Assert.DoesNotContain("TeleFlow.Telegram.Framework", referencedAssemblies);
+        Assert.DoesNotContain("TeleFlow.Telegram.Framework.LongPolling", referencedAssemblies);
+        Assert.DoesNotContain("TeleFlow.Telegram.Framework.Webhooks", referencedAssemblies);
+        Assert.DoesNotContain("TeleFlow.Telegram.LongPolling", referencedAssemblies);
+        Assert.DoesNotContain("TeleFlow.Telegram.Webhooks", referencedAssemblies);
+    }
+
+    [Fact]
+    public void Hosting_PublicSurface_ExportsHostingTypesOnly()
+    {
+        var exportedTypeNames = LoadProjectAssembly("TeleFlow.Hosting")
+            .GetExportedTypes()
+            .Select(static type => type.FullName)
+            .ToHashSet(StringComparer.Ordinal);
+
+        Assert.Equal(
+            HostingTypeNames.Order(StringComparer.Ordinal),
             exportedTypeNames.Order(StringComparer.Ordinal));
     }
 
@@ -937,6 +979,42 @@ public sealed class PublicSurfaceTests
     }
 
     [Fact]
+    public void Hosting_Surface_CompilesWithoutTelegramPackages()
+    {
+        const string source = """
+            using System.Collections.Generic;
+            using System.Linq;
+            using Microsoft.Extensions.DependencyInjection;
+            using Microsoft.Extensions.Hosting;
+            using TeleFlow.Hosting;
+
+            public static class HostingOnlySmoke
+            {
+                public static void Configure(IServiceCollection services)
+                {
+                    services.AddTeleFlowHostedService();
+                }
+
+                public static int CountHostedServices(IEnumerable<IHostedService> services)
+                {
+                    return services.Count();
+                }
+            }
+            """;
+
+        var compilation = CreateHostingOnlyCompilation(source);
+        using var stream = new MemoryStream();
+
+        var result = compilation.Emit(stream);
+
+        Assert.True(
+            result.Success,
+            string.Join(Environment.NewLine, result.Diagnostics
+                .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+                .Select(static diagnostic => diagnostic.ToString())));
+    }
+
+    [Fact]
     public void TelegramFramework_PublicSurface_DoesNotExposeRawTransportPackageTypes()
     {
         var publicTypes = LoadProjectAssembly("TeleFlow.Telegram.Framework")
@@ -1022,6 +1100,28 @@ public sealed class PublicSurfaceTests
 
         return CSharpCompilation.Create(
             "TelegramRawLongPollingOnlySmoke",
+            [CSharpSyntaxTree.ParseText(source)],
+            references,
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+    }
+
+    private static CSharpCompilation CreateHostingOnlyCompilation(string source)
+    {
+        var references = AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") is string trustedAssemblies
+            ? trustedAssemblies
+                .Split(Path.PathSeparator)
+                .Where(static path => !IsTeleFlowAssemblyReference(path))
+                .Select(static path => MetadataReference.CreateFromFile(path))
+                .Cast<MetadataReference>()
+                .ToList()
+            : [];
+
+        references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Core").Location));
+        references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Hosting").Location));
+        Assert.Equal(HostingOnlyTeleFlowReferenceFileNames, GetTeleFlowReferenceFileNames(references));
+
+        return CSharpCompilation.Create(
+            "TeleFlowHostingOnlySmoke",
             [CSharpSyntaxTree.ParseText(source)],
             references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));

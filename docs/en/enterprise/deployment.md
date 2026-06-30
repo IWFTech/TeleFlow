@@ -10,7 +10,26 @@ Choose the transport first:
 
 ## Long Polling Worker
 
-Long polling is easiest to deploy as a worker process:
+Long polling is easiest to deploy as a worker process. In a normal .NET worker, use `IWF.TeleFlow.Hosting` and let the Generic Host own startup, shutdown, logging, and cancellation:
+
+```csharp
+using Microsoft.Extensions.Hosting;
+using TeleFlow.Hosting;
+using TeleFlow.Telegram;
+
+var builder = Host.CreateApplicationBuilder(args);
+
+builder.Services.AddTelegramBot(options => options.Token = token);
+builder.Services.AddTelegramHandlersFromAssembly(typeof(Program).Assembly);
+builder.Services.AddLongPolling();
+builder.Services.AddTeleFlowHostedService();
+
+await builder.Build().RunAsync();
+```
+
+The hosted service creates the TeleFlow application from the host service provider. It does not create a second DI container and does not dispose the host-owned provider.
+
+For a smaller console process without Generic Host, run the TeleFlow application directly:
 
 ```csharp
 var builder = TeleFlowApplication.CreateBuilder(args);
@@ -51,6 +70,8 @@ app.MapTelegramWebhook();
 
 await app.RunAsync();
 ```
+
+Do not add `AddTeleFlowHostedService()` to webhook apps. Webhooks are driven by ASP.NET Core endpoint routing; the process lifetime is already owned by `WebApplication`.
 
 Operational rules:
 
