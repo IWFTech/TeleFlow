@@ -57,6 +57,36 @@ If metadata is not found, it throws. It does not silently scan the assembly with
 
 This is important for production code. A missing generator package is a configuration mistake, not a reason to change runtime behavior.
 
+## Registration Contract
+
+TeleFlow intentionally keeps assembly registration and explicit type registration separate.
+
+`AddTelegramHandlersFromAssembly(assembly)` means:
+
+- register generated metadata for that assembly;
+- require `IWF.TeleFlow.Generators`;
+- fail if generated metadata is missing;
+- never scan the assembly for handlers as a fallback.
+
+`AddTelegramHandler<THandler>()` means:
+
+- register exactly the named handler type;
+- build metadata for that type at startup;
+- do not scan the containing assembly;
+- do not require the generator.
+
+`AddTelegramModule<TModule>()` means:
+
+- register exactly the named module type;
+- require `[TelegramModule]` on the module type;
+- use generated metadata for that module when available;
+- otherwise build metadata for that module type at startup;
+- do not scan the containing assembly.
+
+The direct path is explicit by design. It is useful for tests, tiny examples,
+and manually composed modules. It is not the recommended default for large
+applications because every handler must be listed manually.
+
 ## Direct Registration
 
 Direct registration does not need the generator:

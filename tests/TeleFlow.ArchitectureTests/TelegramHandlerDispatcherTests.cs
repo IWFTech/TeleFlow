@@ -1595,6 +1595,20 @@ public sealed class TelegramHandlerDispatcherTests
     }
 
     [Fact]
+    public async Task AddTelegramHandler_RegistersOnlyExplicitHandlerType()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services => services.AddTelegramHandler<DirectOnlyCommandHandler>());
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/direct-only"));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/direct-sibling"));
+
+        Assert.Equal(["direct-only:/direct-only"], probe.Events);
+    }
+
+    [Fact]
     public async Task MyChatMemberUpdatedHandler_DispatchesMyChatMemberUpdate()
     {
         using var serviceProvider = CreateServiceProvider(
@@ -3293,6 +3307,26 @@ public sealed class TelegramHandlerDispatcherTests
         [Command("start")]
         public Task Handle(MessageContext context)
         {
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class DirectOnlyCommandHandler
+    {
+        [Command("direct-only")]
+        public Task Handle(MessageContext context, HandlerProbe probe)
+        {
+            probe.Events.Add($"direct-only:{context.TelegramMessage.Text}");
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class DirectSiblingCommandHandler
+    {
+        [Command("direct-sibling")]
+        public Task Handle(MessageContext context, HandlerProbe probe)
+        {
+            probe.Events.Add($"direct-sibling:{context.TelegramMessage.Text}");
             return Task.CompletedTask;
         }
     }

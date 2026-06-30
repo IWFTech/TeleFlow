@@ -57,6 +57,36 @@ public sealed class StartHandler
 
 Это важно для production code. Missing generator package - configuration mistake, а не причина менять runtime behavior.
 
+## Контракт регистрации
+
+TeleFlow намеренно разделяет assembly registration и explicit type registration.
+
+`AddTelegramHandlersFromAssembly(assembly)` означает:
+
+- зарегистрировать generated metadata для этого assembly;
+- требовать `IWF.TeleFlow.Generators`;
+- упасть, если generated metadata отсутствует;
+- никогда не сканировать assembly как fallback.
+
+`AddTelegramHandler<THandler>()` означает:
+
+- зарегистрировать ровно указанный handler type;
+- построить metadata для этого type на startup;
+- не сканировать containing assembly;
+- не требовать generator.
+
+`AddTelegramModule<TModule>()` означает:
+
+- зарегистрировать ровно указанный module type;
+- требовать `[TelegramModule]` на module type;
+- использовать generated metadata для этого module, если она доступна;
+- иначе построить metadata для этого module type на startup;
+- не сканировать containing assembly.
+
+Direct path сделан явным специально. Он удобен для tests, маленьких examples
+и manually composed modules. Для больших приложений это не recommended default,
+потому что каждый handler нужно перечислять руками.
+
 ## Прямая регистрация
 
 Direct registration не требует generator:
