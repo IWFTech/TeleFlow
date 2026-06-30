@@ -34,7 +34,7 @@ internal sealed class TelegramHandlerSelector
     {
         var selection = await SelectMessageHandlerAsync(
             context,
-            _table.CommandHandlers,
+            _table.CommandHandlerCandidates,
             currentState,
             cancellationToken).ConfigureAwait(false);
 
@@ -45,7 +45,7 @@ internal sealed class TelegramHandlerSelector
 
         return await SelectMessageHandlerAsync(
             context,
-            _table.MessageHandlers,
+            _table.MessageHandlerCandidates,
             currentState,
             cancellationToken).ConfigureAwait(false);
     }
@@ -57,12 +57,10 @@ internal sealed class TelegramHandlerSelector
     {
         if (HasCurrentState(currentState))
         {
+            var state = currentState!;
             var statefulPayloadSelection = await SelectCallbackHandlerPassAsync(
                 context,
-                _table.CallbackHandlers,
-                currentState,
-                requireCurrentState: true,
-                requireCallbackPayload: true,
+                _table.CallbackHandlerCandidates.GetStatefulTypedCandidates(state),
                 cancellationToken).ConfigureAwait(false);
 
             if (statefulPayloadSelection is not null)
@@ -72,10 +70,7 @@ internal sealed class TelegramHandlerSelector
 
             var statefulRawSelection = await SelectCallbackHandlerPassAsync(
                 context,
-                _table.CallbackHandlers,
-                currentState,
-                requireCurrentState: true,
-                requireCallbackPayload: false,
+                _table.CallbackHandlerCandidates.GetStatefulRawCandidates(state),
                 cancellationToken).ConfigureAwait(false);
 
             if (statefulRawSelection is not null)
@@ -86,10 +81,7 @@ internal sealed class TelegramHandlerSelector
 
         var statelessPayloadSelection = await SelectCallbackHandlerPassAsync(
             context,
-            _table.CallbackHandlers,
-            currentState: null,
-            requireCurrentState: false,
-            requireCallbackPayload: true,
+            _table.CallbackHandlerCandidates.StatelessTyped,
             cancellationToken).ConfigureAwait(false);
 
         if (statelessPayloadSelection is not null)
@@ -99,10 +91,7 @@ internal sealed class TelegramHandlerSelector
 
         return await SelectCallbackHandlerPassAsync(
             context,
-            _table.CallbackHandlers,
-            currentState: null,
-            requireCurrentState: false,
-            requireCallbackPayload: false,
+            _table.CallbackHandlerCandidates.StatelessRaw,
             cancellationToken).ConfigureAwait(false);
     }
 
@@ -114,12 +103,11 @@ internal sealed class TelegramHandlerSelector
     {
         if (HasCurrentState(currentState))
         {
+            var state = currentState!;
             var statefulSelection = await SelectChatMemberHandlerPassAsync(
                 context,
-                _table.ChatMemberHandlers,
+                _table.ChatMemberHandlerCandidates.GetStatefulCandidates(state),
                 updateRouteKind,
-                currentState,
-                requireCurrentState: true,
                 cancellationToken).ConfigureAwait(false);
 
             if (statefulSelection is not null)
@@ -130,26 +118,23 @@ internal sealed class TelegramHandlerSelector
 
         return await SelectChatMemberHandlerPassAsync(
             context,
-            _table.ChatMemberHandlers,
+            _table.ChatMemberHandlerCandidates.Stateless,
             updateRouteKind,
-            currentState: null,
-            requireCurrentState: false,
             cancellationToken).ConfigureAwait(false);
     }
 
     private static async ValueTask<TelegramRouteSelection?> SelectMessageHandlerAsync(
         MessageContext context,
-        IReadOnlyList<TelegramHandlerDescriptor> handlers,
+        TelegramHandlerCandidateSet candidates,
         string? currentState,
         CancellationToken cancellationToken)
     {
         if (HasCurrentState(currentState))
         {
+            var state = currentState!;
             var statefulSelection = await SelectMessageHandlerPassAsync(
                 context,
-                handlers,
-                currentState,
-                requireCurrentState: true,
+                candidates.GetStatefulCandidates(state),
                 cancellationToken).ConfigureAwait(false);
 
             if (statefulSelection is not null)
@@ -160,29 +145,19 @@ internal sealed class TelegramHandlerSelector
 
         return await SelectMessageHandlerPassAsync(
             context,
-            handlers,
-            currentState: null,
-            requireCurrentState: false,
+            candidates.Stateless,
             cancellationToken).ConfigureAwait(false);
     }
 
     private static async ValueTask<TelegramRouteSelection?> SelectMessageHandlerPassAsync(
         MessageContext context,
-        IReadOnlyList<TelegramHandlerDescriptor> handlers,
-        string? currentState,
-        bool requireCurrentState,
+        IReadOnlyList<TelegramHandlerCandidate> candidates,
         CancellationToken cancellationToken)
     {
-        for (var index = 0; index < handlers.Count; index++)
+        for (var index = 0; index < candidates.Count; index++)
         {
-            var handler = handlers[index];
-
-            if (!MatchesStatePass(handler, currentState, requireCurrentState))
-            {
-                continue;
-            }
-
-            var route = handler.Route;
+            var candidate = candidates[index];
+            var route = candidate.Route;
 
             if (!TryMatchRoute(context.TelegramMessage, route, out var routeValues))
             {
@@ -191,14 +166,13 @@ internal sealed class TelegramHandlerSelector
 
             if (!await TelegramFilterEvaluator.MatchesAsync(
                     context,
-                    route.Filters,
-                    route.RoleRequirements,
+                    candidate.Filters,
                     cancellationToken).ConfigureAwait(false))
             {
                 continue;
             }
 
-            return new TelegramRouteSelection(handler, route, routeValues, callbackPayload: null);
+            return new TelegramRouteSelection(candidate.Handler, route, routeValues, callbackPayload: null);
         }
 
         return null;
@@ -206,40 +180,25 @@ internal sealed class TelegramHandlerSelector
 
     private static async ValueTask<TelegramRouteSelection?> SelectCallbackHandlerPassAsync(
         CallbackQueryContext context,
-        IReadOnlyList<TelegramHandlerDescriptor> handlers,
-        string? currentState,
-        bool requireCurrentState,
-        bool requireCallbackPayload,
+        IReadOnlyList<TelegramHandlerCandidate> candidates,
         CancellationToken cancellationToken)
     {
-        for (var index = 0; index < handlers.Count; index++)
+        for (var index = 0; index < candidates.Count; index++)
         {
-            var handler = handlers[index];
-
-            if ((handler.CallbackPayloadType is not null) != requireCallbackPayload)
-            {
-                continue;
-            }
-
-            if (!MatchesStatePass(handler, currentState, requireCurrentState))
-            {
-                continue;
-            }
-
-            var route = handler.Route;
+            var candidate = candidates[index];
+            var route = candidate.Route;
 
             if (route.CallbackPayloadType is null)
             {
                 if (!await TelegramFilterEvaluator.MatchesAsync(
                         context,
-                        route.Filters,
-                        route.RoleRequirements,
+                        candidate.Filters,
                         cancellationToken).ConfigureAwait(false))
                 {
                     continue;
                 }
 
-                return new TelegramRouteSelection(handler, route, EmptyRouteValues, callbackPayload: null);
+                return new TelegramRouteSelection(candidate.Handler, route, EmptyRouteValues, callbackPayload: null);
             }
 
             if (string.IsNullOrWhiteSpace(context.TelegramCallbackQuery.Data))
@@ -257,14 +216,13 @@ internal sealed class TelegramHandlerSelector
 
             if (!await TelegramFilterEvaluator.MatchesAsync(
                     context,
-                    route.Filters,
-                    route.RoleRequirements,
+                    candidate.Filters,
                     cancellationToken).ConfigureAwait(false))
             {
                 continue;
             }
 
-            return new TelegramRouteSelection(handler, route, EmptyRouteValues, callbackPayload);
+            return new TelegramRouteSelection(candidate.Handler, route, EmptyRouteValues, callbackPayload);
         }
 
         return null;
@@ -272,22 +230,14 @@ internal sealed class TelegramHandlerSelector
 
     private static async ValueTask<TelegramRouteSelection?> SelectChatMemberHandlerPassAsync(
         ChatMemberUpdatedContext context,
-        IReadOnlyList<TelegramHandlerDescriptor> handlers,
+        IReadOnlyList<TelegramHandlerCandidate> candidates,
         TelegramRouteKind updateRouteKind,
-        string? currentState,
-        bool requireCurrentState,
         CancellationToken cancellationToken)
     {
-        for (var index = 0; index < handlers.Count; index++)
+        for (var index = 0; index < candidates.Count; index++)
         {
-            var handler = handlers[index];
-
-            if (!MatchesStatePass(handler, currentState, requireCurrentState))
-            {
-                continue;
-            }
-
-            var route = handler.Route;
+            var candidate = candidates[index];
+            var route = candidate.Route;
 
             if (route.RouteKind != updateRouteKind)
             {
@@ -301,14 +251,13 @@ internal sealed class TelegramHandlerSelector
 
             if (!await TelegramFilterEvaluator.MatchesAsync(
                     context,
-                    route.Filters,
-                    route.RoleRequirements,
+                    candidate.Filters,
                     cancellationToken).ConfigureAwait(false))
             {
                 continue;
             }
 
-            return new TelegramRouteSelection(handler, route, EmptyRouteValues, callbackPayload: null);
+            return new TelegramRouteSelection(candidate.Handler, route, EmptyRouteValues, callbackPayload: null);
         }
 
         return null;
@@ -340,34 +289,6 @@ internal sealed class TelegramHandlerSelector
     private static bool HasCurrentState(string? currentState)
     {
         return !string.IsNullOrWhiteSpace(currentState);
-    }
-
-    private static bool MatchesStatePass(
-        TelegramHandlerDescriptor handler,
-        string? currentState,
-        bool requireCurrentState)
-    {
-        if (!requireCurrentState)
-        {
-            return handler.States.Count == 0;
-        }
-
-        return currentState is not null && MatchesState(handler, currentState);
-    }
-
-    private static bool MatchesState(TelegramHandlerDescriptor handler, string currentState)
-    {
-        var states = handler.States;
-
-        for (var index = 0; index < states.Count; index++)
-        {
-            if (string.Equals(states[index], currentState, StringComparison.Ordinal))
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private static bool TryDeserializeCallbackPayload(
