@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using TeleFlow.Core.DependencyInjection;
 using TeleFlow.Core.Dispatching;
 using TeleFlow.Core.Middleware;
 using TeleFlow.Core.Updates;
@@ -18,6 +19,7 @@ internal sealed class TeleFlowApplicationBuilder : ITeleFlowApplicationBuilder
     public ITeleFlowApplication Build()
     {
         ValidateMiddlewareRegistrations();
+        ValidateLifecycleTaskRegistrations();
 
         var serviceProvider = Services.BuildServiceProvider(new ServiceProviderOptions
         {
@@ -29,9 +31,12 @@ internal sealed class TeleFlowApplicationBuilder : ITeleFlowApplicationBuilder
         var updateSource = ResolveSingleRequiredService<IUpdateSource>(serviceProvider);
         var dispatcher = ResolveSingleRequiredService<IUpdateDispatcher>(serviceProvider);
         var middleware = serviceProvider.GetServices<UpdateMiddlewareRegistration>().ToArray();
+        var startupTasks = serviceProvider.GetServices<TeleFlowStartupTaskRegistration>().ToArray();
+        var shutdownTasks = serviceProvider.GetServices<TeleFlowShutdownTaskRegistration>().ToArray();
         var processor = new DefaultUpdateProcessor(scopeFactory, dispatcher, middleware);
+        var lifecycle = new TeleFlowApplicationLifecycleRunner(scopeFactory, startupTasks, shutdownTasks);
 
-        return new TeleFlowApplication(serviceProvider, updateSource, processor);
+        return new TeleFlowApplication(serviceProvider, updateSource, processor, lifecycle);
     }
 
     private static TService ResolveSingleRequiredService<TService>(IServiceProvider serviceProvider)
@@ -61,5 +66,24 @@ internal sealed class TeleFlowApplicationBuilder : ITeleFlowApplicationBuilder
             $"Register middleware with {nameof(ServiceCollectionMiddlewareExtensions.AddUpdateMiddleware)}<TMiddleware>() " +
             $"or {nameof(ServiceCollectionMiddlewareExtensions.AddSingletonUpdateMiddleware)}<TMiddleware>() so TeleFlow can " +
             "resolve it from the correct update scope.");
+    }
+
+    private void ValidateLifecycleTaskRegistrations()
+    {
+        if (Services.Any(static descriptor => descriptor.ServiceType == typeof(ITeleFlowStartupTask)))
+        {
+            throw new InvalidOperationException(
+                "Direct ITeleFlowStartupTask service registrations are not used by the TeleFlow application lifecycle. " +
+                $"Register startup tasks with {nameof(ApplicationLifecycleServiceCollectionExtensions.AddTeleFlowStartupTask)}<TTask>() " +
+                "so TeleFlow can resolve them from a dedicated lifecycle scope.");
+        }
+
+        if (Services.Any(static descriptor => descriptor.ServiceType == typeof(ITeleFlowShutdownTask)))
+        {
+            throw new InvalidOperationException(
+                "Direct ITeleFlowShutdownTask service registrations are not used by the TeleFlow application lifecycle. " +
+                $"Register shutdown tasks with {nameof(ApplicationLifecycleServiceCollectionExtensions.AddTeleFlowShutdownTask)}<TTask>() " +
+                "so TeleFlow can resolve them from a dedicated lifecycle scope.");
+        }
     }
 }

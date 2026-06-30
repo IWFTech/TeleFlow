@@ -43,6 +43,46 @@ The dispatcher selects and invokes the matching handler. Telegram-specific dispa
 
 A handler is a normal class with a method that TeleFlow can invoke. Routing metadata comes from attributes.
 
+## Application Lifecycle
+
+TeleFlow lifecycle tasks run around the update source:
+
+1. startup tasks run in registration order;
+2. the update source starts and processes updates;
+3. shutdown tasks run in reverse registration order after the update source stops.
+
+Use lifecycle tasks for application startup and shutdown work that belongs to the bot process:
+
+```csharp
+builder.Services.AddTeleFlowStartupTask<ConfigureBotCommands>();
+builder.Services.AddTeleFlowShutdownTask<FlushMetrics>();
+```
+
+```csharp
+public sealed class ConfigureBotCommands(ITelegramClient bot) : ITeleFlowStartupTask
+{
+    public async ValueTask ExecuteAsync(CancellationToken ct = default)
+    {
+        await bot.SetMyCommandsAsync(
+            commands:
+            [
+                new BotCommand
+                {
+                    Command = "start",
+                    Description = "Start"
+                }
+            ],
+            cancellationToken: ct);
+    }
+}
+```
+
+Lifecycle tasks are not Telegram handlers. They do not receive `MessageContext`, `CallbackQueryContext`, or fake updates. They are resolved through dependency injection from a dedicated lifecycle scope, so scoped application services can be used safely.
+
+If a startup task fails, update processing does not start. If the update source fails after startup has completed, shutdown tasks still run and the original failure is surfaced. If shutdown also fails, TeleFlow reports both failures.
+
+Do not use lifecycle tasks for long-running background jobs. Use normal .NET hosting primitives such as `IHostedService` or `BackgroundService` when the work is a separate background process.
+
 ## Telegram Contexts
 
 Telegram handlers receive context objects that expose the current update, the Telegram client, state, and small action helpers.
@@ -171,6 +211,8 @@ services.AddStateStore<MyStateStore>();
 services.AddStateDataStore<MyStateDataStore>();
 services.AddStateHistoryStore<MyHistoryStore>();
 services.AddStateKeyFactory<MyStateKeyFactory>();
+services.AddTeleFlowStartupTask<MyStartupTask>();
+services.AddTeleFlowShutdownTask<MyShutdownTask>();
 ```
 
 These are advanced APIs. Most applications should start with framework transports and memory storage, then replace only the part that has become an infrastructure requirement.

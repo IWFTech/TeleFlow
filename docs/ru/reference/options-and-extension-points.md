@@ -90,6 +90,8 @@ services.AddUpdateMiddleware<MyMiddleware>();
 services.AddSingletonUpdateMiddleware<MyStatelessMiddleware>();
 services.AddDefaultUpdateRateLimiting();
 services.AddUpdateRateLimiter<MyLimiter>();
+services.AddTeleFlowStartupTask<MyStartupTask>();
+services.AddTeleFlowShutdownTask<MyShutdownTask>();
 ```
 
 State:
@@ -125,3 +127,5 @@ services.AddDeepLinkPayloadSerializer<MySerializer>();
 ## Рекомендации
 
 Replacement points заменяй только когда приложение владеет behavior. Держи defaults, пока нет конкретной причины их менять.
+
+Lifecycle tasks используй для короткой startup/shutdown работы приложения. Не регистрируй `ITeleFlowStartupTask` или `ITeleFlowShutdownTask` напрямую в `IServiceCollection`: TeleFlow не использует direct lifecycle service registrations и понятно падает во время application build. Регистрируй tasks через `AddTeleFlowStartupTask<TTask>()` и `AddTeleFlowShutdownTask<TTask>()`, чтобы они создавались из правильного lifecycle scope.

@@ -26,11 +26,14 @@ internal sealed class DefaultUpdateProcessor : IUpdateProcessor
     {
         ArgumentNullException.ThrowIfNull(payload);
 
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var context = new UpdateContext(scope.ServiceProvider, payload, cancellationToken);
-        var pipeline = BuildPipeline(scope.ServiceProvider, _dispatcher, _middleware);
+        var scope = _scopeFactory.CreateAsyncScope();
+        await using (scope.ConfigureAwait(false))
+        {
+            var context = new UpdateContext(scope.ServiceProvider, payload, cancellationToken);
+            var pipeline = BuildPipeline(scope.ServiceProvider, _dispatcher, _middleware);
 
-        await pipeline(context).ConfigureAwait(false);
+            await pipeline(context).ConfigureAwait(false);
+        }
     }
 
     private static UpdateDelegate BuildPipeline(
