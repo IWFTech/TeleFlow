@@ -1,9 +1,13 @@
 using System.Text;
-using TeleFlow.Telegram.Internal;
+using TeleFlow.Core.Callbacks;
 using TeleFlow.Telegram.Schema.Types;
 
 namespace TeleFlow.Telegram;
 
+/// <summary>
+/// Builds Telegram inline keyboard markup for common button scenarios while keeping native
+/// <see cref="InlineKeyboardMarkup"/> available for full Bot API control.
+/// </summary>
 public sealed class InlineKeyboardBuilder
 {
     private const int MaxTelegramCallbackDataBytes = 64;
@@ -39,7 +43,7 @@ public sealed class InlineKeyboardBuilder
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(text);
         ArgumentException.ThrowIfNullOrWhiteSpace(callbackData);
-        ValidateCallbackDataLength(callbackData);
+        ValidateCallbackData(callbackData);
 
         ValidateOptions(options);
         CurrentRow.Add(InlineKeyboardButtonIntent.RawCallbackData(text, callbackData, options));
@@ -92,10 +96,22 @@ public sealed class InlineKeyboardBuilder
 
     public InlineKeyboardMarkup Build()
     {
+        return BuildCore(callbackData: null);
+    }
+
+    public InlineKeyboardMarkup Build(ICallbackDataSerializer callbackData)
+    {
+        ArgumentNullException.ThrowIfNull(callbackData);
+
+        return BuildCore(callbackData);
+    }
+
+    private InlineKeyboardMarkup BuildCore(ICallbackDataSerializer? callbackData)
+    {
         var rows = _rows
             .Where(static row => row.Count > 0)
-            .Select(static row => row
-                .Select(static intent => intent.ToButton())
+            .Select(row => row
+                .Select(intent => intent.ToButton(callbackData))
                 .ToArray())
             .ToArray();
 
@@ -121,24 +137,13 @@ public sealed class InlineKeyboardBuilder
         return this;
     }
 
-    private static string PackTypedCallbackPayload(object payload)
+    private static void ValidateCallbackData(string callbackData)
     {
-        var payloadType = payload.GetType();
-
-        if (!CallbackDataMetadata.TryCreate(payloadType, out var metadata))
+        if (string.IsNullOrWhiteSpace(callbackData))
         {
-            throw new InvalidOperationException(
-                $"Inline keyboard callback payload type '{payloadType.FullName}' must declare CallbackDataAttribute. " +
-                "Pass raw string callback data when using a custom callback data format.");
+            throw new InvalidOperationException("Telegram callback data must not be empty.");
         }
 
-        var callbackData = metadata.Pack(payload);
-        ValidateCallbackDataLength(callbackData);
-        return callbackData;
-    }
-
-    private static void ValidateCallbackDataLength(string callbackData)
-    {
         if (Encoding.UTF8.GetByteCount(callbackData) > MaxTelegramCallbackDataBytes)
         {
             throw new InvalidOperationException(
@@ -166,17 +171,24 @@ public sealed class InlineKeyboardBuilder
 
     private sealed record InlineKeyboardButtonIntent(
         string Text,
-        object? Payload,
+        Func<ICallbackDataSerializer, string>? SerializePayload,
+        Type? PayloadType,
         string? CallbackData,
         string? Url,
         InlineKeyboardButtonOptions? Options)
     {
-        public static InlineKeyboardButtonIntent TypedPayload(
+        public static InlineKeyboardButtonIntent TypedPayload<TPayload>(
             string text,
-            object payload,
+            TPayload payload,
             InlineKeyboardButtonOptions? options)
         {
-            return new InlineKeyboardButtonIntent(text, payload, CallbackData: null, Url: null, options);
+            return new InlineKeyboardButtonIntent(
+                text,
+                serializer => serializer.Serialize(payload),
+                typeof(TPayload),
+                CallbackData: null,
+                Url: null,
+                options);
         }
 
         public static InlineKeyboardButtonIntent RawCallbackData(
@@ -184,7 +196,13 @@ public sealed class InlineKeyboardBuilder
             string callbackData,
             InlineKeyboardButtonOptions? options)
         {
-            return new InlineKeyboardButtonIntent(text, Payload: null, callbackData, Url: null, options);
+            return new InlineKeyboardButtonIntent(
+                text,
+                SerializePayload: null,
+                PayloadType: null,
+                callbackData,
+                Url: null,
+                options);
         }
 
         public static InlineKeyboardButtonIntent Link(
@@ -192,17 +210,33 @@ public sealed class InlineKeyboardBuilder
             string url,
             InlineKeyboardButtonOptions? options)
         {
-            return new InlineKeyboardButtonIntent(text, Payload: null, CallbackData: null, url, options);
+            return new InlineKeyboardButtonIntent(
+                text,
+                SerializePayload: null,
+                PayloadType: null,
+                CallbackData: null,
+                url,
+                options);
         }
 
-        public InlineKeyboardButton ToButton()
+        public InlineKeyboardButton ToButton(ICallbackDataSerializer? callbackData)
         {
-            if (Payload is not null)
+            if (SerializePayload is not null)
             {
+                if (callbackData is null)
+                {
+                    throw new InvalidOperationException(
+                        $"Inline keyboard typed callback payload '{PayloadType?.FullName}' requires ICallbackDataSerializer. " +
+                        "Use Build(callbackData) or pass raw string callback data.");
+                }
+
+                var serializedPayload = SerializePayload(callbackData);
+                ValidateCallbackData(serializedPayload);
+
                 return ApplyOptions(new InlineKeyboardButton
                 {
                     Text = Text,
-                    CallbackData = PackTypedCallbackPayload(Payload)
+                    CallbackData = serializedPayload
                 });
             }
 

@@ -47,7 +47,11 @@ Create buttons:
 
 ```csharp
 [CommandTemplate("ticket {id:long}")]
-public Task Ticket(MessageContext ctx, long id, CancellationToken ct)
+public Task Ticket(
+    MessageContext ctx,
+    long id,
+    ICallbackDataSerializer callbackData,
+    CancellationToken ct)
 {
     var keyboard = InlineKeyboardBuilder.Create()
         .Button(
@@ -58,7 +62,7 @@ public Task Ticket(MessageContext ctx, long id, CancellationToken ct)
             "Resolve",
             new TicketAction(id, "resolve"),
             new InlineKeyboardButtonOptions { Style = ButtonStyles.Success })
-        .Build();
+        .Build(callbackData);
 
     return ctx.Message.AnswerAsync($"Ticket #{id}", keyboard, ct);
 }
@@ -82,7 +86,10 @@ public async Task Handle(
 
 Telegram callback data is limited to 64 UTF-8 bytes. Keep payloads compact.
 
-`[CallbackData("ticket")]` enables TeleFlow's compact serializer for that payload type. A payload like `new TicketAction(42, "take")` is serialized as a short prefix-plus-fields string instead of verbose JSON. If the serialized value exceeds Telegram's 64-byte limit, TeleFlow fails before sending the keyboard.
+Typed callback buttons use the configured `ICallbackDataSerializer`.
+Raw callback strings are preserved exactly and do not go through the serializer.
+
+`[CallbackData("ticket")]` enables TeleFlow's compact default serializer for that payload type. A payload like `new TicketAction(42, "take")` is serialized as a short prefix-plus-fields string instead of verbose JSON. If the serialized value exceeds Telegram's 64-byte limit, TeleFlow fails before sending the keyboard.
 
 Invalid typed callback data does not match the typed handler. Serializer failures that are not normal parse/format failures are treated as real failures and remain observable.
 
