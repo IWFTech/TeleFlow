@@ -47,6 +47,7 @@ public sealed partial class TelegramHandlerAnalyzer
     {
         if (TryGetFirstKnownAttribute(method, RouteLessHandlerAttributeMetadataNames, out attribute) ||
             TryGetFirstKnownGenericAttribute(method, RouteLessHandlerGenericAttributeMetadataNames, out attribute) ||
+            TryGetFirst(TelegramHandlerSymbols.GetTelegramFilterAttributes(method, inherit: true), out attribute) ||
             TryGetFirst(TelegramBuiltInFilterFacts.GetAttributes(method), out attribute))
         {
             return true;

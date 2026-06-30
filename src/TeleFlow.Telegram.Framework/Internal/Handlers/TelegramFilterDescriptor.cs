@@ -24,9 +24,44 @@ internal sealed class TelegramFilterDescriptor
         LongValues = [];
     }
 
+    public TelegramFilterDescriptor(
+        Type customFilterType,
+        Type customFilterContextType)
+        : this(customFilterType)
+    {
+        ArgumentNullException.ThrowIfNull(customFilterContextType);
+
+        CustomFilterContextType = customFilterContextType;
+    }
+
+    public TelegramFilterDescriptor(
+        Type customFilterType,
+        Attribute customFilterAttribute)
+        : this(customFilterType)
+    {
+        ArgumentNullException.ThrowIfNull(customFilterAttribute);
+
+        CustomFilterAttribute = customFilterAttribute;
+    }
+
+    public TelegramFilterDescriptor(
+        Type customFilterType,
+        Type customFilterContextType,
+        Attribute customFilterAttribute)
+        : this(customFilterType, customFilterContextType)
+    {
+        ArgumentNullException.ThrowIfNull(customFilterAttribute);
+
+        CustomFilterAttribute = customFilterAttribute;
+    }
+
     public TelegramFilterKind? Kind { get; }
 
     public Type? CustomFilterType { get; }
+
+    public Type? CustomFilterContextType { get; }
+
+    public Attribute? CustomFilterAttribute { get; }
 
     public IReadOnlyList<string> StringValues { get; }
 

@@ -166,6 +166,18 @@ public sealed class StageEightGeneratedRegistrationTests
     }
 
     [Fact]
+    public async Task GeneratedRegistrar_AppliesParameterizedCustomFilterDescriptors()
+    {
+        using var serviceProvider = CreateServiceProvider();
+        var probe = serviceProvider.GetRequiredService<GeneratedHandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("GENERATED-PARAMETERIZED"));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("other-parameterized"));
+
+        Assert.Equal(["generated-parameterized:GENERATED-PARAMETERIZED", "fallback:other-parameterized"], probe.Events);
+    }
+
+    [Fact]
     public async Task GeneratedRegistrar_AppliesCallbackFilterDescriptors()
     {
         using var serviceProvider = CreateServiceProvider();
@@ -371,6 +383,7 @@ public sealed class StageEightGeneratedRegistrationTests
         services.AddTelegramBot(options => options.Token = "test-token");
         services.AddSingleton<GeneratedHandlerProbe>();
         services.AddSingleton<GeneratedAllowMessageFilter>();
+        services.AddSingleton<GeneratedRequireTextFilter>();
         services.AddTelegramHandlersFromAssembly(typeof(StageEightGeneratedRegistrationTests).Assembly);
         configureServices?.Invoke(services);
 
@@ -634,6 +647,35 @@ internal sealed class StageEightGeneratedHandlersRegistrar : ITelegramGeneratedH
                 new(typeof(GeneratedHandlerProbe), TelegramGeneratedHandlerParameterKind.Service, "probe")
             ],
             InvokeFilteredMessage));
+
+        registry.RegisterHandler(new TelegramGeneratedHandlerDescriptor(
+            typeof(GeneratedParameterizedFilterMessageHandler),
+            nameof(GeneratedParameterizedFilterMessageHandler.Handle),
+            TelegramGeneratedHandlerKind.Message,
+            TelegramGeneratedRouteKind.MessageAny,
+            routePattern: null,
+            commandPrefixes: ["/"],
+            allowSpaceAfterPrefix: false,
+            ignoreCase: true,
+            registrationOrder: 4,
+            moduleName: null,
+            command: null,
+            callbackPayloadType: null,
+            textFilters: [],
+            filters:
+            [
+             new(
+                 typeof(GeneratedRequireTextFilter),
+                 typeof(MessageContext),
+                 new GeneratedRequireTextAttribute("generated-parameterized") { IgnoreCase = true })
+         ],
+            states: [],
+            parameters:
+            [
+                new(typeof(MessageContext), TelegramGeneratedHandlerParameterKind.Context, "context"),
+                new(typeof(GeneratedHandlerProbe), TelegramGeneratedHandlerParameterKind.Service, "probe")
+            ],
+            InvokeParameterizedFilterMessage));
 
         registry.RegisterHandler(new TelegramGeneratedHandlerDescriptor(
             typeof(GeneratedRoleMessageHandler),
@@ -1165,6 +1207,15 @@ internal sealed class StageEightGeneratedHandlersRegistrar : ITelegramGeneratedH
         await handler.Handle((MessageContext)arguments[0]!, (GeneratedHandlerProbe)arguments[1]!);
     }
 
+    private static async ValueTask InvokeParameterizedFilterMessage(
+        IServiceProvider services,
+        object?[] arguments,
+        CancellationToken cancellationToken)
+    {
+        var handler = (GeneratedParameterizedFilterMessageHandler)services.GetRequiredService(typeof(GeneratedParameterizedFilterMessageHandler));
+        await handler.Handle((MessageContext)arguments[0]!, (GeneratedHandlerProbe)arguments[1]!);
+    }
+
     private static async ValueTask InvokeRoleMessage(
         IServiceProvider services,
         object?[] arguments,
@@ -1528,6 +1579,15 @@ public sealed class GeneratedFilteredMessageHandler
     }
 }
 
+public sealed class GeneratedParameterizedFilterMessageHandler
+{
+    public Task Handle(MessageContext context, GeneratedHandlerProbe probe)
+    {
+        probe.Events.Add($"generated-parameterized:{context.TelegramMessage.Text}");
+        return Task.CompletedTask;
+    }
+}
+
 public sealed class GeneratedRoleMessageHandler
 {
     public Task Handle(MessageContext context, GeneratedHandlerProbe probe)
@@ -1689,6 +1749,34 @@ public sealed class GeneratedAllowMessageFilter : ITelegramFilter<MessageContext
         CancellationToken cancellationToken = default)
     {
         return ValueTask.FromResult(true);
+    }
+}
+
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
+public sealed class GeneratedRequireTextAttribute : TelegramFilterAttribute<GeneratedRequireTextFilter>
+{
+    public GeneratedRequireTextAttribute(string text)
+    {
+        Text = text;
+    }
+
+    public string Text { get; }
+
+    public bool IgnoreCase { get; set; }
+}
+
+public sealed class GeneratedRequireTextFilter : ITelegramFilter<MessageContext, GeneratedRequireTextAttribute>
+{
+    public ValueTask<bool> MatchesAsync(
+        MessageContext context,
+        GeneratedRequireTextAttribute attribute,
+        CancellationToken cancellationToken = default)
+    {
+        var comparison = attribute.IgnoreCase
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+        var matches = string.Equals(context.TelegramMessage.Text, attribute.Text, comparison);
+        return ValueTask.FromResult(matches);
     }
 }
 

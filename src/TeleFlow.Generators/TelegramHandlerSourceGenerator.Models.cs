@@ -111,7 +111,10 @@ public sealed partial class TelegramHandlerSourceGenerator
         string Kind,
         ImmutableArray<string> StringValues,
         ImmutableArray<long> LongValues,
-        string? CustomTypeName = null);
+        string? CustomTypeName = null,
+        string? CustomAttributeExpression = null,
+        string? CustomContextTypeName = null,
+        ImmutableArray<string> CustomContextMetadataNames = default);
 
     private sealed record GeneratedParameter(string TypeName, GeneratedParameterKind Kind, string Name);
 
