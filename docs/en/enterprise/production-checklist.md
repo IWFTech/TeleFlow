@@ -19,7 +19,7 @@ Related pages:
 - Use generated assembly registration by default.
 - Keep at least one startup test that exercises generated registration.
 - Use direct registration for narrow tests.
-- Avoid reflection registration unless documented.
+- Avoid deprecated reflection assembly registration in new production code.
 
 ## Transport
 

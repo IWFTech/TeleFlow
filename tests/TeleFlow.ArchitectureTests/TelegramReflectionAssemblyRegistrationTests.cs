@@ -13,6 +13,8 @@ using TeleFlow.Telegram.Schema.Types;
 
 namespace TeleFlow.ArchitectureTests;
 
+#pragma warning disable TLF900 // These tests intentionally cover deprecated reflection assembly registration until removal.
+
 public sealed class TelegramReflectionAssemblyRegistrationTests
 {
     [Fact]

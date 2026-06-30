@@ -1,10 +1,11 @@
 # Generated Registration
 
-TeleFlow has three handler registration paths:
+TeleFlow has two supported handler registration paths for new code:
 
 1. generated assembly registration;
-2. explicit direct registration;
-3. explicit reflection assembly registration.
+2. explicit direct registration.
+
+A deprecated reflection assembly API still exists as a temporary migration path before `1.0`.
 
 The recommended default for application code is generated assembly registration.
 
@@ -16,7 +17,7 @@ That gives three practical benefits:
 
 - missing metadata is caught during startup;
 - generated metadata can be checked by analyzers;
-- reflection is an explicit opt-in path, not a silent fallback.
+- reflection is not a silent fallback for assembly registration.
 
 ## Setup
 
@@ -72,15 +73,15 @@ Use it for:
 - manually composed modules;
 - situations where the handler list should be obvious at the registration site.
 
-## Reflection Registration
+## Deprecated Reflection Registration
 
-Reflection registration exists as an explicit API:
+Reflection assembly registration is deprecated and will be removed before `1.0`:
 
 ```csharp
 builder.Services.AddTelegramHandlersFromAssemblyReflection(typeof(Program).Assembly);
 ```
 
-Use it only when the application intentionally chooses reflection-based discovery.
+Do not use it for new projects. Use generated assembly registration for normal applications, or direct registration when the handler list should be explicit at the registration site.
 
 ## What Gets Generated
 
@@ -142,4 +143,4 @@ For production apps:
 - use generated assembly registration by default;
 - keep `IWF.TeleFlow.Generators` private with `PrivateAssets="all"`;
 - use direct registration in tests where it improves clarity;
-- avoid reflection registration unless there is a documented reason.
+- treat reflection assembly registration as a deprecated migration path only.

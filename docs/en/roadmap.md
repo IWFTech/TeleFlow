@@ -28,7 +28,7 @@ Target state:
 - Allow policies such as per-user, per-chat, per-user-per-chat, per-command, and custom keys.
 - Support memory storage for simple bots and a replaceable distributed storage contract for production deployments.
 - Provide explicit rejection behavior: skip silently, answer the user, throw a typed exception, or call a configured rejection delegate.
-- Preserve generated/reflection registration parity.
+- Keep generated assembly registration as the primary path and keep explicit registration predictable.
 - Keep policy application visible in handler metadata so debugging does not depend on hidden runtime conventions.
 
 Possible public shape:
@@ -117,13 +117,13 @@ Target state:
 - Review and freeze public API names, package graph, handler metadata, diagnostics, and registration behavior.
 - Remove or mark transitional APIs before stable packages are published.
 - Keep `TeleFlow.Core` transport-agnostic, generated schema DTOs framework-free, and framework runtime behavior inside Telegram framework packages.
-- Keep generated assembly registration as the recommended production path, with explicit reflection registration remaining opt-in.
+- Keep generated assembly registration as the recommended production path, with deprecated reflection assembly registration on a removal path before `1.0`.
 - Make quickstart, package guide, enterprise docs, samples, and release notes match the actual packages and APIs.
 
 Expected outcome:
 
 - CI, release verification, package graph tests, analyzer tests, and representative sample builds are green.
-- Generated registration and explicit reflection registration have parity for supported framework semantics.
+- Generated registration is the production assembly path, and explicit handler/module registration has documented semantics.
 - Documentation describes current behavior only; planned features remain in this roadmap.
 - Release notes state alpha/stable status, breaking-change rules, supported .NET versions, and Telegram Bot API schema version.
 
@@ -218,7 +218,7 @@ Rules:
 - Typed state data must be explicit; TeleFlow must not silently track mutable objects and auto-save them after handler execution.
 - State data is a runtime cursor for conversational progress. Durable domain history belongs in application repositories or databases.
 - Complex question-level machines belong in application/domain code, stored as typed state data, not as a heavy nested FSM DSL in TeleFlow core.
-- Generated and reflection registration must support the same state enter and typed state data behavior.
+- Generated registration and explicit handler/module registration must support documented state enter and typed state data behavior.
 
 Expected outcome:
 
@@ -340,7 +340,7 @@ Expected outcome:
 - Runtime permission changes affect later updates without redeploy.
 - Module-level and handler-level requirements combine deterministically.
 - Access checks are testable without Telegram network access.
-- Generated and explicit reflection registration produce equivalent ACL metadata.
+- Generated registration and explicit handler/module registration produce documented ACL metadata.
 
 ## Distributed Runtime
 
@@ -383,7 +383,7 @@ Current state:
 
 - Client-only AOT smoke verification exists as an engineering target.
 - Full client request serialization AOT support depends on generated JSON metadata and avoiding runtime reflection in request serialization and multipart metadata.
-- Full framework NativeAOT support is a separate track because handler reflection registration and DI invocation have different constraints.
+- Full framework NativeAOT support is a separate track because handler registration and DI invocation have different constraints.
 
 Target state:
 

@@ -147,5 +147,5 @@ TeleFlow создан для момента, когда простой Telegram-
 - state, state data, wizard navigation и memory storage;
 - long polling и ASP.NET Core webhook adapters;
 - raw long polling и raw webhook packages;
-- generated handler registration, explicit direct registration и explicit reflection registration;
+- generated handler registration и explicit direct registration;
 - replacement points для middleware, update processor, update source, dispatcher, storage, callback serializer и client.

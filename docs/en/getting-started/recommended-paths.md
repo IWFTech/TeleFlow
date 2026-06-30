@@ -34,7 +34,7 @@ public sealed class StartHandler
 }
 ```
 
-Do not start with custom middleware, custom storage, webhook deployment, or reflection registration. Those are useful later, but they slow down the first bot.
+Do not start with custom middleware, custom storage, webhook deployment, or deprecated reflection assembly registration. Middleware, storage, and webhooks are useful later; reflection assembly registration is a migration path only.
 
 ## If You Are Building A Real Product
 
@@ -72,7 +72,7 @@ Prefer explicit boundaries and observable failure:
 
 - use generated registration for assembly discovery;
 - use direct registration in tests and narrow modules;
-- avoid reflection registration unless the application intentionally accepts it;
+- avoid deprecated reflection assembly registration in new code;
 - treat state storage as infrastructure, not as an in-memory convenience;
 - keep transport choice documented;
 - verify package graph in CI;

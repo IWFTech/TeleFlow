@@ -34,7 +34,7 @@ public sealed class StartHandler
 }
 ```
 
-Не начинай с custom middleware, custom storage, webhook deployment или reflection registration. Это полезно позже, но замедляет первый бот.
+Не начинай с custom middleware, custom storage, webhook deployment или deprecated reflection assembly registration. Middleware, storage и webhooks пригодятся позже; reflection assembly registration остаётся только migration path.
 
 ## Если ты делаешь реальный продукт
 
@@ -72,7 +72,7 @@ Infrastructure/
 
 - используй generated registration для assembly discovery;
 - используй direct registration в tests и узких modules;
-- не используй reflection registration, если приложение не принимает это осознанно;
+- не используй deprecated reflection assembly registration в новом коде;
 - считай state storage инфраструктурой, а не удобной in-memory деталью;
 - документируй transport choice;
 - проверяй package graph в CI;

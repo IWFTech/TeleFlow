@@ -339,6 +339,26 @@ public sealed class PublicSurfaceTests
     }
 
     [Fact]
+    public void TelegramFramework_ReflectionAssemblyRegistration_IsObsolete()
+    {
+        var method = typeof(TeleFlow.Telegram.TelegramServiceCollectionExtensions).GetMethod(
+            nameof(TeleFlow.Telegram.TelegramServiceCollectionExtensions.AddTelegramHandlersFromAssemblyReflection),
+            BindingFlags.Public | BindingFlags.Static);
+
+        Assert.NotNull(method);
+
+        var obsolete = method.GetCustomAttribute<ObsoleteAttribute>();
+
+        Assert.NotNull(obsolete);
+        Assert.False(obsolete.IsError);
+        Assert.Equal("TLF900", obsolete.DiagnosticId);
+        Assert.Contains("Reflection-based assembly handler registration is deprecated", obsolete.Message);
+        Assert.Contains("IWF.TeleFlow.Generators", obsolete.Message);
+        Assert.Contains("AddTelegramHandler<THandler>", obsolete.Message);
+        Assert.Contains("AddTelegramModule<TModule>", obsolete.Message);
+    }
+
+    [Fact]
     public void Telegram_PublicSurface_DoesNotDeclareDuplicateFrameworkRuntimeTypes()
     {
         var exportedTypeNames = LoadProjectAssembly("TeleFlow.Telegram")

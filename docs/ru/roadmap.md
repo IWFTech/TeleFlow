@@ -28,7 +28,7 @@
 - Поддержать policies: per-user, per-chat, per-user-per-chat, per-command и custom keys.
 - Дать memory storage для простых ботов и заменяемый distributed storage contract для production deployments.
 - Сделать явное поведение при превышении лимита: пропустить молча, ответить пользователю, бросить typed exception или вызвать настроенный rejection delegate.
-- Сохранить parity между generated и reflection registration.
+- Оставить generated assembly registration основным путем и сделать explicit registration предсказуемым.
 - Держать policy application видимой в handler metadata, чтобы debugging не зависел от скрытых runtime conventions.
 
 Возможная форма public API:
@@ -117,13 +117,13 @@ Non-goals для первой реализации:
 - Проверить и заморозить public API names, package graph, handler metadata, diagnostics и registration behavior.
 - Удалить или явно пометить transitional APIs до публикации stable packages.
 - Держать `TeleFlow.Core` transport-agnostic, generated schema DTOs свободными от framework behavior, а framework runtime behavior внутри Telegram framework packages.
-- Оставить generated assembly registration рекомендуемым production path, а explicit reflection registration - opt-in путем.
+- Оставить generated assembly registration рекомендуемым production path, а deprecated reflection assembly registration поставить на путь удаления до `1.0`.
 - Синхронизировать quickstart, package guide, enterprise docs, samples и release notes с реальными packages и APIs.
 
 Нужный результат:
 
 - CI, release verification, package graph tests, analyzer tests и representative sample builds зелёные.
-- Generated registration и explicit reflection registration имеют parity для поддерживаемых framework semantics.
+- Generated registration является production assembly path, а explicit handler/module registration имеет documented semantics.
 - Документация описывает текущее поведение; planned features остаются только в roadmap.
 - Release notes фиксируют alpha/stable status, breaking-change rules, supported .NET versions и Telegram Bot API schema version.
 
@@ -218,7 +218,7 @@ public async Task EnterQuestion(
 - Typed state data должен быть явным; TeleFlow не должен скрыто отслеживать mutable objects и auto-save после handler execution.
 - State data - это runtime cursor для conversational progress. Durable domain history должна жить в application repositories или databases.
 - Complex question-level machines должны жить в application/domain code и храниться как typed state data, а не превращаться в тяжёлый nested FSM DSL внутри TeleFlow core.
-- Generated и reflection registration должны поддерживать одинаковое state enter и typed state data behavior.
+- Generated registration и explicit handler/module registration должны поддерживать documented state enter и typed state data behavior.
 
 Нужный результат:
 
@@ -340,7 +340,7 @@ public async Task EnterQuestion(
 - Runtime permission changes влияют на следующие updates без redeploy.
 - Module-level и handler-level requirements combine deterministically.
 - Access checks тестируются без Telegram network access.
-- Generated и explicit reflection registration дают equivalent ACL metadata.
+- Generated registration и explicit handler/module registration дают documented ACL metadata.
 
 ## Distributed runtime
 
@@ -383,7 +383,7 @@ public async Task EnterQuestion(
 
 - Client-only AOT smoke verification существует как engineering target.
 - Full client request serialization AOT support зависит от generated JSON metadata и отказа от runtime reflection в request serialization и multipart metadata.
-- Full framework NativeAOT support - отдельный track, потому что handler reflection registration и DI invocation имеют другие constraints.
+- Full framework NativeAOT support - отдельный track, потому что handler registration и DI invocation имеют разные constraints.
 
 Целевое состояние:
 

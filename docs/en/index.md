@@ -147,5 +147,5 @@ The current repository includes:
 - state, state data, wizard navigation, and memory storage;
 - long polling and ASP.NET Core webhook adapters;
 - raw long polling and raw webhook packages;
-- generated handler registration, explicit direct registration, and explicit reflection registration;
+- generated handler registration and explicit direct registration;
 - middleware, update processor, update source, dispatcher, storage, callback serializer, and client replacement points.
