@@ -6,6 +6,28 @@ TeleFlow follows SemVer for published NuGet packages and documented public behav
 
 No changes yet.
 
+## 1.0.0-alpha.7 - 2026-07-01
+
+This alpha focuses on typed callback data hardening: compile-time callback data codecs, clearer stale callback diagnostics, and validation before the `1.0.0` stabilization line.
+
+### Added
+
+- Source-generated callback data codecs for `[CallbackData]` payloads when `IWF.TeleFlow.Generators` is installed.
+- Generated callback packing, matching, and unpacking for typed inline keyboard payloads and typed callback routes.
+- Warning diagnostics for compact typed callback data that matches a typed route shape but cannot be decoded.
+- EN/RU documentation for stale callback buttons, raw callback fallbacks, and callback payload versioning guidance.
+
+### Changed
+
+- Default typed callback serialization now prefers generated codecs and falls back to runtime metadata only when generated metadata is unavailable.
+- Malformed compact typed callback data is treated as an unmatched typed route after a warning, allowing raw callback fallback handlers to answer old or stale buttons.
+- Generated enum callback fields now decode through explicit validation instead of surfacing low-level enum parse failures.
+
+### Fixed
+
+- Oversized `[CallbackData]` prefixes are reported by analyzer/runtime validation instead of failing later during keyboard packing.
+- Stale compact typed callback payloads no longer look like random handler failures.
+
 ## 1.0.0-alpha.6 - 2026-07-01
 
 This alpha focuses on Microsoft.Extensions.Hosting integration, application lifecycle tasks, package graph naming stabilization, and release packaging hardening.
