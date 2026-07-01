@@ -116,7 +116,7 @@ Non-goals для первой реализации:
 
 - Проверить и заморозить public API names, package graph, handler metadata, diagnostics и registration behavior.
 - Удалить или явно пометить transitional APIs до публикации stable packages.
-- Держать `TeleFlow.Core` transport-agnostic, generated schema DTOs свободными от framework behavior, а framework runtime behavior внутри Telegram framework packages.
+- Держать `TeleFlow.Framework.Core` transport-agnostic, generated schema DTOs свободными от framework behavior, а framework runtime behavior внутри Telegram framework packages.
 - Оставить generated assembly registration рекомендуемым production path, а deprecated reflection assembly registration поставить на путь удаления до `1.0`.
 - Синхронизировать quickstart, package guide, enterprise docs, samples и release notes с реальными packages и APIs.
 
@@ -362,7 +362,7 @@ public async Task EnterQuestion(
 
 Правила:
 
-- Broker, queue, stream, Redis, Kafka, RabbitMQ, NATS или cloud-provider dependency не попадают в `TeleFlow.Core`.
+- Broker, queue, stream, Redis, Kafka, RabbitMQ, NATS или cloud-provider dependency не попадают в `TeleFlow.Framework.Core`.
 - Event isolation сериализует updates по key; он не должен молча drop updates.
 - Broker-backed processing использует at-least-once delivery как baseline. Exactly-once не обещается.
 - Broker messages acknowledge только после успешного `IUpdateProcessor`.

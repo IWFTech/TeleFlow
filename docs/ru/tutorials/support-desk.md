@@ -19,7 +19,7 @@ Storage здесь in-memory, потому что цель - показать fr
 ## Пакеты проекта
 
 ```xml
-<PackageReference Include="IWF.TeleFlow.Telegram.Framework.LongPolling" Version="..." />
+<PackageReference Include="IWF.TeleFlow.Framework.LongPolling" Version="..." />
 <PackageReference Include="IWF.TeleFlow.Generators" Version="..." PrivateAssets="all" />
 <PackageReference Include="IWF.TeleFlow.Storage.Memory" Version="..." />
 <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="..." />
@@ -31,7 +31,7 @@ Storage здесь in-memory, потому что цель - показать fr
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using TeleFlow.Annotations;
-using TeleFlow.Core.Application;
+using TeleFlow.Framework.Application;
 using TeleFlow.Storage.Memory;
 using TeleFlow.Telegram;
 using TeleFlow.Telegram.Schema.Abstractions;

@@ -2,7 +2,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using TeleFlow.Core.Application;
+using TeleFlow.Framework.Application;
 using TeleFlow.Storage.Memory;
 
 namespace TeleFlow.ArchitectureTests;
@@ -132,7 +132,7 @@ public sealed class PublicSurfaceTests
 
     private static readonly string[] HostingTypeNames =
     [
-        "TeleFlow.Hosting.TeleFlowHostingServiceCollectionExtensions"
+        "TeleFlow.Framework.Hosting.TeleFlowHostingServiceCollectionExtensions"
     ];
 
     private static readonly string[] ClientOnlyTeleFlowReferenceFileNames =
@@ -144,9 +144,9 @@ public sealed class PublicSurfaceTests
     private static readonly string[] FrameworkOnlyTeleFlowReferenceFileNames =
     [
         "TeleFlow.Annotations.dll",
-        "TeleFlow.Core.dll",
+        "TeleFlow.Framework.Core.dll",
+        "TeleFlow.Framework.dll",
         "TeleFlow.Telegram.Client.dll",
-        "TeleFlow.Telegram.Framework.dll",
         "TeleFlow.Telegram.Schema.dll"
     ];
 
@@ -159,17 +159,17 @@ public sealed class PublicSurfaceTests
 
     private static readonly string[] HostingOnlyTeleFlowReferenceFileNames =
     [
-        "TeleFlow.Core.dll",
-        "TeleFlow.Hosting.dll"
+        "TeleFlow.Framework.Core.dll",
+        "TeleFlow.Framework.Hosting.dll"
     ];
 
     private static readonly string[] FrameworkLongPollingOnlyTeleFlowReferenceFileNames =
     [
         "TeleFlow.Annotations.dll",
-        "TeleFlow.Core.dll",
+        "TeleFlow.Framework.Core.dll",
+        "TeleFlow.Framework.LongPolling.dll",
+        "TeleFlow.Framework.dll",
         "TeleFlow.Telegram.Client.dll",
-        "TeleFlow.Telegram.Framework.LongPolling.dll",
-        "TeleFlow.Telegram.Framework.dll",
         "TeleFlow.Telegram.LongPolling.dll",
         "TeleFlow.Telegram.Schema.dll"
     ];
@@ -184,10 +184,10 @@ public sealed class PublicSurfaceTests
     private static readonly string[] FrameworkWebhooksOnlyTeleFlowReferenceFileNames =
     [
         "TeleFlow.Annotations.dll",
-        "TeleFlow.Core.dll",
+        "TeleFlow.Framework.Core.dll",
+        "TeleFlow.Framework.Webhooks.dll",
+        "TeleFlow.Framework.dll",
         "TeleFlow.Telegram.Client.dll",
-        "TeleFlow.Telegram.Framework.Webhooks.dll",
-        "TeleFlow.Telegram.Framework.dll",
         "TeleFlow.Telegram.Schema.dll",
         "TeleFlow.Telegram.Webhooks.dll"
     ];
@@ -219,7 +219,7 @@ public sealed class PublicSurfaceTests
             .Where(static type => type.IsPublic)
             .ToArray();
 
-        Assert.All(publicTypes, static type => Assert.StartsWith("TeleFlow.Core", type.Namespace));
+        Assert.All(publicTypes, static type => Assert.StartsWith("TeleFlow.Framework", type.Namespace));
     }
 
     [Fact]
@@ -232,10 +232,10 @@ public sealed class PublicSurfaceTests
             .Cast<string>()
             .ToHashSet(StringComparer.Ordinal);
 
-        Assert.Contains("TeleFlow.Core.States.State", exportedTypeNames);
-        Assert.Contains("TeleFlow.Core.States.UpdateState", exportedTypeNames);
+        Assert.Contains("TeleFlow.Framework.States.State", exportedTypeNames);
+        Assert.Contains("TeleFlow.Framework.States.UpdateState", exportedTypeNames);
         Assert.DoesNotContain(exportedTypeNames, static name =>
-            name.StartsWith("TeleFlow.Core.State.", StringComparison.Ordinal));
+            name.StartsWith("TeleFlow.Framework.State.", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -246,9 +246,9 @@ public sealed class PublicSurfaceTests
             .Select(static type => type.FullName)
             .ToHashSet(StringComparer.Ordinal);
 
-        Assert.DoesNotContain("TeleFlow.Core.Telegram.ITelegramRequestExecutor", exportedTypeNames);
-        Assert.DoesNotContain("TeleFlow.Core.Telegram.ITelegramRequest`1", exportedTypeNames);
-        Assert.DoesNotContain("TeleFlow.Core.Telegram.ITelegramResponse", exportedTypeNames);
+        Assert.DoesNotContain("TeleFlow.Framework.Telegram.ITelegramRequestExecutor", exportedTypeNames);
+        Assert.DoesNotContain("TeleFlow.Framework.Telegram.ITelegramRequest`1", exportedTypeNames);
+        Assert.DoesNotContain("TeleFlow.Framework.Telegram.ITelegramResponse", exportedTypeNames);
     }
 
     [Fact]
@@ -259,7 +259,7 @@ public sealed class PublicSurfaceTests
             .Select(static assembly => assembly.Name)
             .ToArray();
 
-        Assert.Contains("TeleFlow.Core", referencedAssemblies);
+        Assert.Contains("TeleFlow.Framework.Core", referencedAssemblies);
         Assert.DoesNotContain("TeleFlow.Telegram", referencedAssemblies);
         Assert.DoesNotContain("TeleFlow.Telegram.Schema", referencedAssemblies);
     }
@@ -291,17 +291,17 @@ public sealed class PublicSurfaceTests
     [Fact]
     public void Hosting_DoesNotReferenceTelegramAssemblies()
     {
-        var referencedAssemblies = LoadProjectAssembly("TeleFlow.Hosting")
+        var referencedAssemblies = LoadProjectAssembly("TeleFlow.Framework.Hosting")
             .GetReferencedAssemblies()
             .Select(static assembly => assembly.Name)
             .ToArray();
 
-        Assert.Contains("TeleFlow.Core", referencedAssemblies);
+        Assert.Contains("TeleFlow.Framework.Core", referencedAssemblies);
         Assert.DoesNotContain("TeleFlow.Telegram", referencedAssemblies);
         Assert.DoesNotContain("TeleFlow.Telegram.Schema", referencedAssemblies);
-        Assert.DoesNotContain("TeleFlow.Telegram.Framework", referencedAssemblies);
-        Assert.DoesNotContain("TeleFlow.Telegram.Framework.LongPolling", referencedAssemblies);
-        Assert.DoesNotContain("TeleFlow.Telegram.Framework.Webhooks", referencedAssemblies);
+        Assert.DoesNotContain("TeleFlow.Framework", referencedAssemblies);
+        Assert.DoesNotContain("TeleFlow.Framework.LongPolling", referencedAssemblies);
+        Assert.DoesNotContain("TeleFlow.Framework.Webhooks", referencedAssemblies);
         Assert.DoesNotContain("TeleFlow.Telegram.LongPolling", referencedAssemblies);
         Assert.DoesNotContain("TeleFlow.Telegram.Webhooks", referencedAssemblies);
     }
@@ -309,7 +309,7 @@ public sealed class PublicSurfaceTests
     [Fact]
     public void Hosting_PublicSurface_ExportsHostingTypesOnly()
     {
-        var exportedTypeNames = LoadProjectAssembly("TeleFlow.Hosting")
+        var exportedTypeNames = LoadProjectAssembly("TeleFlow.Framework.Hosting")
             .GetExportedTypes()
             .Select(static type => type.FullName)
             .ToHashSet(StringComparer.Ordinal);
@@ -327,10 +327,10 @@ public sealed class PublicSurfaceTests
             .Select(static assembly => assembly.Name)
             .ToArray();
 
-        Assert.DoesNotContain("TeleFlow.Core", referencedAssemblies);
+        Assert.DoesNotContain("TeleFlow.Framework.Core", referencedAssemblies);
         Assert.DoesNotContain("TeleFlow.Annotations", referencedAssemblies);
         Assert.DoesNotContain("TeleFlow.Telegram", referencedAssemblies);
-        Assert.DoesNotContain("TeleFlow.Telegram.Framework", referencedAssemblies);
+        Assert.DoesNotContain("TeleFlow.Framework", referencedAssemblies);
         Assert.DoesNotContain("TeleFlow.Telegram.Webhooks", referencedAssemblies);
     }
 
@@ -373,7 +373,7 @@ public sealed class PublicSurfaceTests
     [Fact]
     public void TelegramFramework_PublicSurface_ExportsFrameworkRuntimeTypes()
     {
-        var exportedTypeNames = LoadProjectAssembly("TeleFlow.Telegram.Framework")
+        var exportedTypeNames = LoadProjectAssembly("TeleFlow.Framework")
             .GetExportedTypes()
             .Select(static type => type.FullName)
             .ToHashSet(StringComparer.Ordinal);
@@ -428,7 +428,7 @@ public sealed class PublicSurfaceTests
         {
             ("TeleFlow.Generators", "TeleFlow.Generators.GeneratorsMarker"),
             ("TeleFlow.Storage.Memory", "TeleFlow.Storage.Memory.MemoryStorageMarker"),
-            ("TeleFlow.Telegram.Framework", "TeleFlow.Telegram.TelegramIntegrationMarker"),
+            ("TeleFlow.Framework", "TeleFlow.Telegram.TelegramIntegrationMarker"),
             ("TeleFlow.Telegram.Schema", "TeleFlow.Telegram.Schema.TelegramSchemaMarker")
         };
 
@@ -463,7 +463,7 @@ public sealed class PublicSurfaceTests
     [Fact]
     public void TelegramFramework_PublicSurface_DoesNotDeclareFrameworkLongPollingTypes()
     {
-        var exportedTypeNames = LoadProjectAssembly("TeleFlow.Telegram.Framework")
+        var exportedTypeNames = LoadProjectAssembly("TeleFlow.Framework")
             .GetExportedTypes()
             .Select(static type => type.FullName)
             .ToHashSet(StringComparer.Ordinal);
@@ -479,10 +479,10 @@ public sealed class PublicSurfaceTests
             .Select(static assembly => assembly.Name)
             .ToArray();
 
-        Assert.DoesNotContain("TeleFlow.Core", referencedAssemblies);
+        Assert.DoesNotContain("TeleFlow.Framework.Core", referencedAssemblies);
         Assert.DoesNotContain("TeleFlow.Annotations", referencedAssemblies);
         Assert.DoesNotContain("TeleFlow.Telegram", referencedAssemblies);
-        Assert.DoesNotContain("TeleFlow.Telegram.Framework", referencedAssemblies);
+        Assert.DoesNotContain("TeleFlow.Framework", referencedAssemblies);
         Assert.DoesNotContain("TeleFlow.Telegram.Webhooks", referencedAssemblies);
     }
 
@@ -513,13 +513,13 @@ public sealed class PublicSurfaceTests
     [Fact]
     public void TelegramFrameworkLongPolling_DoesNotReferenceWebhooksOrOldTelegramAssemblies()
     {
-        var referencedAssemblies = LoadProjectAssembly("TeleFlow.Telegram.Framework.LongPolling")
+        var referencedAssemblies = LoadProjectAssembly("TeleFlow.Framework.LongPolling")
             .GetReferencedAssemblies()
             .Select(static assembly => assembly.Name)
             .ToArray();
 
-        Assert.Contains("TeleFlow.Core", referencedAssemblies);
-        Assert.Contains("TeleFlow.Telegram.Framework", referencedAssemblies);
+        Assert.Contains("TeleFlow.Framework.Core", referencedAssemblies);
+        Assert.Contains("TeleFlow.Framework", referencedAssemblies);
         Assert.Contains("TeleFlow.Telegram.LongPolling", referencedAssemblies);
         Assert.DoesNotContain("TeleFlow.Telegram", referencedAssemblies);
         Assert.DoesNotContain("TeleFlow.Telegram.Webhooks", referencedAssemblies);
@@ -528,7 +528,7 @@ public sealed class PublicSurfaceTests
     [Fact]
     public void TelegramFrameworkLongPolling_PublicSurface_ExportsFrameworkPollingTypes()
     {
-        var exportedTypeNames = LoadProjectAssembly("TeleFlow.Telegram.Framework.LongPolling")
+        var exportedTypeNames = LoadProjectAssembly("TeleFlow.Framework.LongPolling")
             .GetExportedTypes()
             .Select(static type => type.FullName)
             .ToHashSet(StringComparer.Ordinal);
@@ -539,7 +539,7 @@ public sealed class PublicSurfaceTests
     [Fact]
     public void TelegramFrameworkLongPolling_PublicSurface_DoesNotExportRawPollingTypes()
     {
-        var exportedTypeNames = LoadProjectAssembly("TeleFlow.Telegram.Framework.LongPolling")
+        var exportedTypeNames = LoadProjectAssembly("TeleFlow.Framework.LongPolling")
             .GetExportedTypes()
             .Select(static type => type.FullName)
             .ToHashSet(StringComparer.Ordinal);
@@ -557,11 +557,11 @@ public sealed class PublicSurfaceTests
 
         Assert.Contains("TeleFlow.Telegram.Client", referencedAssemblies);
         Assert.Contains("TeleFlow.Telegram.Schema", referencedAssemblies);
-        Assert.DoesNotContain("TeleFlow.Core", referencedAssemblies);
+        Assert.DoesNotContain("TeleFlow.Framework.Core", referencedAssemblies);
         Assert.DoesNotContain("TeleFlow.Annotations", referencedAssemblies);
         Assert.DoesNotContain("TeleFlow.Telegram", referencedAssemblies);
-        Assert.DoesNotContain("TeleFlow.Telegram.Framework", referencedAssemblies);
-        Assert.DoesNotContain("TeleFlow.Telegram.Framework.LongPolling", referencedAssemblies);
+        Assert.DoesNotContain("TeleFlow.Framework", referencedAssemblies);
+        Assert.DoesNotContain("TeleFlow.Framework.LongPolling", referencedAssemblies);
     }
 
     [Fact]
@@ -592,23 +592,23 @@ public sealed class PublicSurfaceTests
     [Fact]
     public void TelegramFrameworkWebhooks_DoesNotReferenceLongPollingOrOldTelegramAssemblies()
     {
-        var referencedAssemblies = LoadProjectAssembly("TeleFlow.Telegram.Framework.Webhooks")
+        var referencedAssemblies = LoadProjectAssembly("TeleFlow.Framework.Webhooks")
             .GetReferencedAssemblies()
             .Select(static assembly => assembly.Name)
             .ToArray();
 
-        Assert.Contains("TeleFlow.Core", referencedAssemblies);
-        Assert.Contains("TeleFlow.Telegram.Framework", referencedAssemblies);
+        Assert.Contains("TeleFlow.Framework.Core", referencedAssemblies);
+        Assert.Contains("TeleFlow.Framework", referencedAssemblies);
         Assert.Contains("TeleFlow.Telegram.Webhooks", referencedAssemblies);
         Assert.DoesNotContain("TeleFlow.Telegram", referencedAssemblies);
         Assert.DoesNotContain("TeleFlow.Telegram.LongPolling", referencedAssemblies);
-        Assert.DoesNotContain("TeleFlow.Telegram.Framework.LongPolling", referencedAssemblies);
+        Assert.DoesNotContain("TeleFlow.Framework.LongPolling", referencedAssemblies);
     }
 
     [Fact]
     public void TelegramFrameworkWebhooks_PublicSurface_ExportsFrameworkWebhookTypes()
     {
-        var exportedTypeNames = LoadProjectAssembly("TeleFlow.Telegram.Framework.Webhooks")
+        var exportedTypeNames = LoadProjectAssembly("TeleFlow.Framework.Webhooks")
             .GetExportedTypes()
             .Select(static type => type.FullName)
             .ToHashSet(StringComparer.Ordinal);
@@ -619,7 +619,7 @@ public sealed class PublicSurfaceTests
     [Fact]
     public void TelegramFrameworkWebhooks_PublicSurface_DoesNotExportRawWebhookTypes()
     {
-        var exportedTypeNames = LoadProjectAssembly("TeleFlow.Telegram.Framework.Webhooks")
+        var exportedTypeNames = LoadProjectAssembly("TeleFlow.Framework.Webhooks")
             .GetExportedTypes()
             .Select(static type => type.FullName)
             .ToHashSet(StringComparer.Ordinal);
@@ -986,7 +986,7 @@ public sealed class PublicSurfaceTests
             using System.Linq;
             using Microsoft.Extensions.DependencyInjection;
             using Microsoft.Extensions.Hosting;
-            using TeleFlow.Hosting;
+            using TeleFlow.Framework.Hosting;
 
             public static class HostingOnlySmoke
             {
@@ -1017,7 +1017,7 @@ public sealed class PublicSurfaceTests
     [Fact]
     public void TelegramFramework_PublicSurface_DoesNotExposeRawTransportPackageTypes()
     {
-        var publicTypes = LoadProjectAssembly("TeleFlow.Telegram.Framework")
+        var publicTypes = LoadProjectAssembly("TeleFlow.Framework")
             .GetExportedTypes()
             .ToArray();
 
@@ -1069,9 +1069,9 @@ public sealed class PublicSurfaceTests
             : [];
 
         references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Annotations").Location));
-        references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Core").Location));
+        references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Framework.Core").Location));
+        references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Framework").Location));
         references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Telegram.Client").Location));
-        references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Telegram.Framework").Location));
         references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Telegram.Schema").Location));
         Assert.Equal(FrameworkOnlyTeleFlowReferenceFileNames, GetTeleFlowReferenceFileNames(references));
 
@@ -1116,8 +1116,8 @@ public sealed class PublicSurfaceTests
                 .ToList()
             : [];
 
-        references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Core").Location));
-        references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Hosting").Location));
+        references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Framework.Core").Location));
+        references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Framework.Hosting").Location));
         Assert.Equal(HostingOnlyTeleFlowReferenceFileNames, GetTeleFlowReferenceFileNames(references));
 
         return CSharpCompilation.Create(
@@ -1139,10 +1139,10 @@ public sealed class PublicSurfaceTests
             : [];
 
         references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Annotations").Location));
-        references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Core").Location));
+        references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Framework.Core").Location));
         references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Telegram.Client").Location));
-        references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Telegram.Framework").Location));
-        references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Telegram.Framework.LongPolling").Location));
+        references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Framework").Location));
+        references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Framework.LongPolling").Location));
         references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Telegram.LongPolling").Location));
         references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Telegram.Schema").Location));
         Assert.Equal(FrameworkLongPollingOnlyTeleFlowReferenceFileNames, GetTeleFlowReferenceFileNames(references));
@@ -1189,10 +1189,10 @@ public sealed class PublicSurfaceTests
             : [];
 
         references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Annotations").Location));
-        references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Core").Location));
+        references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Framework.Core").Location));
         references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Telegram.Client").Location));
-        references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Telegram.Framework").Location));
-        references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Telegram.Framework.Webhooks").Location));
+        references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Framework").Location));
+        references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Framework.Webhooks").Location));
         references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Telegram.Schema").Location));
         references.Add(MetadataReference.CreateFromFile(LoadProjectAssembly("TeleFlow.Telegram.Webhooks").Location));
         Assert.Equal(FrameworkWebhooksOnlyTeleFlowReferenceFileNames, GetTeleFlowReferenceFileNames(references));

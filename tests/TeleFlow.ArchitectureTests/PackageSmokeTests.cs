@@ -16,16 +16,16 @@ public sealed class PackageSmokeTests
     private static readonly PackageProject[] RuntimePackageProjects =
     [
         new("IWF.TeleFlow.Annotations", "src/TeleFlow.Annotations/TeleFlow.Annotations.csproj"),
-        new("IWF.TeleFlow.Core", "src/TeleFlow.Core/TeleFlow.Core.csproj"),
-        new("IWF.TeleFlow.Hosting", "src/TeleFlow.Hosting/TeleFlow.Hosting.csproj"),
+        new("IWF.TeleFlow.Framework.Core", "src/TeleFlow.Framework.Core/TeleFlow.Framework.Core.csproj"),
+        new("IWF.TeleFlow.Framework.Hosting", "src/TeleFlow.Framework.Hosting/TeleFlow.Framework.Hosting.csproj"),
         new("IWF.TeleFlow.Storage.Memory", "src/TeleFlow.Storage.Memory/TeleFlow.Storage.Memory.csproj"),
         new("IWF.TeleFlow.Telegram.Schema", "src/TeleFlow.Telegram.Schema/TeleFlow.Telegram.Schema.csproj"),
         new("IWF.TeleFlow.Telegram.Client", "src/TeleFlow.Telegram.Client/TeleFlow.Telegram.Client.csproj"),
-        new("IWF.TeleFlow.Telegram.Framework", "src/TeleFlow.Telegram.Framework/TeleFlow.Telegram.Framework.csproj"),
+        new("IWF.TeleFlow.Framework", "src/TeleFlow.Framework/TeleFlow.Framework.csproj"),
         new("IWF.TeleFlow.Telegram.LongPolling", "src/TeleFlow.Telegram.LongPolling/TeleFlow.Telegram.LongPolling.csproj"),
         new("IWF.TeleFlow.Telegram.Webhooks", "src/TeleFlow.Telegram.Webhooks/TeleFlow.Telegram.Webhooks.csproj"),
-        new("IWF.TeleFlow.Telegram.Framework.LongPolling", "src/TeleFlow.Telegram.Framework.LongPolling/TeleFlow.Telegram.Framework.LongPolling.csproj"),
-        new("IWF.TeleFlow.Telegram.Framework.Webhooks", "src/TeleFlow.Telegram.Framework.Webhooks/TeleFlow.Telegram.Framework.Webhooks.csproj"),
+        new("IWF.TeleFlow.Framework.LongPolling", "src/TeleFlow.Framework.LongPolling/TeleFlow.Framework.LongPolling.csproj"),
+        new("IWF.TeleFlow.Framework.Webhooks", "src/TeleFlow.Framework.Webhooks/TeleFlow.Framework.Webhooks.csproj"),
         new("IWF.TeleFlow.Telegram", "src/TeleFlow.Telegram/TeleFlow.Telegram.csproj")
     ];
 
@@ -341,7 +341,7 @@ public sealed class PackageSmokeTests
         [
             new GeneratedPackageConsumerScenario(
                 Name: "FrameworkLongPollingGeneratedPackageConsumer",
-                PackageId: "IWF.TeleFlow.Telegram.Framework.LongPolling",
+                PackageId: "IWF.TeleFlow.Framework.LongPolling",
                 RequiresAspNetCore: false,
                 Source:
                 """
@@ -376,7 +376,7 @@ public sealed class PackageSmokeTests
 
             new GeneratedPackageConsumerScenario(
                 Name: "FrameworkWebhooksGeneratedPackageConsumer",
-                PackageId: "IWF.TeleFlow.Telegram.Framework.Webhooks",
+                PackageId: "IWF.TeleFlow.Framework.Webhooks",
                 RequiresAspNetCore: true,
                 Source:
                 """
@@ -437,7 +437,7 @@ public sealed class PackageSmokeTests
                 Source:
                 """
                 using Microsoft.Extensions.DependencyInjection;
-                using TeleFlow.Core.States;
+                using TeleFlow.Framework.States;
                 using TeleFlow.Storage.Memory;
 
                 public static class MemoryStoragePackageConsumer
@@ -457,18 +457,18 @@ public sealed class PackageSmokeTests
                 """,
                 ExpectedPackages:
                 [
-                    "IWF.TeleFlow.Core",
+                    "IWF.TeleFlow.Framework.Core",
                     "IWF.TeleFlow.Storage.Memory"
                 ],
                 ForbiddenPackages:
                 [
                     "IWF.TeleFlow.Annotations",
-                    "IWF.TeleFlow.Hosting",
+                    "IWF.TeleFlow.Framework.Hosting",
                     "IWF.TeleFlow.Telegram",
                     "IWF.TeleFlow.Telegram.Client",
-                    "IWF.TeleFlow.Telegram.Framework",
-                    "IWF.TeleFlow.Telegram.Framework.LongPolling",
-                    "IWF.TeleFlow.Telegram.Framework.Webhooks",
+                    "IWF.TeleFlow.Framework",
+                    "IWF.TeleFlow.Framework.LongPolling",
+                    "IWF.TeleFlow.Framework.Webhooks",
                     "IWF.TeleFlow.Telegram.LongPolling",
                     "IWF.TeleFlow.Telegram.Schema",
                     "IWF.TeleFlow.Telegram.Webhooks"
@@ -476,7 +476,7 @@ public sealed class PackageSmokeTests
 
             new PackageConsumerScenario(
                 Name: "HostingPackageConsumer",
-                PackageId: "IWF.TeleFlow.Hosting",
+                PackageId: "IWF.TeleFlow.Framework.Hosting",
                 RequiresAspNetCore: false,
                 Source:
                 """
@@ -484,7 +484,7 @@ public sealed class PackageSmokeTests
                 using System.Linq;
                 using Microsoft.Extensions.DependencyInjection;
                 using Microsoft.Extensions.Hosting;
-                using TeleFlow.Hosting;
+                using TeleFlow.Framework.Hosting;
 
                 public static class HostingPackageConsumer
                 {
@@ -501,8 +501,8 @@ public sealed class PackageSmokeTests
                 """,
                 ExpectedPackages:
                 [
-                    "IWF.TeleFlow.Core",
-                    "IWF.TeleFlow.Hosting"
+                    "IWF.TeleFlow.Framework.Core",
+                    "IWF.TeleFlow.Framework.Hosting"
                 ],
                 ForbiddenPackages:
                 [
@@ -510,9 +510,9 @@ public sealed class PackageSmokeTests
                     "IWF.TeleFlow.Storage.Memory",
                     "IWF.TeleFlow.Telegram",
                     "IWF.TeleFlow.Telegram.Client",
-                    "IWF.TeleFlow.Telegram.Framework",
-                    "IWF.TeleFlow.Telegram.Framework.LongPolling",
-                    "IWF.TeleFlow.Telegram.Framework.Webhooks",
+                    "IWF.TeleFlow.Framework",
+                    "IWF.TeleFlow.Framework.LongPolling",
+                    "IWF.TeleFlow.Framework.Webhooks",
                     "IWF.TeleFlow.Telegram.LongPolling",
                     "IWF.TeleFlow.Telegram.Schema",
                     "IWF.TeleFlow.Telegram.Webhooks"
@@ -552,12 +552,12 @@ public sealed class PackageSmokeTests
                 ForbiddenPackages:
                 [
                     "IWF.TeleFlow.Annotations",
-                    "IWF.TeleFlow.Core",
-                    "IWF.TeleFlow.Hosting",
+                    "IWF.TeleFlow.Framework.Core",
+                    "IWF.TeleFlow.Framework.Hosting",
                     "IWF.TeleFlow.Telegram",
-                    "IWF.TeleFlow.Telegram.Framework",
-                    "IWF.TeleFlow.Telegram.Framework.LongPolling",
-                    "IWF.TeleFlow.Telegram.Framework.Webhooks",
+                    "IWF.TeleFlow.Framework",
+                    "IWF.TeleFlow.Framework.LongPolling",
+                    "IWF.TeleFlow.Framework.Webhooks",
                     "IWF.TeleFlow.Telegram.LongPolling",
                     "IWF.TeleFlow.Telegram.Webhooks"
                 ]),
@@ -599,12 +599,12 @@ public sealed class PackageSmokeTests
                 ForbiddenPackages:
                 [
                     "IWF.TeleFlow.Annotations",
-                    "IWF.TeleFlow.Core",
-                    "IWF.TeleFlow.Hosting",
+                    "IWF.TeleFlow.Framework.Core",
+                    "IWF.TeleFlow.Framework.Hosting",
                     "IWF.TeleFlow.Telegram",
-                    "IWF.TeleFlow.Telegram.Framework",
-                    "IWF.TeleFlow.Telegram.Framework.LongPolling",
-                    "IWF.TeleFlow.Telegram.Framework.Webhooks",
+                    "IWF.TeleFlow.Framework",
+                    "IWF.TeleFlow.Framework.LongPolling",
+                    "IWF.TeleFlow.Framework.Webhooks",
                     "IWF.TeleFlow.Telegram.Webhooks"
                 ]),
 
@@ -644,18 +644,18 @@ public sealed class PackageSmokeTests
                 ForbiddenPackages:
                 [
                     "IWF.TeleFlow.Annotations",
-                    "IWF.TeleFlow.Core",
-                    "IWF.TeleFlow.Hosting",
+                    "IWF.TeleFlow.Framework.Core",
+                    "IWF.TeleFlow.Framework.Hosting",
                     "IWF.TeleFlow.Telegram",
-                    "IWF.TeleFlow.Telegram.Framework",
-                    "IWF.TeleFlow.Telegram.Framework.LongPolling",
-                    "IWF.TeleFlow.Telegram.Framework.Webhooks",
+                    "IWF.TeleFlow.Framework",
+                    "IWF.TeleFlow.Framework.LongPolling",
+                    "IWF.TeleFlow.Framework.Webhooks",
                     "IWF.TeleFlow.Telegram.LongPolling"
                 ]),
 
             new PackageConsumerScenario(
                 Name: "FrameworkLongPollingPackageConsumer",
-                PackageId: "IWF.TeleFlow.Telegram.Framework.LongPolling",
+                PackageId: "IWF.TeleFlow.Framework.LongPolling",
                 RequiresAspNetCore: false,
                 Source:
                 """
@@ -682,24 +682,24 @@ public sealed class PackageSmokeTests
                 ExpectedPackages:
                 [
                     "IWF.TeleFlow.Annotations",
-                    "IWF.TeleFlow.Core",
+                    "IWF.TeleFlow.Framework.Core",
                     "IWF.TeleFlow.Telegram.Client",
-                    "IWF.TeleFlow.Telegram.Framework",
-                    "IWF.TeleFlow.Telegram.Framework.LongPolling",
+                    "IWF.TeleFlow.Framework",
+                    "IWF.TeleFlow.Framework.LongPolling",
                     "IWF.TeleFlow.Telegram.LongPolling",
                     "IWF.TeleFlow.Telegram.Schema"
                 ],
                 ForbiddenPackages:
                 [
-                    "IWF.TeleFlow.Hosting",
+                    "IWF.TeleFlow.Framework.Hosting",
                     "IWF.TeleFlow.Telegram",
-                    "IWF.TeleFlow.Telegram.Framework.Webhooks",
+                    "IWF.TeleFlow.Framework.Webhooks",
                     "IWF.TeleFlow.Telegram.Webhooks"
                 ]),
 
             new PackageConsumerScenario(
                 Name: "FrameworkWebhooksPackageConsumer",
-                PackageId: "IWF.TeleFlow.Telegram.Framework.Webhooks",
+                PackageId: "IWF.TeleFlow.Framework.Webhooks",
                 RequiresAspNetCore: true,
                 Source:
                 """
@@ -727,18 +727,18 @@ public sealed class PackageSmokeTests
                 ExpectedPackages:
                 [
                     "IWF.TeleFlow.Annotations",
-                    "IWF.TeleFlow.Core",
+                    "IWF.TeleFlow.Framework.Core",
                     "IWF.TeleFlow.Telegram.Client",
-                    "IWF.TeleFlow.Telegram.Framework",
-                    "IWF.TeleFlow.Telegram.Framework.Webhooks",
+                    "IWF.TeleFlow.Framework",
+                    "IWF.TeleFlow.Framework.Webhooks",
                     "IWF.TeleFlow.Telegram.Schema",
                     "IWF.TeleFlow.Telegram.Webhooks"
                 ],
                 ForbiddenPackages:
                 [
-                    "IWF.TeleFlow.Hosting",
+                    "IWF.TeleFlow.Framework.Hosting",
                     "IWF.TeleFlow.Telegram",
-                    "IWF.TeleFlow.Telegram.Framework.LongPolling",
+                    "IWF.TeleFlow.Framework.LongPolling",
                     "IWF.TeleFlow.Telegram.LongPolling"
                 ]),
 
@@ -777,11 +777,11 @@ public sealed class PackageSmokeTests
                 ForbiddenPackages:
                 [
                     "IWF.TeleFlow.Annotations",
-                    "IWF.TeleFlow.Core",
-                    "IWF.TeleFlow.Hosting",
-                    "IWF.TeleFlow.Telegram.Framework",
-                    "IWF.TeleFlow.Telegram.Framework.LongPolling",
-                    "IWF.TeleFlow.Telegram.Framework.Webhooks",
+                    "IWF.TeleFlow.Framework.Core",
+                    "IWF.TeleFlow.Framework.Hosting",
+                    "IWF.TeleFlow.Framework",
+                    "IWF.TeleFlow.Framework.LongPolling",
+                    "IWF.TeleFlow.Framework.Webhooks",
                     "IWF.TeleFlow.Telegram.LongPolling",
                     "IWF.TeleFlow.Telegram.Webhooks"
                 ])

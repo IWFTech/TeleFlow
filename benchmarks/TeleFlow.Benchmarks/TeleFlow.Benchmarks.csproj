@@ -16,10 +16,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\TeleFlow.Annotations\TeleFlow.Annotations.csproj" />
-    <ProjectReference Include="..\..\src\TeleFlow.Core\TeleFlow.Core.csproj" />
+    <ProjectReference Include="..\..\src\TeleFlow.Framework.Core\TeleFlow.Framework.Core.csproj" />
     <ProjectReference Include="..\..\src\TeleFlow.Storage.Memory\TeleFlow.Storage.Memory.csproj" />
     <ProjectReference Include="..\..\src\TeleFlow.Telegram.Client\TeleFlow.Telegram.Client.csproj" />
-    <ProjectReference Include="..\..\src\TeleFlow.Telegram.Framework\TeleFlow.Telegram.Framework.csproj" />
+    <ProjectReference Include="..\..\src\TeleFlow.Framework\TeleFlow.Framework.csproj" />
     <ProjectReference Include="..\..\src\TeleFlow.Telegram.LongPolling\TeleFlow.Telegram.LongPolling.csproj" />
     <ProjectReference Include="..\..\src\TeleFlow.Telegram.Schema\TeleFlow.Telegram.Schema.csproj" />
   </ItemGroup>

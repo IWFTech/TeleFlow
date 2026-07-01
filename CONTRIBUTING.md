@@ -41,7 +41,7 @@ Run before changing `TeleFlow.Generators` Roslyn dependencies:
 - Keep changes focused.
 - Add or update tests for behavior changes.
 - Update docs when behavior, public APIs, package graph, runtime semantics, or workflow changes.
-- Keep `TeleFlow.Core` transport-agnostic.
+- Keep `TeleFlow.Framework.Core` transport-agnostic.
 - Keep Telegram-specific behavior in Telegram packages.
 - Prefer explicit behavior over hidden conventions.
 - Do not introduce runtime reflection when source generation or explicit registration is the intended path.

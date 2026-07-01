@@ -7,7 +7,7 @@ Long polling - самый простой способ запустить Telegra
 Установка:
 
 ```bash
-dotnet add package IWF.TeleFlow.Telegram.Framework.LongPolling --prerelease
+dotnet add package IWF.TeleFlow.Framework.LongPolling --prerelease
 ```
 
 Регистрация:

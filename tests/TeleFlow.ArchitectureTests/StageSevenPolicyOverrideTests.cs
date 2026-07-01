@@ -1,12 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
 using TeleFlow.Annotations;
-using TeleFlow.Core.Callbacks;
-using TeleFlow.Core.DependencyInjection;
-using TeleFlow.Core.Dispatching;
-using TeleFlow.Core.Middleware;
-using TeleFlow.Core.RateLimiting;
-using TeleFlow.Core.States;
-using TeleFlow.Core.Updates;
+using TeleFlow.Framework.Callbacks;
+using TeleFlow.Framework.DependencyInjection;
+using TeleFlow.Framework.Dispatching;
+using TeleFlow.Framework.Middleware;
+using TeleFlow.Framework.RateLimiting;
+using TeleFlow.Framework.States;
+using TeleFlow.Framework.Updates;
 using TeleFlow.Storage.Memory;
 using TeleFlow.Telegram;
 using TeleFlow.Telegram.Schema.Abstractions;
@@ -85,7 +85,7 @@ public sealed class StageSevenPolicyOverrideTests
     [Fact]
     public async Task CustomUpdateSourceHelper_AllowsApplicationWithoutLongPolling()
     {
-        var builder = TeleFlow.Core.Application.TeleFlowApplication.CreateBuilder();
+        var builder = TeleFlow.Framework.Application.TeleFlowApplication.CreateBuilder();
 
         CustomUpdateSource.Payloads = [new TestUpdatePayload("custom")];
         CustomDispatcher.Trace.Clear();

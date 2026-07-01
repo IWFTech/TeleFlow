@@ -4,8 +4,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using TeleFlow.Annotations;
-using TeleFlow.Core.Dispatching;
-using TeleFlow.Core.Updates;
+using TeleFlow.Framework.Dispatching;
+using TeleFlow.Framework.Updates;
 using TeleFlow.Telegram;
 using TeleFlow.Telegram.Webhooks;
 

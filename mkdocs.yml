@@ -47,7 +47,7 @@ extra:
     - icon: fontawesome/brands/telegram
       link: https://t.me/teleflow_chat
     - icon: fontawesome/solid/cube
-      link: https://www.nuget.org/packages/IWF.TeleFlow.Telegram.Framework.LongPolling/
+      link: https://www.nuget.org/packages/IWF.TeleFlow.Framework.LongPolling/
 
 extra_css:
   - assets/stylesheets/teleflow.css

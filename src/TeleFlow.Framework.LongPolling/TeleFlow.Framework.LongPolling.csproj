@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Long polling framework package for TeleFlow Telegram bots, combining handler dispatch with the raw getUpdates transport adapter.</Description>
+    <RootNamespace>TeleFlow.Telegram</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TeleFlow.Framework.Core\TeleFlow.Framework.Core.csproj" />
+    <ProjectReference Include="..\TeleFlow.Framework\TeleFlow.Framework.csproj" />
+    <ProjectReference Include="..\TeleFlow.Telegram.LongPolling\TeleFlow.Telegram.LongPolling.csproj" />
+  </ItemGroup>
+</Project>

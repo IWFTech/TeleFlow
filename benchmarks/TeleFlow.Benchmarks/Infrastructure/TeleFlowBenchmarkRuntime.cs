@@ -1,9 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using TeleFlow.Annotations;
 using TeleFlow.Benchmarks.Handlers;
-using TeleFlow.Core.Dispatching;
-using TeleFlow.Core.States;
-using TeleFlow.Core.Updates;
+using TeleFlow.Framework.Dispatching;
+using TeleFlow.Framework.States;
+using TeleFlow.Framework.Updates;
 using TeleFlow.Storage.Memory;
 using TeleFlow.Telegram;
 

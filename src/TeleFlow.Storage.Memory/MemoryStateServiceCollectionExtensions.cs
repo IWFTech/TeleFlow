@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using TeleFlow.Core.Middleware;
-using TeleFlow.Core.States;
+using TeleFlow.Framework.Middleware;
+using TeleFlow.Framework.States;
 
 namespace TeleFlow.Storage.Memory;
 

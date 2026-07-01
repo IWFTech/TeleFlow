@@ -99,9 +99,9 @@ public sealed partial class TelegramHandlerSourceGenerator
 
                 foreach (GeneratedStateProperty state in group.States)
                 {
-                    builder.Append("    public static partial global::TeleFlow.Core.States.State ");
+                    builder.Append("    public static partial global::TeleFlow.Framework.States.State ");
                     builder.Append(state.Name);
-                    builder.Append(" => global::TeleFlow.Core.States.State.Create(");
+                    builder.Append(" => global::TeleFlow.Framework.States.State.Create(");
                     builder.Append(ToLiteral($"{group.Prefix}:{state.Segment}"));
                     builder.AppendLine(");");
                 }
