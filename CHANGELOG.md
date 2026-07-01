@@ -4,13 +4,37 @@ TeleFlow follows SemVer for published NuGet packages and documented public behav
 
 ## Unreleased
 
+No unreleased changes yet.
+
+## 1.0.0-alpha.8 - 2026-07-02
+
+This alpha focuses on production diagnostics, bounded Telegram retry-after handling, scoped current-update access, state storage key isolation, and explicit command prefix routing.
+
 ### Added
 
+- Added `TelegramRetryAfterPolicy` for bounded automatic handling of Telegram `429 retry_after` responses.
+- Added `IUpdateContextAccessor` for scoped access to the current transport-agnostic update during framework processing.
+- Added `ITelegramCurrentUpdateAccessor` for scoped access to the current Telegram update, user, chat, message, callback query, chat member update, and state key.
+- Added runtime dependency validation for handler, error handler, and custom filter service parameters.
+- Added state storage key isolation contracts through `IStateStorageKeyBuilder`, `DefaultStateStorageKeyBuilder`, `StateStorageKeyPart`, and `StateKeyDefaults`.
+- Added explicit state key customization helpers for production storage providers and multi-bot applications.
 - Added `CommandPrefixMode` for `[Command]`, `[CommandTemplate]`, and `[CommandRegex]` routes, allowing command prefixes to be required, optional, or disabled for prefix-less command-shaped text.
+- Added safe diagnostics for filter rejections, webhook invalid secret/payload handling, webhook update failures, and Telegram request failure exception types.
 
 ### Changed
 
+- Telegram request execution now retries only bounded short `retry_after` responses by default and throws `TelegramRetryAfterException` when the retry policy refuses to wait.
+- Long polling startup delivery guidance now recommends an explicit startup task calling `DeleteWebhookAsync(dropPendingUpdates: true)` instead of hiding destructive delivery behavior in long polling options.
+- State storage keys now have a documented, escaped, partition-aware format that storage providers can share consistently.
 - Generated handler metadata now carries command prefix mode when a route opts into non-default command prefix behavior.
+- Framework update rate limiting now uses explicit accept/reject decisions instead of exception-based throttling.
+- Handler, error-handler, and filter dependencies now fail during runtime validation with targeted configuration errors instead of failing later during update handling where possible.
+- Documentation now covers retry-after defaults, scoped current-update accessors, middleware/service lifetimes, state key customization, rate-limit decision behavior, and logging privacy rules.
+
+### Breaking Changes
+
+- `IUpdateRateLimiter.WaitAsync(...)` was replaced with `IUpdateRateLimiter.CheckAsync(...)`, returning `UpdateRateLimitDecision`.
+- Custom update rate limiters must return `UpdateRateLimitDecision.Accepted` or `UpdateRateLimitDecision.Rejected(...)` instead of relying on exceptions for normal rejection.
 
 ## 1.0.0-alpha.7 - 2026-07-01
 
