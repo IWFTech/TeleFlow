@@ -409,6 +409,12 @@ public sealed class TelegramHandlerGeneratorTests
                 {
                     return Task.CompletedTask;
                 }
+
+                [CommandTemplate("ban {userId:int}", PrefixMode = CommandPrefixMode.Optional, Prefixes = new[] { "/", "!" })]
+                public Task Ban(MessageContext context, int userId)
+                {
+                    return Task.CompletedTask;
+                }
             }
             """);
 
@@ -430,11 +436,14 @@ public sealed class TelegramHandlerGeneratorTests
         Assert.Contains("TelegramGeneratedRouteKind.CommandExact", generatedSource);
         Assert.Contains("TelegramGeneratedRouteKind.TextExact", generatedSource);
         Assert.Contains("TelegramGeneratedRouteKind.TextTemplate", generatedSource);
+        Assert.Contains("TelegramGeneratedRouteKind.CommandTemplate", generatedSource);
         Assert.Contains("TelegramGeneratedRouteKind.CommandRegex", generatedSource);
         Assert.Contains("TelegramGeneratedHandlerParameterKind.RouteValue", generatedSource);
+        Assert.Contains("global::TeleFlow.Annotations.CommandPrefixMode.Optional", generatedSource);
         Assert.Contains("Invoke_0", generatedSource);
         Assert.Contains("Invoke_1", generatedSource);
-        Assert.DoesNotContain("Invoke_2", generatedSource);
+        Assert.Contains("Invoke_2", generatedSource);
+        Assert.DoesNotContain("Invoke_3", generatedSource);
     }
 
     [Fact]
@@ -765,6 +774,12 @@ public sealed class TelegramHandlerGeneratorTests
                 {
                     return Task.CompletedTask;
                 }
+
+                [CommandTemplate("mute {id:int}", PrefixMode = CommandPrefixMode.NoPrefix, Prefixes = new[] { "!" })]
+                public Task NoPrefixWithPrefixes(MessageContext context, int id)
+                {
+                    return Task.CompletedTask;
+                }
             }
             """);
 
@@ -786,6 +801,7 @@ public sealed class TelegramHandlerGeneratorTests
         Assert.Contains("Valid", generatedSource);
         Assert.DoesNotContain("BadPrefix", generatedSource);
         Assert.DoesNotContain("PrefixedTemplate", generatedSource);
+        Assert.DoesNotContain("NoPrefixWithPrefixes", generatedSource);
     }
 
     [Fact]
@@ -1971,10 +1987,13 @@ public sealed class TelegramHandlerGeneratorTests
 
                 [CommandRegex(@"^ban (?<id>\d+)$", Prefixes = new[] { "" })]
                 public Task InvalidRegexPrefix(MessageContext context, int id) => Task.CompletedTask;
+
+                [CommandTemplate("mute {id:int}", PrefixMode = CommandPrefixMode.NoPrefix, Prefixes = new[] { "!" })]
+                public Task NoPrefixWithPrefixes(MessageContext context, int id) => Task.CompletedTask;
             }
             """);
 
-        Assert.Equal(2, diagnostics.Count(diagnostic => diagnostic.Id == TelegramHandlerAnalyzer.InvalidCommandPrefixId));
+        Assert.Equal(3, diagnostics.Count(diagnostic => diagnostic.Id == TelegramHandlerAnalyzer.InvalidCommandPrefixId));
         Assert.True(
             diagnostics.Count(diagnostic => diagnostic.Id == TelegramHandlerAnalyzer.InvalidRouteTemplateId) >= 2,
             "Expected route template diagnostics for slash and custom-prefixed command templates.");

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using TeleFlow.Annotations;
 
 namespace TeleFlow.Telegram;
 
@@ -189,7 +190,8 @@ public sealed class TelegramGeneratedHandlerDescriptor
         TelegramGeneratedHandlerInvoker invoker,
         string? sceneName = null,
         IReadOnlyList<TelegramGeneratedRouteValueDescriptor>? routeValues = null,
-        TelegramGeneratedAutoAnswerCallbackDescriptor? autoAnswerCallback = null)
+        TelegramGeneratedAutoAnswerCallbackDescriptor? autoAnswerCallback = null,
+        CommandPrefixMode prefixMode = CommandPrefixMode.Required)
     {
         ArgumentNullException.ThrowIfNull(handlerType);
         ArgumentException.ThrowIfNullOrWhiteSpace(methodName);
@@ -201,6 +203,11 @@ public sealed class TelegramGeneratedHandlerDescriptor
         ArgumentNullException.ThrowIfNull(parameters);
         ArgumentNullException.ThrowIfNull(invoker);
 
+        if (!Enum.IsDefined(prefixMode))
+        {
+            throw new ArgumentOutOfRangeException(nameof(prefixMode), prefixMode, "Unsupported command prefix mode.");
+        }
+
         HandlerType = handlerType;
         MethodName = methodName;
         Kind = kind;
@@ -208,6 +215,7 @@ public sealed class TelegramGeneratedHandlerDescriptor
         RoutePattern = routePattern;
         CommandPrefixes = CopyValues(commandPrefixes ?? ["/"]);
         AllowSpaceAfterPrefix = allowSpaceAfterPrefix;
+        PrefixMode = prefixMode;
         IgnoreCase = ignoreCase;
         RegistrationOrder = registrationOrder;
         ModuleName = moduleName;
@@ -250,6 +258,8 @@ public sealed class TelegramGeneratedHandlerDescriptor
     public IReadOnlyList<string> CommandPrefixes { get; }
 
     public bool AllowSpaceAfterPrefix { get; }
+
+    public CommandPrefixMode PrefixMode { get; }
 
     public bool IgnoreCase { get; }
 

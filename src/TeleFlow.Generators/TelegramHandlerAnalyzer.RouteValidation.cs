@@ -7,6 +7,10 @@ namespace TeleFlow.Generators;
 
 public sealed partial class TelegramHandlerAnalyzer
 {
+    private const int CommandPrefixModeRequired = 0;
+    private const int CommandPrefixModeOptional = 1;
+    private const int CommandPrefixModeNoPrefix = 2;
+
     private static HandlerKind? GetRouteKind(
         IMethodSymbol method,
         bool includeClassRouteAttributes,
@@ -119,12 +123,35 @@ public sealed partial class TelegramHandlerAnalyzer
                 continue;
             }
 
-            foreach (string prefix in prefixes)
+            int prefixMode = GetCommandPrefixMode(attribute);
+
+            if (!TryValidateCommandPrefixMode(attribute, prefixMode, out string prefixModeReason))
             {
-                bool allowSpace = GetNamedBool(attribute, "AllowSpaceAfterPrefix", defaultValue: false);
+                context.ReportDiagnostic(Diagnostic.Create(
+                    InvalidCommandPrefix,
+                    location,
+                    prefixModeReason));
+                continue;
+            }
+
+            bool allowSpace = GetNamedBool(attribute, "AllowSpaceAfterPrefix", defaultValue: false);
+
+            if (prefixMode is CommandPrefixModeRequired or CommandPrefixModeOptional)
+            {
+                foreach (string prefix in prefixes)
+                {
+                    commands.Add(new CommandRegistration(
+                        $"{prefix.ToUpperInvariant()}\u001F{allowSpace}\u001FPREFIXED\u001F{command!.ToUpperInvariant()}",
+                        $"{prefix}{command}",
+                        location));
+                }
+            }
+
+            if (prefixMode is CommandPrefixModeOptional or CommandPrefixModeNoPrefix)
+            {
                 commands.Add(new CommandRegistration(
-                    $"{prefix.ToUpperInvariant()}\u001F{allowSpace}\u001F{command!.ToUpperInvariant()}",
-                    $"{prefix}{command}",
+                    $"NO_PREFIX\u001F{command!.ToUpperInvariant()}",
+                    command,
                     location));
             }
         }
@@ -188,6 +215,17 @@ public sealed partial class TelegramHandlerAnalyzer
                 continue;
             }
 
+            int prefixMode = GetCommandPrefixMode(attribute);
+
+            if (!TryValidateCommandPrefixMode(attribute, prefixMode, out string prefixModeReason))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    InvalidCommandPrefix,
+                    location,
+                    prefixModeReason));
+                continue;
+            }
+
             if (CommandPatternStartsWithPrefix(template!, prefixes))
             {
                 context.ReportDiagnostic(Diagnostic.Create(
@@ -241,6 +279,17 @@ public sealed partial class TelegramHandlerAnalyzer
                     InvalidCommandPrefix,
                     location,
                     prefixReason));
+                continue;
+            }
+
+            int prefixMode = GetCommandPrefixMode(attribute);
+
+            if (!TryValidateCommandPrefixMode(attribute, prefixMode, out string prefixModeReason))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    InvalidCommandPrefix,
+                    location,
+                    prefixModeReason));
                 continue;
             }
 
@@ -868,6 +917,56 @@ public sealed partial class TelegramHandlerAnalyzer
         }
 
         return true;
+    }
+
+    private static int GetCommandPrefixMode(AttributeData attribute)
+    {
+        foreach (KeyValuePair<string, TypedConstant> argument in attribute.NamedArguments)
+        {
+            if (string.Equals(argument.Key, "PrefixMode", StringComparison.Ordinal) &&
+                argument.Value.Value is int value)
+            {
+                return value;
+            }
+        }
+
+        return CommandPrefixModeRequired;
+    }
+
+    private static bool TryValidateCommandPrefixMode(
+        AttributeData attribute,
+        int prefixMode,
+        out string reason)
+    {
+        reason = string.Empty;
+
+        if (!IsSupportedCommandPrefixMode(prefixMode))
+        {
+            reason = "Command route prefix mode must be Required, Optional, or NoPrefix.";
+            return false;
+        }
+
+        if (prefixMode == CommandPrefixModeNoPrefix && HasNamedArgument(attribute, "Prefixes"))
+        {
+            reason = "Command route prefixes must not be configured when PrefixMode is NoPrefix.";
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsSupportedCommandPrefixMode(int value)
+    {
+        return value is CommandPrefixModeRequired or
+            CommandPrefixModeOptional or
+            CommandPrefixModeNoPrefix;
+    }
+
+    private static bool HasNamedArgument(
+        AttributeData attribute,
+        string name)
+    {
+        return attribute.NamedArguments.Any(argument => string.Equals(argument.Key, name, StringComparison.Ordinal));
     }
 
     private static bool CommandPatternStartsWithPrefix(

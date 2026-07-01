@@ -77,7 +77,8 @@ internal sealed class TelegramGeneratedHandlerRegistry : ITelegramGeneratedHandl
             new TelegramCommandPolicy(
                 descriptor.CommandPrefixes,
                 descriptor.AllowSpaceAfterPrefix,
-                descriptor.IgnoreCase),
+                descriptor.IgnoreCase,
+                descriptor.PrefixMode),
             descriptor.TextFilters
                 .Select(static filter => new TelegramTextFilter(filter.Value, filter.Mode, filter.IgnoreCase))
                 .ToArray(),

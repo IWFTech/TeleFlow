@@ -1,5 +1,6 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
+using TeleFlow.Annotations;
 
 namespace TeleFlow.Telegram.Internal.Handlers;
 
@@ -105,11 +106,21 @@ internal static class TelegramHandlerRegistrationValidator
             yield break;
         }
 
-        foreach (var prefix in descriptor.Route.CommandPolicy.Prefixes)
+        if (descriptor.Route.CommandPolicy.PrefixMode is CommandPrefixMode.Required or CommandPrefixMode.Optional)
+        {
+            foreach (var prefix in descriptor.Route.CommandPolicy.Prefixes)
+            {
+                yield return new DuplicateCommandCandidate(
+                    $"{prefix.ToUpperInvariant()}\u001F{descriptor.Route.CommandPolicy.AllowSpaceAfterPrefix}\u001FPREFIXED\u001F{descriptor.Command.ToUpperInvariant()}",
+                    $"{prefix}{descriptor.Command}");
+            }
+        }
+
+        if (descriptor.Route.CommandPolicy.PrefixMode is CommandPrefixMode.Optional or CommandPrefixMode.NoPrefix)
         {
             yield return new DuplicateCommandCandidate(
-                $"{prefix.ToUpperInvariant()}\u001F{descriptor.Route.CommandPolicy.AllowSpaceAfterPrefix}\u001F{descriptor.Command.ToUpperInvariant()}",
-                $"{prefix}{descriptor.Command}");
+                $"NO_PREFIX\u001F{descriptor.Command.ToUpperInvariant()}",
+                descriptor.Command);
         }
     }
 

@@ -26,6 +26,11 @@ public sealed class CommandRegexAttribute : TeleFlowAttribute
     public string[] Prefixes { get; set; } = ["/"];
 
     /// <summary>
+    /// Defines whether the command prefix is required, optional, or disabled for this route.
+    /// </summary>
+    public CommandPrefixMode PrefixMode { get; set; } = CommandPrefixMode.Required;
+
+    /// <summary>
     /// Allows whitespace between the prefix and command body.
     /// </summary>
     public bool AllowSpaceAfterPrefix { get; set; }

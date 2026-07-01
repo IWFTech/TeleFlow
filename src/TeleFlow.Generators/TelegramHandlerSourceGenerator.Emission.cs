@@ -287,7 +287,16 @@ public sealed partial class TelegramHandlerSourceGenerator
 
         builder.AppendLine("            },");
         AppendAutoAnswerCallback(builder, handler.AutoAnswerCallback);
-        builder.AppendLine("            ));");
+
+        if (route.PrefixMode == CommandPrefixModeRequired)
+        {
+            builder.AppendLine("            ));");
+        }
+        else
+        {
+            builder.AppendLine(",");
+            builder.AppendLine($"            prefixMode: {ToCommandPrefixModeLiteral(route.PrefixMode)}));");
+        }
     }
 
     private static void AppendAutoAnswerCallback(
@@ -672,6 +681,17 @@ public sealed partial class TelegramHandlerSourceGenerator
     private static string ToBoolLiteral(bool value)
     {
         return value ? "true" : "false";
+    }
+
+    private static string ToCommandPrefixModeLiteral(int value)
+    {
+        return value switch
+        {
+            CommandPrefixModeRequired => "global::TeleFlow.Annotations.CommandPrefixMode.Required",
+            CommandPrefixModeOptional => "global::TeleFlow.Annotations.CommandPrefixMode.Optional",
+            CommandPrefixModeNoPrefix => "global::TeleFlow.Annotations.CommandPrefixMode.NoPrefix",
+            _ => $"(global::TeleFlow.Annotations.CommandPrefixMode){value}"
+        };
     }
 
     private static string ToAttributeCreationExpression(AttributeData attribute)
