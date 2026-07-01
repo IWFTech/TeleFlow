@@ -33,10 +33,9 @@ builder.Services.AddTelegramBot(options =>
     options.Token = token;
 });
 
-builder.Services.AddMemoryStateStorage();
+builder.Services.AddLongPolling();
 builder.Services.AddTelegramHandlersFromAssembly(
     typeof(Program).Assembly);
-builder.Services.AddLongPolling();
 
 public sealed class StartHandler
 {
@@ -46,8 +45,7 @@ public sealed class StartHandler
         CancellationToken ct)
     {
         return ctx.Message.AnswerAsync(
-            "Hello from TeleFlow.",
-            ct);
+            "Hello from TeleFlow.");
     }
 }
 ```
