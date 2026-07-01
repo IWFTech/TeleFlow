@@ -90,6 +90,8 @@ Raw callback strings сохраняются как есть и не проход
 
 `[CallbackData("ticket")]` включает compact callback data format для этого payload type. Payload вроде `new TicketAction(42, "take")` упаковывается в короткую строку prefix-plus-fields вместо verbose JSON. Если packed value превышает Telegram limit в 64 bytes, TeleFlow падает до отправки keyboard.
 
+Если установлен `IWF.TeleFlow.Generators`, TeleFlow генерирует callback data codecs на этапе сборки. Generated path пакует typed keyboard payloads, матчится с входящей callback data и создаёт typed payloads без `PropertyInfo.GetValue(...)`, `ConstructorInfo.Invoke(...)` и `Activator.CreateInstance(...)` на каждом callback. Direct registration и deprecated reflection registration всё ещё могут использовать runtime metadata fallback.
+
 Typed inline keyboard payloads должны быть помечены `[CallbackData]`. Если нужен внешний ключ, Redis key или свой opaque format, передавай raw string callback data.
 
 Custom `ICallbackDataSerializer` implementations остаются доступны для advanced callback payload serialization и route deserialization, но typed inline keyboard buttons используют `[CallbackData]` metadata напрямую.

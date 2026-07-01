@@ -122,12 +122,30 @@ The generated metadata describes:
 - route attributes;
 - built-in filter metadata;
 - state and scene metadata;
-- callback payload metadata;
+- callback payload metadata and generated compact callback data codecs;
 - error handlers;
 - auto-answer callback metadata;
 - generated invokers.
 
 You normally do not call generated types directly.
+
+## Generated Callback Data Codecs
+
+`[CallbackData]` payloads are static enough to generate direct pack and unpack code.
+When the generator is installed, TeleFlow emits an assembly-level callback data codec
+registrar in addition to handler metadata. The runtime discovers that registrar once
+per payload assembly and caches the generated delegates.
+
+The generated codec is used by:
+
+- `InlineKeyboardBuilder.Build()` when it packs typed callback buttons;
+- the default `ICallbackDataSerializer`;
+- typed `[Callback<TPayload>]` route matching.
+
+The wire format stays the same: `prefix:field1:field2`. Existing compact callback
+data remains compatible. The generated path removes repeated field reflection from
+normal callback handling; explicit direct registration and deprecated reflection
+registration can still use the runtime metadata fallback.
 
 ## Analyzer Feedback
 

@@ -17,6 +17,11 @@ internal static class CallbackDataCodec
         ArgumentNullException.ThrowIfNull(payload);
         ArgumentNullException.ThrowIfNull(payloadType);
 
+        if (GeneratedCallbackDataCodecRegistry.TryGet(payloadType, out var generatedCodec))
+        {
+            return generatedCodec.Pack(payload);
+        }
+
         if (!CallbackDataMetadata.TryCreate(payloadType, out var metadata))
         {
             throw new InvalidOperationException(
@@ -25,6 +30,11 @@ internal static class CallbackDataCodec
         }
 
         return Pack(payload, metadata);
+    }
+
+    public static bool TryGetGenerated(Type payloadType, out GeneratedCallbackDataCodec codec)
+    {
+        return GeneratedCallbackDataCodecRegistry.TryGet(payloadType, out codec);
     }
 
     public static string Pack(object payload, CallbackDataMetadata metadata)

@@ -38,6 +38,15 @@ public sealed partial class TelegramHandlerSourceGenerator
         ValueTask
     }
 
+    private enum GeneratedCallbackDataFieldKind
+    {
+        String,
+        Int32,
+        Int64,
+        Boolean,
+        Enum
+    }
+
     private enum GeneratedRouteKind
     {
         MessageAny,
@@ -80,6 +89,15 @@ public sealed partial class TelegramHandlerSourceGenerator
         string SourcePath,
         int SourceSpanStart);
 
+    private sealed record GeneratedCallbackDataPayload(
+        string TypeName,
+        string TypeMetadataName,
+        string Prefix,
+        bool UsesConstructor,
+        ImmutableArray<GeneratedCallbackDataField> Fields,
+        string SourcePath,
+        int SourceSpanStart);
+
     private sealed record GeneratedRoute(
         GeneratedHandlerKind Kind,
         GeneratedRouteKind RouteKind,
@@ -106,6 +124,11 @@ public sealed partial class TelegramHandlerSourceGenerator
         bool ShowAlert);
 
     private sealed record GeneratedTextFilter(string Value, int Mode, bool IgnoreCase);
+
+    private sealed record GeneratedCallbackDataField(
+        string PropertyName,
+        string TypeName,
+        GeneratedCallbackDataFieldKind Kind);
 
     private sealed record GeneratedFilter(
         string Kind,

@@ -22,7 +22,9 @@ public sealed class JsonCallbackDataSerializer : ICallbackDataRouteDeserializer
     {
         ArgumentNullException.ThrowIfNull(payload);
 
-        var serializedPayload = CallbackDataMetadata.TryCreate(typeof(TPayload), out var metadata)
+        var serializedPayload = CallbackDataCodec.TryGetGenerated(typeof(TPayload), out var generatedCodec)
+            ? generatedCodec.Pack(payload!)
+            : CallbackDataMetadata.TryCreate(typeof(TPayload), out var metadata)
             ? CallbackDataCodec.Pack(payload!, metadata)
             : JsonSerializer.Serialize(payload, _jsonSerializerOptions);
 
@@ -34,6 +36,11 @@ public sealed class JsonCallbackDataSerializer : ICallbackDataRouteDeserializer
     public TPayload Deserialize<TPayload>(string serializedPayload)
     {
         ArgumentNullException.ThrowIfNull(serializedPayload);
+
+        if (CallbackDataCodec.TryGetGenerated(typeof(TPayload), out var generatedCodec))
+        {
+            return (TPayload)generatedCodec.Unpack(serializedPayload);
+        }
 
         if (CallbackDataMetadata.TryCreate(typeof(TPayload), out var metadata))
         {
@@ -51,6 +58,18 @@ public sealed class JsonCallbackDataSerializer : ICallbackDataRouteDeserializer
     {
         ArgumentNullException.ThrowIfNull(payloadType);
         ArgumentNullException.ThrowIfNull(serializedPayload);
+
+        if (CallbackDataCodec.TryGetGenerated(payloadType, out var generatedCodec))
+        {
+            if (!generatedCodec.MatchesSerializedPayload(serializedPayload))
+            {
+                payload = null;
+                return false;
+            }
+
+            payload = generatedCodec.Unpack(serializedPayload);
+            return true;
+        }
 
         if (CallbackDataMetadata.TryCreate(payloadType, out var metadata))
         {
