@@ -186,7 +186,33 @@ builder.Services.AddDefaultUpdateRateLimiting();
 builder.Services.AddUpdateRateLimiter<MyRateLimiter>();
 ```
 
-The default limiter is no-op. Custom limiters are application-specific.
+`AddDefaultUpdateRateLimiting()` adds the rate-limit middleware. It does not add a hidden no-op limiter. If no limiters are registered, the middleware simply lets the update continue.
+
+Custom limiters return an explicit decision:
+
+```csharp
+public sealed class MyRateLimiter : IUpdateRateLimiter
+{
+    public ValueTask<UpdateRateLimitDecision> CheckAsync(
+        UpdateContext context,
+        CancellationToken cancellationToken = default)
+    {
+        if (ShouldReject(context))
+        {
+            return ValueTask.FromResult(
+                UpdateRateLimitDecision.Rejected(
+                    retryAfter: TimeSpan.FromSeconds(15),
+                    policyName: "per-user-command"));
+        }
+
+        return ValueTask.FromResult(UpdateRateLimitDecision.Accepted);
+    }
+}
+```
+
+Use `Rejected` for normal throttling. Do not throw exceptions for expected rate-limit decisions. Exceptions from a limiter are treated as real failures and continue through the normal error path.
+
+The rate-limit warning log includes safe metadata such as payload type, limiter type, retry-after, and developer-controlled policy name. It does not log arbitrary limiter keys, message text, callback data, or user-provided values.
 
 ## Ordering
 

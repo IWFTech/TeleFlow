@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using TeleFlow.Telegram.Webhooks.Internal;
 
 namespace TeleFlow.Telegram.Webhooks;
@@ -27,7 +29,10 @@ public static class TelegramRawWebhookEndpointRouteBuilderExtensions
             throw new InvalidOperationException("Telegram webhook path must start with '/'.");
         }
 
-        var endpoint = new TelegramRawWebhookEndpoint(handler, options);
+        var logger = endpoints.ServiceProvider
+            .GetService<ILoggerFactory>()
+            ?.CreateLogger<TelegramRawWebhookEndpoint>();
+        var endpoint = new TelegramRawWebhookEndpoint(handler, options, logger);
         return endpoints.MapPost(
             normalizedPattern,
             (Func<HttpContext, Task<IResult>>)endpoint.HandleAsync);

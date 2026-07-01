@@ -142,7 +142,7 @@ public sealed class StageSevenPolicyOverrideTests
     }
 
     [Fact]
-    public async Task AddDefaultUpdateRateLimiting_RegistersNoOpLimiterMiddleware_AndAdditiveLimitersRunInOrder()
+    public async Task AddDefaultUpdateRateLimiting_RegistersMiddleware_AndAdditiveLimitersRunInOrder()
     {
         var trace = new List<string>();
         using var serviceProvider = new ServiceCollection()
@@ -160,7 +160,6 @@ public sealed class StageSevenPolicyOverrideTests
 
         Assert.Collection(
             limiters,
-            limiter => Assert.IsType<NoOpUpdateRateLimiter>(limiter),
             limiter => Assert.IsType<FirstRecordingRateLimiter>(limiter),
             limiter => Assert.IsType<SecondRecordingRateLimiter>(limiter));
         Assert.Contains(
@@ -397,19 +396,23 @@ public sealed class StageSevenPolicyOverrideTests
 
     private sealed class FirstRecordingRateLimiter(List<string> trace) : IUpdateRateLimiter
     {
-        public ValueTask WaitAsync(UpdateContext context, CancellationToken cancellationToken = default)
+        public ValueTask<UpdateRateLimitDecision> CheckAsync(
+            UpdateContext context,
+            CancellationToken cancellationToken = default)
         {
             trace.Add("first");
-            return ValueTask.CompletedTask;
+            return ValueTask.FromResult(UpdateRateLimitDecision.Accepted);
         }
     }
 
     private sealed class SecondRecordingRateLimiter(List<string> trace) : IUpdateRateLimiter
     {
-        public ValueTask WaitAsync(UpdateContext context, CancellationToken cancellationToken = default)
+        public ValueTask<UpdateRateLimitDecision> CheckAsync(
+            UpdateContext context,
+            CancellationToken cancellationToken = default)
         {
             trace.Add("second");
-            return ValueTask.CompletedTask;
+            return ValueTask.FromResult(UpdateRateLimitDecision.Accepted);
         }
     }
 }

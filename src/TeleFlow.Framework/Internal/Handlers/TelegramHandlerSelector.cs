@@ -135,7 +135,7 @@ internal sealed partial class TelegramHandlerSelector
             cancellationToken).ConfigureAwait(false);
     }
 
-    private static async ValueTask<TelegramRouteSelection?> SelectMessageHandlerAsync(
+    private async ValueTask<TelegramRouteSelection?> SelectMessageHandlerAsync(
         MessageContext context,
         TelegramHandlerCandidateSet candidates,
         string? currentState,
@@ -161,7 +161,7 @@ internal sealed partial class TelegramHandlerSelector
             cancellationToken).ConfigureAwait(false);
     }
 
-    private static async ValueTask<TelegramRouteSelection?> SelectMessageHandlerPassAsync(
+    private async ValueTask<TelegramRouteSelection?> SelectMessageHandlerPassAsync(
         MessageContext context,
         IReadOnlyList<TelegramHandlerCandidate> candidates,
         CancellationToken cancellationToken)
@@ -181,6 +181,7 @@ internal sealed partial class TelegramHandlerSelector
                     candidate.Filters,
                     cancellationToken).ConfigureAwait(false))
             {
+                LogRejectedByFiltersIfEnabled(context, candidate, route);
                 continue;
             }
 
@@ -207,6 +208,7 @@ internal sealed partial class TelegramHandlerSelector
                         candidate.Filters,
                         cancellationToken).ConfigureAwait(false))
                 {
+                    LogRejectedByFiltersIfEnabled(context, candidate, route);
                     continue;
                 }
 
@@ -252,6 +254,7 @@ internal sealed partial class TelegramHandlerSelector
                     candidate.Filters,
                     cancellationToken).ConfigureAwait(false))
             {
+                LogRejectedByFiltersIfEnabled(context, candidate, route);
                 continue;
             }
 
@@ -261,7 +264,7 @@ internal sealed partial class TelegramHandlerSelector
         return null;
     }
 
-    private static async ValueTask<TelegramRouteSelection?> SelectChatMemberHandlerPassAsync(
+    private async ValueTask<TelegramRouteSelection?> SelectChatMemberHandlerPassAsync(
         ChatMemberUpdatedContext context,
         IReadOnlyList<TelegramHandlerCandidate> candidates,
         TelegramRouteKind updateRouteKind,
@@ -287,6 +290,7 @@ internal sealed partial class TelegramHandlerSelector
                     candidate.Filters,
                     cancellationToken).ConfigureAwait(false))
             {
+                LogRejectedByFiltersIfEnabled(context, candidate, route);
                 continue;
             }
 
@@ -294,6 +298,24 @@ internal sealed partial class TelegramHandlerSelector
         }
 
         return null;
+    }
+
+    private void LogRejectedByFiltersIfEnabled(
+        TelegramUpdateContext context,
+        TelegramHandlerCandidate candidate,
+        TelegramRouteDescriptor route)
+    {
+        if (!_logger.IsEnabled(LogLevel.Debug))
+        {
+            return;
+        }
+
+        LogHandlerRejectedByFilters(
+            _logger,
+            context.Update.UpdateId,
+            TelegramUpdateLogFormatter.GetUpdateType(context.Update),
+            TelegramUpdateLogFormatter.FormatHandler(candidate.Handler),
+            TelegramUpdateLogFormatter.FormatRoute(route));
     }
 
     private static bool TryMatchRoute(

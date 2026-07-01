@@ -1,6 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using TeleFlow.Framework.RateLimiting;
 
 namespace TeleFlow.Framework.Middleware;
 
@@ -31,7 +29,6 @@ public static class ServiceCollectionMiddlewareExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         services.AddUpdateMiddleware<UpdateRateLimitMiddleware>();
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IUpdateRateLimiter, NoOpUpdateRateLimiter>());
         return services;
     }
 
