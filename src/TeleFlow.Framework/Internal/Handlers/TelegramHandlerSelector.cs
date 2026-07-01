@@ -4,13 +4,18 @@ using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
 using TeleFlow.Framework.Callbacks;
 using TeleFlow.Telegram.Internal;
 using TeleFlow.Telegram.Schema.Types;
 
 namespace TeleFlow.Telegram.Internal.Handlers;
 
-internal sealed class TelegramHandlerSelector
+/// <summary>
+/// Matches incoming Telegram contexts to registered handler routes and binds route
+/// values or typed callback payloads before the dispatcher invokes a handler.
+/// </summary>
+internal sealed partial class TelegramHandlerSelector
 {
     private static readonly IReadOnlyDictionary<string, object?> EmptyRouteValues =
         new ReadOnlyDictionary<string, object?>(
@@ -18,11 +23,17 @@ internal sealed class TelegramHandlerSelector
     private static readonly ConcurrentDictionary<Type, CallbackPayloadDeserializer> CallbackPayloadDeserializers = new();
 
     private readonly TelegramHandlerTable _table;
+    private readonly ILogger<TelegramHandlerSelector> _logger;
 
-    public TelegramHandlerSelector(TelegramHandlerTable table)
+    public TelegramHandlerSelector(
+        TelegramHandlerTable table,
+        ILoggerFactory loggerFactory)
     {
         ArgumentNullException.ThrowIfNull(table);
+        ArgumentNullException.ThrowIfNull(loggerFactory);
+
         _table = table;
+        _logger = loggerFactory.CreateLogger<TelegramHandlerSelector>();
     }
 
     public bool HasStatefulHandlers => _table.HasStatefulHandlers;
@@ -178,7 +189,7 @@ internal sealed class TelegramHandlerSelector
         return null;
     }
 
-    private static async ValueTask<TelegramRouteSelection?> SelectCallbackHandlerPassAsync(
+    private async ValueTask<TelegramRouteSelection?> SelectCallbackHandlerPassAsync(
         CallbackQueryContext context,
         IReadOnlyList<TelegramHandlerCandidate> candidates,
         CancellationToken cancellationToken)
@@ -206,11 +217,32 @@ internal sealed class TelegramHandlerSelector
                 continue;
             }
 
-            if (!TryDeserializeCallbackPayload(
-                    context,
-                    route.CallbackPayloadType,
-                    out var callbackPayload))
+            object? callbackPayload;
+
+            try
             {
+                if (!TryDeserializeCallbackPayload(
+                        context,
+                        route.CallbackPayloadType,
+                        out callbackPayload))
+                {
+                    continue;
+                }
+            }
+            catch (CallbackDataRouteDeserializationException exception)
+            {
+                if (_logger.IsEnabled(LogLevel.Warning))
+                {
+                    LogCallbackDataDeserializationFailed(
+                        _logger,
+                        exception,
+                        context.Update.UpdateId,
+                        exception.PayloadType.FullName ?? exception.PayloadType.Name,
+                        TelegramUpdateLogFormatter.FormatHandler(candidate.Handler),
+                        TelegramUpdateLogFormatter.FormatRoute(route),
+                        exception.PayloadByteCount);
+                }
+
                 continue;
             }
 

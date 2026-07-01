@@ -103,4 +103,9 @@ internal static class CallbackDataCodec
                 $"{subject} must be at most {MaxTelegramCallbackDataBytes} UTF-8 bytes.");
         }
     }
+
+    public static bool IsPayloadDeserializationFailure(Exception exception)
+    {
+        return exception is JsonException or FormatException or OverflowException;
+    }
 }

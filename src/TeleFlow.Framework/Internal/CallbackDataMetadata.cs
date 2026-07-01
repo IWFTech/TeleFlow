@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
 using TeleFlow.Annotations;
 
 namespace TeleFlow.Telegram.Internal;
@@ -158,6 +159,12 @@ internal sealed class CallbackDataMetadata
             throw new InvalidOperationException(
                 $"Callback data payload type '{payloadType.FullName}' prefix must not contain ':', '%', or whitespace.");
         }
+
+        if (Encoding.UTF8.GetByteCount(prefix) > CallbackDataCodec.MaxTelegramCallbackDataBytes)
+        {
+            throw new InvalidOperationException(
+                $"Callback data payload type '{payloadType.FullName}' prefix must be at most {CallbackDataCodec.MaxTelegramCallbackDataBytes} UTF-8 bytes.");
+        }
     }
 
     private static void ValidateFieldType(Type payloadType, Type fieldType, string fieldName)
@@ -253,7 +260,13 @@ internal sealed class CallbackDataMetadata
 
         if (type.IsEnum)
         {
-            return Enum.Parse(type, text, ignoreCase: false);
+            if (Enum.TryParse(type, text, ignoreCase: false, out var enumValue))
+            {
+                return enumValue;
+            }
+
+            throw new JsonException(
+                $"Telegram callback data field for payload type '{PayloadType.FullName}' is not a valid enum value for '{type.FullName}'.");
         }
 
         throw new InvalidOperationException(

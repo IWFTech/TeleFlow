@@ -420,7 +420,7 @@ public sealed partial class TelegramHandlerSourceGenerator
                     builder.Append(", ");
                 }
 
-                builder.Append(GetCallbackDataUnpackExpression(payload.Fields[fieldIndex], fieldIndex + 1));
+                builder.Append(GetCallbackDataUnpackExpression(payload, payload.Fields[fieldIndex], fieldIndex + 1));
             }
 
             builder.AppendLine(");");
@@ -433,7 +433,7 @@ public sealed partial class TelegramHandlerSourceGenerator
             for (int fieldIndex = 0; fieldIndex < payload.Fields.Length; fieldIndex++)
             {
                 GeneratedCallbackDataField field = payload.Fields[fieldIndex];
-                builder.AppendLine($"            {field.PropertyName} = {GetCallbackDataUnpackExpression(field, fieldIndex + 1)},");
+                builder.AppendLine($"            {field.PropertyName} = {GetCallbackDataUnpackExpression(payload, field, fieldIndex + 1)},");
             }
 
             builder.AppendLine("        };");
@@ -459,6 +459,7 @@ public sealed partial class TelegramHandlerSourceGenerator
     }
 
     private static string GetCallbackDataUnpackExpression(
+        GeneratedCallbackDataPayload payload,
         GeneratedCallbackDataField field,
         int partIndex)
     {
@@ -470,7 +471,7 @@ public sealed partial class TelegramHandlerSourceGenerator
             GeneratedCallbackDataFieldKind.Int32 => $"global::System.Int32.Parse({value}, global::System.Globalization.CultureInfo.InvariantCulture)",
             GeneratedCallbackDataFieldKind.Int64 => $"global::System.Int64.Parse({value}, global::System.Globalization.CultureInfo.InvariantCulture)",
             GeneratedCallbackDataFieldKind.Boolean => $"global::System.Boolean.Parse({value})",
-            GeneratedCallbackDataFieldKind.Enum => $"global::System.Enum.Parse<{field.TypeName}>({value}, ignoreCase: false)",
+            GeneratedCallbackDataFieldKind.Enum => $"ParseCallbackDataEnum<{field.TypeName}>({value}, {ToLiteral(field.PropertyName)}, {ToLiteral(payload.TypeMetadataName)})",
             _ => throw new InvalidOperationException($"Unsupported generated callback data field kind '{field.Kind}'.")
         };
     }
@@ -537,6 +538,18 @@ public sealed partial class TelegramHandlerSourceGenerator
         builder.AppendLine("        return value");
         builder.AppendLine("            .Replace(\"%3A\", \":\", global::System.StringComparison.Ordinal)");
         builder.AppendLine("            .Replace(\"%25\", \"%\", global::System.StringComparison.Ordinal);");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+
+        builder.AppendLine("    private static TEnum ParseCallbackDataEnum<TEnum>(string value, string fieldName, string payloadTypeName)");
+        builder.AppendLine("        where TEnum : struct, global::System.Enum");
+        builder.AppendLine("    {");
+        builder.AppendLine("        if (global::System.Enum.TryParse<TEnum>(value, ignoreCase: false, out var result))");
+        builder.AppendLine("        {");
+        builder.AppendLine("            return result;");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        throw new global::System.Text.Json.JsonException($\"Telegram callback data field '{fieldName}' on payload type '{payloadTypeName}' is not a valid {typeof(TEnum).FullName} value.\");");
         builder.AppendLine("    }");
         builder.AppendLine();
     }
