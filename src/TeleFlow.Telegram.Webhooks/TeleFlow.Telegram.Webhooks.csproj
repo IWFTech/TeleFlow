@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Raw ASP.NET Core Telegram webhook endpoint helpers for TeleFlow applications that want Telegram Update payloads without the handler framework.</Description>
+    <Description>Advanced TeleFlow raw transport package with ASP.NET Core webhook endpoint helpers for applications that want Telegram Update payloads without the handler framework.</Description>
   </PropertyGroup>
 
   <ItemGroup>

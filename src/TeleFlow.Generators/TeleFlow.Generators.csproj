@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Build-time source generator and analyzer package for TeleFlow Telegram handler metadata, enabling generated registration without runtime assembly scanning.</Description>
+    <Description>Build-time source generator and analyzer package for TeleFlow Telegram handler metadata. Reference directly with PrivateAssets=all when using generated handler registration.</Description>
     <DevelopmentDependency>true</DevelopmentDependency>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <IncludeBuildOutput>false</IncludeBuildOutput>

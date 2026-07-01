@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Raw Telegram getUpdates long-polling client for TeleFlow, including safe offset advancement and acknowledged update streaming without the handler framework.</Description>
+    <Description>Advanced TeleFlow raw transport package for Telegram getUpdates, safe offset advancement, and acknowledged update streaming without the handler framework.</Description>
     <RootNamespace>TeleFlow.Telegram</RootNamespace>
   </PropertyGroup>
 

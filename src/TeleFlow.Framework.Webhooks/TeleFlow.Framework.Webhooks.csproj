@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>ASP.NET Core webhook framework package for TeleFlow Telegram bots, combining handler dispatch with raw Telegram webhook endpoints.</Description>
+    <Description>Recommended TeleFlow framework entry package for Telegram bots that use handler dispatch with ASP.NET Core webhooks.</Description>
     <RootNamespace>TeleFlow.Telegram.Webhooks</RootNamespace>
   </PropertyGroup>
 

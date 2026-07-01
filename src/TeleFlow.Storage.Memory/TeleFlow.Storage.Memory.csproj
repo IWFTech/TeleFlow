@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>In-memory state, state data, and wizard history storage provider for TeleFlow bots, intended for local development, tests, and single-process applications.</Description>
+    <Description>TeleFlow state storage add-on with in-memory state, state data, and wizard history for local development, tests, and single-process applications.</Description>
   </PropertyGroup>
 
   <ItemGroup>

@@ -221,6 +221,7 @@ public sealed class PackageSmokeTests
 
             Assert.Equal("IWFTech", package.Authors);
             Assert.False(string.IsNullOrWhiteSpace(package.Description));
+            AssertPackageDescriptionPolicy(package);
             Assert.Contains("teleflow", package.Tags, StringComparison.OrdinalIgnoreCase);
             Assert.Equal("README.md", package.Readme);
 
@@ -234,6 +235,32 @@ public sealed class PackageSmokeTests
                     static entry => entry.FullName == "lib/net10.0/TeleFlow.Annotations.xml");
             }
         }
+    }
+
+    private static void AssertPackageDescriptionPolicy(PackageIdentity package)
+    {
+        var requiredText = package.Id switch
+        {
+            "IWF.TeleFlow.Framework.LongPolling" or
+            "IWF.TeleFlow.Framework.Webhooks" or
+            "IWF.TeleFlow.Telegram" => "Recommended TeleFlow",
+
+            "IWF.TeleFlow.Framework.Core" or
+            "IWF.TeleFlow.Framework" or
+            "IWF.TeleFlow.Telegram.Client" or
+            "IWF.TeleFlow.Telegram.Schema" or
+            "IWF.TeleFlow.Annotations" => "Dependency package",
+
+            "IWF.TeleFlow.Telegram.LongPolling" or
+            "IWF.TeleFlow.Telegram.Webhooks" => "Advanced TeleFlow raw transport package",
+
+            "IWF.TeleFlow.Framework.Hosting" => "Optional TeleFlow",
+            "IWF.TeleFlow.Generators" => "Reference directly with PrivateAssets=all",
+            "IWF.TeleFlow.Storage.Memory" => "TeleFlow state storage add-on",
+            _ => throw new InvalidOperationException($"Unexpected package id '{package.Id}'.")
+        };
+
+        Assert.Contains(requiredText, package.Description, StringComparison.Ordinal);
     }
 
     private static void AssertPackedAnalyzerPackage(string packageSource, string packageId)
