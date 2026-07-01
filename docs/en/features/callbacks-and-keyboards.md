@@ -96,7 +96,46 @@ Typed inline keyboard payloads must be marked with `[CallbackData]`. If you need
 
 Custom `ICallbackDataSerializer` implementations remain available for advanced callback payload serialization and route deserialization, but typed inline keyboard buttons use `[CallbackData]` metadata directly.
 
-Invalid typed callback data does not match the typed handler. Serializer failures that are not normal parse/format failures are treated as real failures and remain observable.
+Invalid compact typed callback data does not invoke the typed handler. If the
+callback data matches the typed route prefix and field shape but cannot be
+decoded, TeleFlow logs a warning from `TelegramHandlerSelector` and treats that
+typed route as not matched. This covers stale buttons from an older bot version,
+malformed numeric fields, invalid boolean values, and invalid enum values.
+
+If you want a graceful user-facing answer for old buttons, add a raw callback
+fallback after the typed handler:
+
+```csharp
+[Callback<TicketAction>]
+public Task TicketActionCallback(
+    CallbackQueryContext ctx,
+    TicketAction payload,
+    CancellationToken ct)
+{
+    // Normal typed path.
+    return Task.CompletedTask;
+}
+
+[Callback]
+[CallbackDataPrefix("ticket")]
+public async Task StaleTicketCallback(
+    CallbackQueryContext ctx,
+    CancellationToken ct)
+{
+    await ctx.Callback.AnswerAsync(
+        "This button is outdated. Open the ticket again.",
+        showAlert: true,
+        cancellationToken: ct);
+}
+```
+
+The warning intentionally does not include the raw callback data string, because
+callback data can contain internal keys. Use compact prefixes and short fields
+instead of placing large or sensitive data directly into Telegram callback data.
+
+JSON fallback callback payloads remain supported, but TeleFlow cannot reliably
+distinguish "not my callback" from "my stale JSON payload" without a compact
+prefix. Use `[CallbackData]` for production callback routes.
 
 ## Auto Answer Callback
 

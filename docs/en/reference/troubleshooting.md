@@ -118,6 +118,22 @@ public sealed record TicketAction(long Id, string A);
 
 Do not put large JSON payloads in callback data.
 
+## Callback Data Failed To Deserialize
+
+If logs contain `Telegram callback data failed to deserialize`, the callback
+matched a typed `[Callback<TPayload>]` route by compact prefix and field count,
+but the payload could not be decoded. Common causes:
+
+- an old inline button was clicked after you changed the callback payload type;
+- a numeric, boolean, or enum field contains an invalid value;
+- another bot component produced callback data with the same prefix but a
+  different field format.
+
+TeleFlow treats that typed route as not matched, so a raw callback fallback can
+answer the user. Keep callback payloads versionable: use short stable prefixes,
+prefer IDs over large objects, and create a new prefix when a deployed callback
+shape changes incompatibly.
+
 ## Webhook Returns Unauthorized
 
 Check `SecretToken` configuration and Telegram webhook settings. The incoming request must use the expected secret token.

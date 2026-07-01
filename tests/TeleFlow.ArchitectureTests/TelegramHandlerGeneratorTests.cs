@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using TeleFlow.Annotations;
 using TeleFlow.Framework.Callbacks;
 using TeleFlow.Framework.Dispatching;
@@ -167,6 +168,15 @@ public sealed class TelegramHandlerGeneratorTests
                         $"callback:{payload.Id}:{payload.Action}:{payload.Confirmed}:{payload.Kind}");
                     return Task.CompletedTask;
                 }
+
+                [Callback]
+                public Task Raw(CallbackQueryContext context)
+                {
+                    GeneratedErrorRuntimeProbe.Record(
+                        "{{runId}}",
+                        $"raw:{context.TelegramCallbackQuery.Data}");
+                    return Task.CompletedTask;
+                }
             }
             """);
         var generatedCompilation = RunGenerator(compilation, out var diagnostics);
@@ -183,7 +193,9 @@ public sealed class TelegramHandlerGeneratorTests
         var takeKind = Enum.Parse(payloadKindType, "Take");
         var payload = Activator.CreateInstance(payloadType, 42L, "a:b%z", true, takeKind)!;
         var services = new ServiceCollection();
+        var loggerFactory = new RecordingLoggerFactory();
         services.AddTelegramBot(options => options.Token = "test-token");
+        services.AddSingleton<ILoggerFactory>(loggerFactory);
         services.AddTelegramHandlersFromAssembly(assembly);
         using var serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions
         {
@@ -209,6 +221,21 @@ public sealed class TelegramHandlerGeneratorTests
         Assert.Equal(
             ["callback:42:a:b%z:True:Take"],
             GeneratedErrorRuntimeProbe.GetEvents(runId));
+
+        await DispatchAsync(
+            serviceProvider,
+            CreateCallbackUpdate("ticket:not-long:stale:true:Take"),
+            cancellation.Token);
+
+        Assert.Equal(
+            ["callback:42:a:b%z:True:Take", "raw:ticket:not-long:stale:true:Take"],
+            GeneratedErrorRuntimeProbe.GetEvents(runId));
+        Assert.Contains(
+            loggerFactory.Entries,
+            entry => entry.Level == LogLevel.Warning &&
+                     entry.Category == "TeleFlow.Telegram.Internal.Handlers.TelegramHandlerSelector" &&
+                     entry.Message.Contains("Telegram callback data failed to deserialize", StringComparison.Ordinal) &&
+                     entry.Message.Contains("TicketAction", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -2045,9 +2072,14 @@ public sealed class TelegramHandlerGeneratorTests
 
             [CallbackData("dup")]
             public sealed record SecondPayload(int Id);
+
+            [CallbackData("this_prefix_is_definitely_too_long_for_telegram_callback_data_limit")]
+            public sealed record LongPrefixPayload(int Id);
             """);
 
-        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == TelegramHandlerAnalyzer.InvalidCallbackDataId);
+        Assert.True(
+            diagnostics.Count(diagnostic => diagnostic.Id == TelegramHandlerAnalyzer.InvalidCallbackDataId) >= 2,
+            "Expected callback data diagnostics for unsupported field type and oversized prefix.");
         Assert.Equal(2, diagnostics.Count(diagnostic => diagnostic.Id == TelegramHandlerAnalyzer.DuplicateCallbackDataPrefixId));
     }
 

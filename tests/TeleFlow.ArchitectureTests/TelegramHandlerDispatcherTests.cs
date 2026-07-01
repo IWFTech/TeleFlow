@@ -2226,6 +2226,33 @@ public sealed class TelegramHandlerDispatcherTests
     }
 
     [Fact]
+    public async Task MalformedCompactCallbackData_LogsDiagnosticAndFallsBackToRawCallback()
+    {
+        var loggerFactory = new RecordingLoggerFactory();
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.RemoveAll<ILoggerFactory>();
+                services.AddSingleton<ILoggerFactory>(loggerFactory);
+                services.AddTelegramHandler<CompactCallbackHandler>();
+                services.AddTelegramHandler<RawCallbackHandler>();
+            });
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateCallbackUpdate("del:item:not-int"));
+
+        Assert.Equal(["callback:del:item:not-int"], probe.Events);
+        var warning = Assert.Single(
+            loggerFactory.Entries,
+            entry => entry.Level == LogLevel.Warning &&
+                     entry.Category == "TeleFlow.Telegram.Internal.Handlers.TelegramHandlerSelector");
+        Assert.Contains("Telegram callback data failed to deserialize", warning.Message);
+        Assert.Contains(nameof(CompactDeleteCallback), warning.Message);
+        Assert.NotNull(warning.Exception);
+    }
+
+    [Fact]
     public async Task BrokenCustomCallbackSerializer_ExceptionBubbles()
     {
         using var serviceProvider = CreateServiceProvider(

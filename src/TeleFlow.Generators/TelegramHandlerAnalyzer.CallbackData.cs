@@ -30,7 +30,7 @@ public sealed partial class TelegramHandlerAnalyzer
             context.ReportDiagnostic(Diagnostic.Create(
                 InvalidCallbackData,
                 location,
-                $"Callback data payload type '{type.Name}' must declare a non-empty prefix without ':', '%', or whitespace."));
+                $"Callback data payload type '{type.Name}' must declare a non-empty prefix without ':', '%', or whitespace and at most {TelegramCallbackDataFacts.MaxCallbackDataBytes} UTF-8 bytes."));
             return;
         }
 

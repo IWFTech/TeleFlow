@@ -96,7 +96,46 @@ Typed inline keyboard payloads должны быть помечены `[Callback
 
 Custom `ICallbackDataSerializer` implementations остаются доступны для advanced callback payload serialization и route deserialization, но typed inline keyboard buttons используют `[CallbackData]` metadata напрямую.
 
-Invalid typed callback data не матчится с typed handler. Serializer failures, которые не являются обычными parse/format failures, считаются реальными failures и остаются observable.
+Invalid compact typed callback data не вызывает typed handler. Если callback
+data совпала с prefix и field shape typed route, но не смогла распаковаться,
+TeleFlow пишет warning от `TelegramHandlerSelector` и считает этот typed route
+не сматченным. Это покрывает старые кнопки от предыдущей версии бота,
+сломанные numeric fields, invalid boolean values и invalid enum values.
+
+Если нужен красивый ответ пользователю для старых кнопок, добавь raw callback
+fallback после typed handler:
+
+```csharp
+[Callback<TicketAction>]
+public Task TicketActionCallback(
+    CallbackQueryContext ctx,
+    TicketAction payload,
+    CancellationToken ct)
+{
+    // Нормальный typed path.
+    return Task.CompletedTask;
+}
+
+[Callback]
+[CallbackDataPrefix("ticket")]
+public async Task StaleTicketCallback(
+    CallbackQueryContext ctx,
+    CancellationToken ct)
+{
+    await ctx.Callback.AnswerAsync(
+        "Эта кнопка устарела. Открой заявку заново.",
+        showAlert: true,
+        cancellationToken: ct);
+}
+```
+
+Warning намеренно не содержит raw callback data string, потому что callback data
+может содержать internal keys. Используй compact prefixes и короткие fields,
+а large или sensitive data не клади напрямую в Telegram callback data.
+
+JSON fallback callback payloads остаются поддержанными, но без compact prefix
+TeleFlow не может надёжно отличить "это не мой callback" от "это мой старый JSON
+payload". Для production callback routes используй `[CallbackData]`.
 
 ## Auto answer callback
 

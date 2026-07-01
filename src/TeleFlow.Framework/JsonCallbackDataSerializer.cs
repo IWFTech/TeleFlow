@@ -67,7 +67,10 @@ public sealed class JsonCallbackDataSerializer : ICallbackDataRouteDeserializer
                 return false;
             }
 
-            payload = generatedCodec.Unpack(serializedPayload);
+            payload = UnpackForMatchedRoute(
+                payloadType,
+                serializedPayload,
+                generatedCodec.Unpack);
             return true;
         }
 
@@ -79,7 +82,10 @@ public sealed class JsonCallbackDataSerializer : ICallbackDataRouteDeserializer
                 return false;
             }
 
-            payload = CallbackDataCodec.Unpack(serializedPayload, metadata);
+            payload = UnpackForMatchedRoute(
+                payloadType,
+                serializedPayload,
+                value => CallbackDataCodec.Unpack(value, metadata));
             return true;
         }
 
@@ -91,5 +97,20 @@ public sealed class JsonCallbackDataSerializer : ICallbackDataRouteDeserializer
     {
         return JsonSerializer.Deserialize(serializedPayload, payloadType, _jsonSerializerOptions)
             ?? throw new JsonException("Telegram callback data deserialized to null.");
+    }
+
+    private static object UnpackForMatchedRoute(
+        Type payloadType,
+        string serializedPayload,
+        Func<string, object> unpack)
+    {
+        try
+        {
+            return unpack(serializedPayload);
+        }
+        catch (Exception exception) when (CallbackDataCodec.IsPayloadDeserializationFailure(exception))
+        {
+            throw new CallbackDataRouteDeserializationException(payloadType, serializedPayload, exception);
+        }
     }
 }

@@ -35,7 +35,7 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
 
         var table = new TelegramHandlerTable(descriptors);
 
-        _selector = new TelegramHandlerSelector(table);
+        _selector = new TelegramHandlerSelector(table, loggerFactory);
         _errorHandlerIndex = new TelegramErrorHandlerIndex(errorHandlers);
         _timeProvider = timeProvider;
         _globalAutoAnswerCallback = CreateGlobalAutoAnswerDescriptor(autoAnswerCallbackOptions.LastOrDefault());

@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.CodeAnalysis;
 
 namespace TeleFlow.Generators;
@@ -160,13 +161,16 @@ internal static class TelegramMemberStatusFacts
 
 internal static class TelegramCallbackDataFacts
 {
+    public const int MaxCallbackDataBytes = 64;
+
     public static bool IsValidPayloadPrefix(string? prefix)
     {
         return prefix is not null &&
                !string.IsNullOrWhiteSpace(prefix) &&
                prefix.IndexOf(':') < 0 &&
                prefix.IndexOf('%') < 0 &&
-               !prefix.Any(char.IsWhiteSpace);
+               !prefix.Any(char.IsWhiteSpace) &&
+               Encoding.UTF8.GetByteCount(prefix) <= MaxCallbackDataBytes;
     }
 
     public static bool IsSupportedFieldType(ITypeSymbol type)
