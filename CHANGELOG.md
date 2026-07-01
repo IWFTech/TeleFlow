@@ -6,6 +6,45 @@ TeleFlow follows SemVer for published NuGet packages and documented public behav
 
 No changes yet.
 
+## 1.0.0-alpha.6 - 2026-07-01
+
+This alpha focuses on Microsoft.Extensions.Hosting integration, application lifecycle tasks, package graph naming stabilization, and release packaging hardening.
+
+### Added
+
+- Optional `IWF.TeleFlow.Framework.Hosting` package for running a configured TeleFlow application through `Microsoft.Extensions.Hosting` as an `IHostedService`.
+- Application startup and shutdown task contracts with DI registration helpers.
+- Lifecycle execution around update source startup and shutdown, including scoped task resolution, deterministic ordering, and failure propagation.
+
+### Changed
+
+- Framework runtime package names were stabilized before `1.0.0`:
+  - `IWF.TeleFlow.Core` became `IWF.TeleFlow.Framework.Core`.
+  - `IWF.TeleFlow.Telegram.Framework` became `IWF.TeleFlow.Framework`.
+  - `IWF.TeleFlow.Telegram.Framework.LongPolling` became `IWF.TeleFlow.Framework.LongPolling`.
+  - `IWF.TeleFlow.Telegram.Framework.Webhooks` became `IWF.TeleFlow.Framework.Webhooks`.
+- Framework runtime namespaces now use `TeleFlow.Framework.*` instead of `TeleFlow.Core.*`.
+- Documentation and package descriptions now separate recommended entry packages from dependency and advanced packages.
+- Middleware options configuration is documented as normal .NET options configuration.
+- Release verification now checks that its packaged project list stays aligned with package smoke tests.
+
+### Fixed
+
+- Release verification now includes `IWF.TeleFlow.Framework.Hosting`, preventing a publish run from accidentally omitting the hosting package.
+
+### Deprecated
+
+- The old alpha package IDs were deprecated on NuGet with replacement package guidance:
+  - `IWF.TeleFlow.Core` -> `IWF.TeleFlow.Framework.Core`.
+  - `IWF.TeleFlow.Telegram.Framework` -> `IWF.TeleFlow.Framework`.
+  - `IWF.TeleFlow.Telegram.Framework.LongPolling` -> `IWF.TeleFlow.Framework.LongPolling`.
+  - `IWF.TeleFlow.Telegram.Framework.Webhooks` -> `IWF.TeleFlow.Framework.Webhooks`.
+
+### Breaking Changes
+
+- Applications using old alpha framework package IDs must migrate to the new `IWF.TeleFlow.Framework.*` package IDs.
+- Applications using `TeleFlow.Core.*` namespaces must migrate to `TeleFlow.Framework.*` namespaces.
+
 ## 1.0.0-alpha.5 - 2026-06-30
 
 This alpha focuses on handler registration semantics, compile-time filter metadata, route dispatch indexing, and typed callback keyboard packing.
