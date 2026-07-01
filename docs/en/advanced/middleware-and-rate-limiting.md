@@ -29,8 +29,8 @@ Update middleware runs before Telegram routing, built-in filters, custom filters
 This example records an incoming Telegram user, increments update statistics, and stops the pipeline when the user is blocked:
 
 ```csharp
-using TeleFlow.Core.Middleware;
-using TeleFlow.Core.Updates;
+using TeleFlow.Framework.Middleware;
+using TeleFlow.Framework.Updates;
 using TeleFlow.Telegram;
 using TeleFlow.Telegram.Schema.Types;
 

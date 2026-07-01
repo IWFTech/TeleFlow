@@ -25,7 +25,7 @@ For applications that already use Microsoft.Extensions.Hosting, register the opt
 
 ```csharp
 using Microsoft.Extensions.Hosting;
-using TeleFlow.Hosting;
+using TeleFlow.Framework.Hosting;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -56,7 +56,7 @@ Middleware wraps update execution. Built-in middleware covers logging, exception
 
 ### Dispatcher
 
-The dispatcher selects and invokes the matching handler. Telegram-specific dispatching lives outside `TeleFlow.Core`.
+The dispatcher selects and invokes the matching handler. Telegram-specific dispatching lives outside `TeleFlow.Framework.Core`.
 
 ### Handler
 
@@ -161,16 +161,16 @@ await reportService.BuildAsync(ct);
 await ctx.Message.AnswerAsync("Report is ready.", ct);
 ```
 
-## Why `TeleFlow.Core` Is Transport-Agnostic
+## Why `TeleFlow.Framework.Core` Is Transport-Agnostic
 
-`TeleFlow.Core` owns application, middleware, update processing, state contracts, and replacement points. It does not know about Telegram message fields, callbacks, Bot API methods, or Telegram update types.
+`TeleFlow.Framework.Core` owns application, middleware, update processing, state contracts, and replacement points. It does not know about Telegram message fields, callbacks, Bot API methods, or Telegram update types.
 
 Telegram behavior lives in Telegram packages:
 
 - `TeleFlow.Telegram.Client`
-- `TeleFlow.Telegram.Framework`
-- `TeleFlow.Telegram.Framework.LongPolling`
-- `TeleFlow.Telegram.Framework.Webhooks`
+- `TeleFlow.Framework`
+- `TeleFlow.Framework.LongPolling`
+- `TeleFlow.Framework.Webhooks`
 - raw transport packages
 
 This keeps the dependency direction clean and makes the framework easier to test.

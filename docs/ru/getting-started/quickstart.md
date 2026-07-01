@@ -41,7 +41,7 @@ TeleFlow сейчас опубликован как public alpha, поэтому
 ```bash
 dotnet new console -n EchoBot
 cd EchoBot
-dotnet add package IWF.TeleFlow.Telegram.Framework.LongPolling --prerelease
+dotnet add package IWF.TeleFlow.Framework.LongPolling --prerelease
 dotnet add package IWF.TeleFlow.Generators --prerelease
 dotnet add package IWF.TeleFlow.Storage.Memory --prerelease
 ```
@@ -58,7 +58,7 @@ dotnet add package IWF.TeleFlow.Storage.Memory --prerelease
 
 ```csharp
 using TeleFlow.Annotations;
-using TeleFlow.Core.Application;
+using TeleFlow.Framework.Application;
 using TeleFlow.Storage.Memory;
 using TeleFlow.Telegram;
 

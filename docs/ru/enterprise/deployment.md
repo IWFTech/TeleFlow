@@ -10,11 +10,11 @@ TeleFlow deployment - это обычный .NET deployment. Framework не тр
 
 ## Long polling worker
 
-Long polling проще всего deploy-ить как worker process. В обычном .NET worker используй `IWF.TeleFlow.Hosting`, чтобы Generic Host владел startup, shutdown, logging и cancellation:
+Long polling проще всего deploy-ить как worker process. В обычном .NET worker используй `IWF.TeleFlow.Framework.Hosting`, чтобы Generic Host владел startup, shutdown, logging и cancellation:
 
 ```csharp
 using Microsoft.Extensions.Hosting;
-using TeleFlow.Hosting;
+using TeleFlow.Framework.Hosting;
 using TeleFlow.Telegram;
 
 var builder = Host.CreateApplicationBuilder(args);

@@ -57,7 +57,7 @@ public sealed class StartHandler
 </section>
 
 <section class="tf-strip" aria-label="Project links">
-  <a href="https://www.nuget.org/packages/IWF.TeleFlow.Telegram.Framework.LongPolling/">NuGet packages</a>
+  <a href="https://www.nuget.org/packages/IWF.TeleFlow.Framework.LongPolling/">NuGet packages</a>
   <a href="https://t.me/teleflow_chat">Telegram chat</a>
   <a href="en/enterprise/architecture/">Architecture</a>
   <a href="en/roadmap/">Roadmap</a>

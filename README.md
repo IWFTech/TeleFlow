@@ -3,13 +3,13 @@
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 [![Telegram Bot API](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FIWFTech%2FTeleFlow%2Fmain%2Fdocs%2Fbadges%2Ftelegram-bot-api.json)](https://core.telegram.org/bots/api-changelog)
 [![Telegram Chat](https://img.shields.io/badge/Telegram-chat-26A5E4?logo=telegram&logoColor=white)](https://t.me/teleflow_chat)
-[![NuGet](https://img.shields.io/nuget/vpre/IWF.TeleFlow.Telegram.Framework.LongPolling?label=NuGet)](https://www.nuget.org/packages/IWF.TeleFlow.Telegram.Framework.LongPolling/)
+[![NuGet](https://img.shields.io/nuget/vpre/IWF.TeleFlow.Framework.LongPolling?label=NuGet)](https://www.nuget.org/packages/IWF.TeleFlow.Framework.LongPolling/)
 
 [![License](https://img.shields.io/github/license/IWFTech/TeleFlow)](LICENSE)
 [![CI](https://github.com/IWFTech/TeleFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/IWFTech/TeleFlow/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/IWFTech/TeleFlow/actions/workflows/codeql.yml/badge.svg)](https://github.com/IWFTech/TeleFlow/actions/workflows/codeql.yml)
 ![GitHub last commit](https://img.shields.io/github/last-commit/IWFTech/TeleFlow)
-[![Downloads](https://img.shields.io/nuget/dt/IWF.TeleFlow.Telegram.Framework.LongPolling?label=downloads)](https://www.nuget.org/packages/IWF.TeleFlow.Telegram.Framework.LongPolling/)
+[![Downloads](https://img.shields.io/nuget/dt/IWF.TeleFlow.Framework.LongPolling?label=downloads)](https://www.nuget.org/packages/IWF.TeleFlow.Framework.LongPolling/)
 
 
 
@@ -51,7 +51,7 @@ The documentation is available as a GitHub Pages site and as Markdown in this re
 - Typed callback payloads with compact callback data serialization.
 - State, state data, wizard navigation, and replaceable storage contracts.
 - Long polling and ASP.NET Core webhook framework adapters.
-- Optional Generic Host integration through `IWF.TeleFlow.Hosting`.
+- Optional Generic Host integration through `IWF.TeleFlow.Framework.Hosting`.
 - Raw long polling and raw webhook packages for applications that do not want the handler framework.
 - Normal .NET dependency injection for handlers, services, repositories, filters, storage, and infrastructure.
 
@@ -62,7 +62,7 @@ TeleFlow is currently published as a public alpha. Use `--prerelease` or pin an 
 For a handler-based long polling bot:
 
 ```bash
-dotnet add package IWF.TeleFlow.Telegram.Framework.LongPolling --prerelease
+dotnet add package IWF.TeleFlow.Framework.LongPolling --prerelease
 dotnet add package IWF.TeleFlow.Generators --prerelease
 dotnet add package IWF.TeleFlow.Storage.Memory --prerelease
 ```
@@ -82,7 +82,7 @@ dotnet add package IWF.TeleFlow.Telegram --prerelease
 For a .NET worker that should run TeleFlow through Microsoft.Extensions.Hosting, also install:
 
 ```bash
-dotnet add package IWF.TeleFlow.Hosting --prerelease
+dotnet add package IWF.TeleFlow.Framework.Hosting --prerelease
 ```
 
 ## First Bot
@@ -104,7 +104,7 @@ Replace `Program.cs` with this:
 ```csharp
 using TeleFlow.Telegram;
 using TeleFlow.Annotations;
-using TeleFlow.Core.Application;
+using TeleFlow.Framework.Application;
 
 var token = "12345:BOT_TOKEN";
 var builder = TeleFlowApplication.CreateBuilder(args);

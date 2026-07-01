@@ -116,7 +116,7 @@ Target state:
 
 - Review and freeze public API names, package graph, handler metadata, diagnostics, and registration behavior.
 - Remove or mark transitional APIs before stable packages are published.
-- Keep `TeleFlow.Core` transport-agnostic, generated schema DTOs framework-free, and framework runtime behavior inside Telegram framework packages.
+- Keep `TeleFlow.Framework.Core` transport-agnostic, generated schema DTOs framework-free, and framework runtime behavior inside Telegram framework packages.
 - Keep generated assembly registration as the recommended production path, with deprecated reflection assembly registration on a removal path before `1.0`.
 - Make quickstart, package guide, enterprise docs, samples, and release notes match the actual packages and APIs.
 
@@ -362,7 +362,7 @@ Target state:
 
 Rules:
 
-- No broker, queue, stream, Redis, Kafka, RabbitMQ, NATS, or cloud-provider dependency belongs in `TeleFlow.Core`.
+- No broker, queue, stream, Redis, Kafka, RabbitMQ, NATS, or cloud-provider dependency belongs in `TeleFlow.Framework.Core`.
 - Event isolation serializes updates for a key; it must not silently drop updates.
 - Broker-backed processing uses at-least-once delivery as the baseline. Exactly-once is not promised.
 - Broker messages are acknowledged only after `IUpdateProcessor` succeeds.

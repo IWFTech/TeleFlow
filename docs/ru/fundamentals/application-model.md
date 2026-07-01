@@ -25,7 +25,7 @@ await app.RunAsync();
 
 ```csharp
 using Microsoft.Extensions.Hosting;
-using TeleFlow.Hosting;
+using TeleFlow.Framework.Hosting;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -56,7 +56,7 @@ Middleware оборачивает выполнение update. Built-in middlewa
 
 ### Dispatcher
 
-Dispatcher выбирает и вызывает подходящий handler. Telegram-specific dispatching находится вне `TeleFlow.Core`.
+Dispatcher выбирает и вызывает подходящий handler. Telegram-specific dispatching находится вне `TeleFlow.Framework.Core`.
 
 ### Handler
 
@@ -161,16 +161,16 @@ await reportService.BuildAsync(ct);
 await ctx.Message.AnswerAsync("Report is ready.", ct);
 ```
 
-## Почему `TeleFlow.Core` transport-agnostic
+## Почему `TeleFlow.Framework.Core` transport-agnostic
 
-`TeleFlow.Core` владеет application, middleware, update processing, state contracts и replacement points. Он не знает про Telegram message fields, callbacks, Bot API methods или Telegram update types.
+`TeleFlow.Framework.Core` владеет application, middleware, update processing, state contracts и replacement points. Он не знает про Telegram message fields, callbacks, Bot API methods или Telegram update types.
 
 Telegram behavior живёт в Telegram-пакетах:
 
 - `TeleFlow.Telegram.Client`
-- `TeleFlow.Telegram.Framework`
-- `TeleFlow.Telegram.Framework.LongPolling`
-- `TeleFlow.Telegram.Framework.Webhooks`
+- `TeleFlow.Framework`
+- `TeleFlow.Framework.LongPolling`
+- `TeleFlow.Framework.Webhooks`
 - raw transport packages
 
 Так dependency direction остаётся чистым, а framework проще тестировать.

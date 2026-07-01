@@ -51,7 +51,7 @@ Program:
 
 ```csharp
 using Microsoft.Extensions.Configuration;
-using TeleFlow.Core.Application;
+using TeleFlow.Framework.Application;
 using TeleFlow.Storage.Memory;
 using TeleFlow.Telegram;
 

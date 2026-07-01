@@ -4,30 +4,30 @@ TeleFlow has a deliberately simple dependency direction.
 
 ```text
 Application
-  -> TeleFlow.Hosting when using Microsoft.Extensions.Hosting
-      -> TeleFlow.Core
-  -> TeleFlow.Telegram.Framework.LongPolling or Webhooks
-      -> TeleFlow.Telegram.Framework
+  -> TeleFlow.Framework.Hosting when using Microsoft.Extensions.Hosting
+      -> TeleFlow.Framework.Core
+  -> TeleFlow.Framework.LongPolling or Webhooks
+      -> TeleFlow.Framework
           -> TeleFlow.Telegram.Client
           -> TeleFlow.Telegram.Schema
-          -> TeleFlow.Core
+          -> TeleFlow.Framework.Core
   -> TeleFlow.Storage.Memory or custom storage
   -> TeleFlow.Generators at build time
 ```
 
-`TeleFlow.Core` does not depend on Telegram packages.
+`TeleFlow.Framework.Core` does not depend on Telegram packages.
 
 ## Package Ownership
 
-- `TeleFlow.Core`: application, middleware, update processing, state contracts, replacement points.
-- `TeleFlow.Hosting`: Microsoft.Extensions.Hosting adapter that runs a configured TeleFlow application as an `IHostedService`.
+- `TeleFlow.Framework.Core`: application, middleware, update processing, state contracts, replacement points.
+- `TeleFlow.Framework.Hosting`: Microsoft.Extensions.Hosting adapter that runs a configured TeleFlow application as an `IHostedService`.
 - `TeleFlow.Annotations`: compile-time metadata attributes. Files are grouped by responsibility, but every public annotation type stays in the stable `TeleFlow.Annotations` namespace.
 - `IWF.TeleFlow.Generators`: source generator and analyzer package.
 - `TeleFlow.Telegram.Schema`: generated Telegram DTOs and method models.
 - `TeleFlow.Telegram.Client`: low-level Telegram client and generated client method extensions.
-- `TeleFlow.Telegram.Framework`: Telegram handler runtime.
-- `TeleFlow.Telegram.Framework.LongPolling`: framework transport adapter.
-- `TeleFlow.Telegram.Framework.Webhooks`: framework transport adapter for ASP.NET Core.
+- `TeleFlow.Framework`: Telegram handler runtime.
+- `TeleFlow.Framework.LongPolling`: framework transport adapter.
+- `TeleFlow.Framework.Webhooks`: framework transport adapter for ASP.NET Core.
 - `TeleFlow.Telegram.LongPolling`: raw polling client.
 - `TeleFlow.Telegram.Webhooks`: raw ASP.NET Core webhook endpoint helpers.
 - `TeleFlow.Storage.Memory`: in-memory state provider.

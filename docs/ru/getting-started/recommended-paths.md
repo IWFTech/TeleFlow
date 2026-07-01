@@ -7,7 +7,7 @@ TeleFlow можно использовать как маленькую bot libra
 Начинай с framework long polling package:
 
 ```bash
-dotnet add package IWF.TeleFlow.Telegram.Framework.LongPolling --prerelease
+dotnet add package IWF.TeleFlow.Framework.LongPolling --prerelease
 dotnet add package IWF.TeleFlow.Generators --prerelease
 dotnet add package IWF.TeleFlow.Storage.Memory --prerelease
 ```
@@ -105,7 +105,7 @@ Raw transports подходят, когда:
 
 Для большинства пользователей:
 
-1. Начни с `TeleFlow.Telegram.Framework.LongPolling`.
+1. Начни с `TeleFlow.Framework.LongPolling`.
 2. Используй generated registration.
 3. Используй memory storage только пока бот single-process.
 4. Переходи на webhooks только когда этого требует deployment.

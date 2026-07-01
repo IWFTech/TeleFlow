@@ -24,7 +24,7 @@ Assembly scanning удобен, но runtime reflection как скрытый de
 Project file:
 
 ```xml
-<PackageReference Include="IWF.TeleFlow.Telegram.Framework.LongPolling" Version="..." />
+<PackageReference Include="IWF.TeleFlow.Framework.LongPolling" Version="..." />
 <PackageReference Include="IWF.TeleFlow.Generators" Version="..." PrivateAssets="all" />
 ```
 

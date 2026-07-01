@@ -10,11 +10,11 @@ Choose the transport first:
 
 ## Long Polling Worker
 
-Long polling is easiest to deploy as a worker process. In a normal .NET worker, use `IWF.TeleFlow.Hosting` and let the Generic Host own startup, shutdown, logging, and cancellation:
+Long polling is easiest to deploy as a worker process. In a normal .NET worker, use `IWF.TeleFlow.Framework.Hosting` and let the Generic Host own startup, shutdown, logging, and cancellation:
 
 ```csharp
 using Microsoft.Extensions.Hosting;
-using TeleFlow.Hosting;
+using TeleFlow.Framework.Hosting;
 using TeleFlow.Telegram;
 
 var builder = Host.CreateApplicationBuilder(args);

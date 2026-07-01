@@ -14,9 +14,9 @@ NuGet package IDs use the `IWF.TeleFlow.*` prefix. C# namespaces stay concise fo
 | --- | --- | --- |
 | Direct Telegram Bot API access | `IWF.TeleFlow.Telegram` | Low-level `ITelegramClient`, generated Bot API methods, defaults, JSON, transport, exceptions, deep links |
 | Direct client through the owner package | `IWF.TeleFlow.Telegram.Client` | Same client runtime through the explicit package-boundary name |
-| Handler framework with long polling | `IWF.TeleFlow.Telegram.Framework.LongPolling` | Handler framework plus long-polling transport |
-| Handler framework with webhooks | `IWF.TeleFlow.Telegram.Framework.Webhooks` | Handler framework plus ASP.NET Core webhook transport |
-| Generic Host integration | `IWF.TeleFlow.Hosting` | `IHostedService` adapter for running a configured TeleFlow application through Microsoft.Extensions.Hosting |
+| Handler framework with long polling | `IWF.TeleFlow.Framework.LongPolling` | Handler framework plus long-polling transport |
+| Handler framework with webhooks | `IWF.TeleFlow.Framework.Webhooks` | Handler framework plus ASP.NET Core webhook transport |
+| Generic Host integration | `IWF.TeleFlow.Framework.Hosting` | `IHostedService` adapter for running a configured TeleFlow application through Microsoft.Extensions.Hosting |
 | Raw long polling without handlers | `IWF.TeleFlow.Telegram.LongPolling` | `getUpdates` runner and acknowledged update stream over raw Telegram `Update` values |
 | Raw ASP.NET Core webhooks without handlers | `IWF.TeleFlow.Telegram.Webhooks` | ASP.NET Core endpoint helpers over raw Telegram `Update` values |
 | In-memory state storage | `IWF.TeleFlow.Storage.Memory` | Process-local state, state data, wizard history, and state middleware registration |
@@ -32,8 +32,8 @@ TeleFlow is currently published as a public alpha. Use `--prerelease` with `dotn
 Recommended alpha install for a long polling bot:
 
 ```bash
-dotnet add package IWF.TeleFlow.Telegram.Framework.LongPolling --prerelease
-dotnet add package IWF.TeleFlow.Hosting --prerelease
+dotnet add package IWF.TeleFlow.Framework.LongPolling --prerelease
+dotnet add package IWF.TeleFlow.Framework.Hosting --prerelease
 dotnet add package IWF.TeleFlow.Generators --prerelease
 dotnet add package IWF.TeleFlow.Storage.Memory --prerelease
 ```
@@ -43,15 +43,15 @@ dotnet add package IWF.TeleFlow.Storage.Memory --prerelease
 For a handler-based long polling bot:
 
 ```xml
-<PackageReference Include="IWF.TeleFlow.Telegram.Framework.LongPolling" Version="..." />
-<PackageReference Include="IWF.TeleFlow.Hosting" Version="..." />
+<PackageReference Include="IWF.TeleFlow.Framework.LongPolling" Version="..." />
+<PackageReference Include="IWF.TeleFlow.Framework.Hosting" Version="..." />
 <PackageReference Include="IWF.TeleFlow.Generators" Version="..." PrivateAssets="all" />
 <PackageReference Include="IWF.TeleFlow.Storage.Memory" Version="..." />
 ```
 
 ```csharp
 using Microsoft.Extensions.Hosting;
-using TeleFlow.Hosting;
+using TeleFlow.Framework.Hosting;
 using TeleFlow.Storage.Memory;
 using TeleFlow.Telegram;
 
@@ -69,13 +69,13 @@ await builder.Build().RunAsync();
 For a smaller console-style long polling bot without Generic Host:
 
 ```xml
-<PackageReference Include="IWF.TeleFlow.Telegram.Framework.LongPolling" Version="..." />
+<PackageReference Include="IWF.TeleFlow.Framework.LongPolling" Version="..." />
 <PackageReference Include="IWF.TeleFlow.Generators" Version="..." PrivateAssets="all" />
 <PackageReference Include="IWF.TeleFlow.Storage.Memory" Version="..." />
 ```
 
 ```csharp
-using TeleFlow.Core.Application;
+using TeleFlow.Framework.Application;
 using TeleFlow.Storage.Memory;
 using TeleFlow.Telegram;
 
@@ -93,7 +93,7 @@ await app.RunAsync();
 For a handler-based webhook bot:
 
 ```xml
-<PackageReference Include="IWF.TeleFlow.Telegram.Framework.Webhooks" Version="..." />
+<PackageReference Include="IWF.TeleFlow.Framework.Webhooks" Version="..." />
 <PackageReference Include="IWF.TeleFlow.Generators" Version="..." PrivateAssets="all" />
 ```
 
