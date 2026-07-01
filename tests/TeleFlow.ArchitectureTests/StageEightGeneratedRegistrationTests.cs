@@ -111,6 +111,8 @@ public sealed class StageEightGeneratedRegistrationTests
         builder.Services.AddMemoryStateStorage();
         builder.Services.AddUpdateSource<GeneratedStateUpdateSource>();
         builder.Services.AddSingleton(probe);
+        builder.Services.AddSingleton<GeneratedAllowMessageFilter>();
+        builder.Services.AddSingleton<GeneratedRequireTextFilter>();
         builder.Services.AddTelegramHandlersFromAssembly(typeof(StageEightGeneratedRegistrationTests).Assembly);
 
         await using var application = builder.Build();
@@ -136,6 +138,8 @@ public sealed class StageEightGeneratedRegistrationTests
         builder.Services.AddMemoryStateStorage();
         builder.Services.AddUpdateSource<GeneratedStateUpdateSource>();
         builder.Services.AddSingleton(probe);
+        builder.Services.AddSingleton<GeneratedAllowMessageFilter>();
+        builder.Services.AddSingleton<GeneratedRequireTextFilter>();
         builder.Services.AddTelegramHandlersFromAssembly(typeof(StageEightGeneratedRegistrationTests).Assembly);
 
         await using var application = builder.Build();
