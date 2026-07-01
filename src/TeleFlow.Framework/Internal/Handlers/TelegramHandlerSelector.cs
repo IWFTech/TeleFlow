@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
+using TeleFlow.Annotations;
 using TeleFlow.Framework.Callbacks;
 using TeleFlow.Telegram.Internal;
 using TeleFlow.Telegram.Schema.Types;
@@ -390,6 +391,23 @@ internal sealed partial class TelegramHandlerSelector
             return false;
         }
 
+        return route.CommandPolicy.PrefixMode switch
+        {
+            CommandPrefixMode.Required => TryGetPrefixedCommandBody(text, route, out commandBody),
+            CommandPrefixMode.Optional => TryGetPrefixedCommandBody(text, route, out commandBody) ||
+                                          TryGetPrefixLessCommandBody(text, out commandBody),
+            CommandPrefixMode.NoPrefix => TryGetPrefixLessCommandBody(text, out commandBody),
+            _ => false
+        };
+    }
+
+    private static bool TryGetPrefixedCommandBody(
+        string text,
+        TelegramRouteDescriptor route,
+        out string commandBody)
+    {
+        commandBody = string.Empty;
+
         foreach (var prefix in route.CommandPolicy.Prefixes)
         {
             if (!text.StartsWith(prefix, route.CommandPolicy.IgnoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
@@ -413,6 +431,15 @@ internal sealed partial class TelegramHandlerSelector
         }
 
         return false;
+    }
+
+    private static bool TryGetPrefixLessCommandBody(
+        string text,
+        out string commandBody)
+    {
+        commandBody = text;
+
+        return !string.IsNullOrWhiteSpace(commandBody);
     }
 
     private static string TrimSlashCommandBotMention(string commandBody)

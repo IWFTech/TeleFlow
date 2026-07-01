@@ -20,7 +20,7 @@ This page summarizes public handler metadata attributes.
 
 ## Route Options
 
-`[Command]` and `[CommandTemplate]` default to `/` commands and case-insensitive matching:
+`[Command]`, `[CommandTemplate]`, and `[CommandRegex]` default to `/` commands and case-insensitive matching:
 
 ```csharp
 [Command("start")]
@@ -33,6 +33,23 @@ You can configure prefixes when your bot accepts command-like text from another 
 [Command("start", Prefixes = new[] { "/", "!" }, AllowSpaceAfterPrefix = true)]
 public Task Start(MessageContext ctx, CancellationToken ct) { ... }
 ```
+
+Use `PrefixMode` when prefix-less text should be handled as command-shaped input:
+
+```csharp
+[CommandTemplate(
+    "ticket {id:long}",
+    PrefixMode = CommandPrefixMode.Optional)]
+public Task Ticket(MessageContext ctx, long id, CancellationToken ct) { ... }
+```
+
+Available `CommandPrefixMode` values are:
+
+| Value | Behavior |
+| --- | --- |
+| `Required` | Requires one of the configured prefixes. This is the default. |
+| `Optional` | Accepts a configured prefix or no prefix. |
+| `NoPrefix` | Accepts only prefix-less text. Do not combine it with `Prefixes`. |
 
 `[Text]` supports explicit match modes:
 

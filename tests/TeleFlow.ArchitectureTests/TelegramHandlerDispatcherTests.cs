@@ -640,6 +640,20 @@ public sealed class TelegramHandlerDispatcherTests
     }
 
     [Fact]
+    public async Task CommandAttribute_OptionalPrefix_MatchesPrefixedAndPrefixLessCommands()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services => services.AddTelegramHandler<OptionalPrefixCommandHandler>());
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/help"));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("help"));
+
+        Assert.Equal(["optional-prefix-command:/help", "optional-prefix-command:help"], probe.Events);
+    }
+
+    [Fact]
     public async Task TextTemplate_BindsRouteValue()
     {
         using var serviceProvider = CreateServiceProvider(
@@ -732,6 +746,63 @@ public sealed class TelegramHandlerDispatcherTests
     }
 
     [Fact]
+    public async Task CommandTemplate_OptionalPrefix_MatchesPrefixedAndPrefixLessCommands()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services => services.AddTelegramHandler<OptionalPrefixCommandTemplateRouteHandler>());
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/ban 42"));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("ban 43"));
+
+        Assert.Equal(["optional-prefix-command-template:42", "optional-prefix-command-template:43"], probe.Events);
+    }
+
+    [Fact]
+    public async Task CommandTemplate_NoPrefix_MatchesOnlyPrefixLessCommands()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.AddTelegramHandler<NoPrefixCommandTemplateRouteHandler>();
+                services.AddTelegramHandler<AnyMessageHandler>();
+            });
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("ban 42"));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/ban 43"));
+
+        Assert.Equal(["no-prefix-command-template:42", "message:/ban 43"], probe.Events);
+    }
+
+    [Fact]
+    public async Task CommandTemplate_OptionalPrefix_RespectsCustomPrefixes()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.AddTelegramHandler<OptionalCustomPrefixCommandTemplateRouteHandler>();
+                services.AddTelegramHandler<AnyMessageHandler>();
+            });
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("!ban 42"));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("ban 43"));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/ban 44"));
+
+        Assert.Equal(
+            [
+                "optional-custom-prefix-command-template:42",
+                "optional-custom-prefix-command-template:43",
+                "message:/ban 44"
+            ],
+            probe.Events);
+    }
+
+    [Fact]
     public async Task DeepLinkPayload_RoundTripsThroughStartCommandTemplate()
     {
         var deepLinks = new TelegramDeepLinks(
@@ -786,6 +857,20 @@ public sealed class TelegramHandlerDispatcherTests
         await DispatchAsync(serviceProvider, CreateMessageUpdate("/kick 8"));
 
         Assert.Equal(["command-regex:7"], probe.Events);
+    }
+
+    [Fact]
+    public async Task CommandRegex_OptionalPrefix_MatchesPrefixedAndPrefixLessCommands()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services => services.AddTelegramHandler<OptionalPrefixCommandRegexRouteHandler>());
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/kick 7"));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("kick 8"));
+
+        Assert.Equal(["optional-prefix-command-regex:7", "optional-prefix-command-regex:8"], probe.Events);
     }
 
     [Fact]
@@ -3468,6 +3553,16 @@ public sealed class TelegramHandlerDispatcherTests
         }
     }
 
+    public sealed class OptionalPrefixCommandHandler
+    {
+        [Command("help", PrefixMode = CommandPrefixMode.Optional)]
+        public Task Handle(MessageContext context, HandlerProbe probe)
+        {
+            probe.Events.Add($"optional-prefix-command:{context.TelegramMessage.Text}");
+            return Task.CompletedTask;
+        }
+    }
+
     public sealed class TextTemplateRouteHandler
     {
         [TextTemplate("order {orderId:long}")]
@@ -3504,6 +3599,36 @@ public sealed class TelegramHandlerDispatcherTests
         public Task Handle(MessageContext context, int userId, HandlerProbe probe)
         {
             probe.Events.Add($"command-template:{userId}");
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class OptionalPrefixCommandTemplateRouteHandler
+    {
+        [CommandTemplate("ban {userId:int}", PrefixMode = CommandPrefixMode.Optional)]
+        public Task Handle(MessageContext context, int userId, HandlerProbe probe)
+        {
+            probe.Events.Add($"optional-prefix-command-template:{userId}");
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class NoPrefixCommandTemplateRouteHandler
+    {
+        [CommandTemplate("ban {userId:int}", PrefixMode = CommandPrefixMode.NoPrefix)]
+        public Task Handle(MessageContext context, int userId, HandlerProbe probe)
+        {
+            probe.Events.Add($"no-prefix-command-template:{userId}");
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class OptionalCustomPrefixCommandTemplateRouteHandler
+    {
+        [CommandTemplate("ban {userId:int}", PrefixMode = CommandPrefixMode.Optional, Prefixes = new[] { "!" })]
+        public Task Handle(MessageContext context, int userId, HandlerProbe probe)
+        {
+            probe.Events.Add($"optional-custom-prefix-command-template:{userId}");
             return Task.CompletedTask;
         }
     }
@@ -3585,6 +3710,16 @@ public sealed class TelegramHandlerDispatcherTests
         public Task Handle(MessageContext context, int userId, HandlerProbe probe)
         {
             probe.Events.Add($"command-regex:{userId}");
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class OptionalPrefixCommandRegexRouteHandler
+    {
+        [CommandRegex(@"^kick (?<userId>\d+)$", PrefixMode = CommandPrefixMode.Optional)]
+        public Task Handle(MessageContext context, int userId, HandlerProbe probe)
+        {
+            probe.Events.Add($"optional-prefix-command-regex:{userId}");
             return Task.CompletedTask;
         }
     }

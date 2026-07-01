@@ -4,6 +4,10 @@ namespace TeleFlow.Generators;
 
 public sealed partial class TelegramHandlerSourceGenerator
 {
+    private const int CommandPrefixModeRequired = 0;
+    private const int CommandPrefixModeOptional = 1;
+    private const int CommandPrefixModeNoPrefix = 2;
+
     private enum GeneratedHandlerKind
     {
         Command,
@@ -105,6 +109,7 @@ public sealed partial class TelegramHandlerSourceGenerator
         string? Pattern,
         ImmutableArray<string> CommandPrefixes,
         bool AllowSpaceAfterPrefix,
+        int PrefixMode,
         bool IgnoreCase,
         ImmutableArray<GeneratedTextFilter> TextFilters,
         ImmutableArray<GeneratedFilter> Filters,

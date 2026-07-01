@@ -745,7 +745,7 @@ internal static class TelegramHandlerDescriptorBuilder
 
         foreach (var command in commandAttributes)
         {
-            var policy = CreateCommandPolicy(command.Prefixes, command.AllowSpaceAfterPrefix, command.IgnoreCase);
+            var policy = CreateCommandPolicy(command.Prefixes, command.AllowSpaceAfterPrefix, command.IgnoreCase, command.PrefixMode);
             definitions.Add(new RouteDefinition(
                 TelegramRouteKind.CommandExact,
                 NormalizeCommand(method, command.Command),
@@ -757,7 +757,7 @@ internal static class TelegramHandlerDescriptorBuilder
 
         foreach (var template in commandTemplates)
         {
-            var policy = CreateCommandPolicy(template.Prefixes, template.AllowSpaceAfterPrefix, template.IgnoreCase);
+            var policy = CreateCommandPolicy(template.Prefixes, template.AllowSpaceAfterPrefix, template.IgnoreCase, template.PrefixMode);
             definitions.Add(new RouteDefinition(
                 TelegramRouteKind.CommandTemplate,
                 NormalizeCommandPattern(method, template.Template, policy),
@@ -773,7 +773,7 @@ internal static class TelegramHandlerDescriptorBuilder
 
         foreach (var regex in commandRegexes)
         {
-            var policy = CreateCommandPolicy(regex.Prefixes, regex.AllowSpaceAfterPrefix, regex.IgnoreCase);
+            var policy = CreateCommandPolicy(regex.Prefixes, regex.AllowSpaceAfterPrefix, regex.IgnoreCase, regex.PrefixMode);
             var routeValues = GetRegexRouteValueNames(method, regex.Pattern, regex.IgnoreCase)
                 .ToDictionary(
                     static name => name,
@@ -1177,9 +1177,10 @@ internal static class TelegramHandlerDescriptorBuilder
     private static TelegramCommandPolicy CreateCommandPolicy(
         IReadOnlyList<string> prefixes,
         bool allowSpaceAfterPrefix,
-        bool ignoreCase)
+        bool ignoreCase,
+        CommandPrefixMode prefixMode)
     {
-        return new TelegramCommandPolicy(prefixes, allowSpaceAfterPrefix, ignoreCase);
+        return new TelegramCommandPolicy(prefixes, allowSpaceAfterPrefix, ignoreCase, prefixMode);
     }
 
     private static Dictionary<string, RouteValueDefinition> CreateEmptyRouteValues()

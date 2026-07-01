@@ -4,7 +4,13 @@ TeleFlow follows SemVer for published NuGet packages and documented public behav
 
 ## Unreleased
 
-No changes yet.
+### Added
+
+- Added `CommandPrefixMode` for `[Command]`, `[CommandTemplate]`, and `[CommandRegex]` routes, allowing command prefixes to be required, optional, or disabled for prefix-less command-shaped text.
+
+### Changed
+
+- Generated handler metadata now carries command prefix mode when a route opts into non-default command prefix behavior.
 
 ## 1.0.0-alpha.7 - 2026-07-01
 

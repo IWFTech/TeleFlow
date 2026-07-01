@@ -17,6 +17,40 @@ public sealed class StartHandler
 
 `[Command("start")]` по умолчанию матчится на `/start`. Command prefix можно менять через свойства атрибута.
 
+Матчинг command prefix явный. По умолчанию используется
+`CommandPrefixMode.Required`: пользователь должен отправить `/start` или другую
+настроенную prefix-команду:
+
+```csharp
+[Command("start", Prefixes = new[] { "/", "!" })]
+public Task Start(MessageContext ctx, CancellationToken ct)
+{
+    return ctx.Message.AnswerAsync("Welcome.", ct);
+}
+```
+
+Если один route должен принимать и Telegram command, и текст без prefix,
+используй `CommandPrefixMode.Optional`:
+
+```csharp
+[Command("help", PrefixMode = CommandPrefixMode.Optional)]
+public Task Help(MessageContext ctx, CancellationToken ct)
+{
+    return ctx.Message.AnswerAsync("Help.", ct);
+}
+```
+
+Если нужна command route-семантика, но только для текста без prefix, используй
+`CommandPrefixMode.NoPrefix`:
+
+```csharp
+[Command("help", PrefixMode = CommandPrefixMode.NoPrefix)]
+public Task HelpText(MessageContext ctx, CancellationToken ct)
+{
+    return ctx.Message.AnswerAsync("Help.", ct);
+}
+```
+
 ## Text handler
 
 ```csharp
@@ -51,6 +85,26 @@ public Task ShowTicket(MessageContext ctx, long id, CancellationToken ct)
     return ctx.Message.AnswerAsync($"Ticket #{id}", ct);
 }
 ```
+
+Template описывает command body, а не prefix. Пиши
+`[CommandTemplate("ticket {id:long}")]`, а не
+`[CommandTemplate("/ticket {id:long}")]`.
+
+Если нужно поддержать и `/ticket 42`, и `ticket 42`, оставь один handler и
+сделай prefix optional:
+
+```csharp
+[CommandTemplate(
+    "ticket {id:long}",
+    PrefixMode = CommandPrefixMode.Optional)]
+public Task ShowTicket(MessageContext ctx, long id, CancellationToken ct)
+{
+    return ctx.Message.AnswerAsync($"Ticket #{id}", ct);
+}
+```
+
+Это заменяет старый workaround, где на один method вешались и
+`[CommandTemplate]`, и `[TextTemplate]`.
 
 Text templates работают без command prefix:
 

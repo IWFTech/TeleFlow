@@ -1,3 +1,5 @@
+using TeleFlow.Annotations;
+
 namespace TeleFlow.Telegram.Internal.Handlers;
 
 internal sealed class TelegramCommandPolicy
@@ -7,9 +9,15 @@ internal sealed class TelegramCommandPolicy
     public TelegramCommandPolicy(
         IReadOnlyList<string> prefixes,
         bool allowSpaceAfterPrefix,
-        bool ignoreCase)
+        bool ignoreCase,
+        CommandPrefixMode prefixMode = CommandPrefixMode.Required)
     {
         ArgumentNullException.ThrowIfNull(prefixes);
+
+        if (!Enum.IsDefined(prefixMode))
+        {
+            throw new InvalidOperationException($"Telegram command prefix mode '{prefixMode}' is not supported.");
+        }
 
         if (prefixes.Count == 0 || prefixes.Any(string.IsNullOrWhiteSpace))
         {
@@ -19,6 +27,7 @@ internal sealed class TelegramCommandPolicy
         Prefixes = prefixes.Select(static prefix => prefix.Trim()).Distinct(StringComparer.Ordinal).ToArray();
         AllowSpaceAfterPrefix = allowSpaceAfterPrefix;
         IgnoreCase = ignoreCase;
+        PrefixMode = prefixMode;
     }
 
     public IReadOnlyList<string> Prefixes { get; }
@@ -26,4 +35,6 @@ internal sealed class TelegramCommandPolicy
     public bool AllowSpaceAfterPrefix { get; }
 
     public bool IgnoreCase { get; }
+
+    public CommandPrefixMode PrefixMode { get; }
 }

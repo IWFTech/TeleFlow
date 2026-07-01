@@ -129,7 +129,8 @@ public sealed class AnnotationContractTests
             states,
             parameters,
             static (_, _, _) => ValueTask.CompletedTask,
-            routeValues: routeValues);
+            routeValues: routeValues,
+            prefixMode: CommandPrefixMode.Optional);
 
         commandPrefixes[0] = "/";
         textFilters[0] = new TelegramGeneratedTextFilterDescriptor("mutated", TextMatchMode.Equals, ignoreCase: true);
@@ -146,6 +147,7 @@ public sealed class AnnotationContractTests
         routeValues[0] = new TelegramGeneratedRouteValueDescriptor("other", typeof(string), isOptional: true);
 
         Assert.Equal(["!"], descriptor.CommandPrefixes);
+        Assert.Equal(CommandPrefixMode.Optional, descriptor.PrefixMode);
         Assert.Equal("help", Assert.Single(descriptor.TextFilters).Value);
         Assert.Equal([100L], Assert.Single(descriptor.Filters).LongValues);
         Assert.Equal(TelegramMemberStatusSet.IsNotMember, Assert.Single(descriptor.ChatMemberTransitions).OldStatus);

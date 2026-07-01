@@ -20,7 +20,7 @@
 
 ## Настройки route attributes
 
-`[Command]` и `[CommandTemplate]` по умолчанию работают с `/` commands и case-insensitive matching:
+`[Command]`, `[CommandTemplate]` и `[CommandRegex]` по умолчанию работают с `/` commands и case-insensitive matching:
 
 ```csharp
 [Command("start")]
@@ -33,6 +33,23 @@ Prefixes можно настроить, если бот принимает comma
 [Command("start", Prefixes = new[] { "/", "!" }, AllowSpaceAfterPrefix = true)]
 public Task Start(MessageContext ctx, CancellationToken ct) { ... }
 ```
+
+`PrefixMode` нужен, когда текст без prefix должен обрабатываться как command-shaped input:
+
+```csharp
+[CommandTemplate(
+    "ticket {id:long}",
+    PrefixMode = CommandPrefixMode.Optional)]
+public Task Ticket(MessageContext ctx, long id, CancellationToken ct) { ... }
+```
+
+Доступные значения `CommandPrefixMode`:
+
+| Value | Behavior |
+| --- | --- |
+| `Required` | Требует один из настроенных prefixes. Это значение по умолчанию. |
+| `Optional` | Принимает настроенный prefix или текст без prefix. |
+| `NoPrefix` | Принимает только текст без prefix. Не комбинируй с `Prefixes`. |
 
 `[Text]` поддерживает явный match mode:
 

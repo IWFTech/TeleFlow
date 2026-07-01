@@ -542,6 +542,7 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
                     Pattern: null,
                     CommandPrefixes: ["/"],
                     AllowSpaceAfterPrefix: false,
+                    PrefixMode: CommandPrefixModeRequired,
                     IgnoreCase: true,
                     TextFilters: [],
                     filters,
@@ -559,6 +560,7 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
                     Pattern: null,
                     CommandPrefixes: ["/"],
                     AllowSpaceAfterPrefix: false,
+                    PrefixMode: CommandPrefixModeRequired,
                     IgnoreCase: true,
                     TextFilters: [],
                     filters,
@@ -589,6 +591,7 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
                     Pattern: null,
                     CommandPrefixes: ["/"],
                     AllowSpaceAfterPrefix: false,
+                    PrefixMode: CommandPrefixModeRequired,
                     IgnoreCase: true,
                     TextFilters: [],
                     filters,
@@ -614,9 +617,12 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
                      includeClassRouteAttributes))
         {
             string? command = GetConstructorString(attribute);
+            int prefixMode = GetCommandPrefixMode(attribute);
 
             if (!IsValidCommand(command) ||
-                !TryGetPrefixes(attribute, out ImmutableArray<string> prefixes))
+                !TryGetPrefixes(attribute, out ImmutableArray<string> prefixes) ||
+                !IsSupportedCommandPrefixMode(prefixMode) ||
+                HasInvalidNoPrefixConfiguration(attribute, prefixMode))
             {
                 return [];
             }
@@ -628,6 +634,7 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
                 command,
                 prefixes,
                 GetNamedBool(attribute, "AllowSpaceAfterPrefix", defaultValue: false),
+                prefixMode,
                 GetNamedBool(attribute, "IgnoreCase", defaultValue: true),
                 TextFilters: [],
                 filters,
@@ -642,11 +649,14 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
                      includeClassRouteAttributes))
         {
             string? template = GetConstructorString(attribute);
+            int prefixMode = GetCommandPrefixMode(attribute);
 
             if (template is null ||
                 string.IsNullOrWhiteSpace(template) ||
                 !TryParseTemplateRouteValues(template, out ImmutableDictionary<string, GeneratedRouteValue> routeValues) ||
                 !TryGetPrefixes(attribute, out ImmutableArray<string> prefixes) ||
+                !IsSupportedCommandPrefixMode(prefixMode) ||
+                HasInvalidNoPrefixConfiguration(attribute, prefixMode) ||
                 CommandPatternStartsWithPrefix(template, prefixes))
             {
                 return [];
@@ -659,6 +669,7 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
                 Pattern: template.Trim(),
                 prefixes,
                 GetNamedBool(attribute, "AllowSpaceAfterPrefix", defaultValue: false),
+                prefixMode,
                 GetNamedBool(attribute, "IgnoreCase", defaultValue: true),
                 TextFilters: [],
                 filters,
@@ -673,10 +684,13 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
                      includeClassRouteAttributes))
         {
             string? pattern = GetConstructorString(attribute);
+            int prefixMode = GetCommandPrefixMode(attribute);
 
             if (string.IsNullOrWhiteSpace(pattern) ||
                 !TryParseRegexRouteValues(pattern, out ImmutableDictionary<string, GeneratedRouteValue> routeValues) ||
-                !TryGetPrefixes(attribute, out ImmutableArray<string> prefixes))
+                !TryGetPrefixes(attribute, out ImmutableArray<string> prefixes) ||
+                !IsSupportedCommandPrefixMode(prefixMode) ||
+                HasInvalidNoPrefixConfiguration(attribute, prefixMode))
             {
                 return [];
             }
@@ -688,6 +702,7 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
                 Pattern: pattern,
                 prefixes,
                 GetNamedBool(attribute, "AllowSpaceAfterPrefix", defaultValue: false),
+                prefixMode,
                 GetNamedBool(attribute, "IgnoreCase", defaultValue: true),
                 TextFilters: [],
                 filters,
@@ -711,6 +726,7 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
                 Pattern: null,
                 CommandPrefixes: ["/"],
                 AllowSpaceAfterPrefix: false,
+                PrefixMode: CommandPrefixModeRequired,
                 IgnoreCase: true,
                 textFilters,
                 filters,
@@ -729,7 +745,8 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
                     Pattern: filter.Value,
                     CommandPrefixes: ["/"],
                     AllowSpaceAfterPrefix: false,
-                    filter.IgnoreCase,
+                    PrefixMode: CommandPrefixModeRequired,
+                    IgnoreCase: filter.IgnoreCase,
                     TextFilters: [filter],
                     filters,
                     ChatMemberTransitions: [],
@@ -757,10 +774,11 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
                 GeneratedRouteKind.TextTemplate,
                 Command: null,
                 Pattern: template.Trim(),
-                CommandPrefixes: ["/"],
-                AllowSpaceAfterPrefix: false,
-                GetNamedBool(attribute, "IgnoreCase", defaultValue: true),
-                TextFilters: [],
+                    CommandPrefixes: ["/"],
+                    AllowSpaceAfterPrefix: false,
+                    PrefixMode: CommandPrefixModeRequired,
+                    IgnoreCase: GetNamedBool(attribute, "IgnoreCase", defaultValue: true),
+                    TextFilters: [],
                 filters,
                 ChatMemberTransitions: [],
                 RoleRequirements: roleRequirements,
@@ -785,10 +803,11 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
                 GeneratedRouteKind.TextRegex,
                 Command: null,
                 Pattern: pattern,
-                CommandPrefixes: ["/"],
-                AllowSpaceAfterPrefix: false,
-                GetNamedBool(attribute, "IgnoreCase", defaultValue: true),
-                TextFilters: [],
+                    CommandPrefixes: ["/"],
+                    AllowSpaceAfterPrefix: false,
+                    PrefixMode: CommandPrefixModeRequired,
+                    IgnoreCase: GetNamedBool(attribute, "IgnoreCase", defaultValue: true),
+                    TextFilters: [],
                 filters,
                 ChatMemberTransitions: [],
                 RoleRequirements: roleRequirements,
@@ -1541,6 +1560,41 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
         }
 
         return true;
+    }
+
+    private static int GetCommandPrefixMode(AttributeData attribute)
+    {
+        foreach (KeyValuePair<string, TypedConstant> argument in attribute.NamedArguments)
+        {
+            if (string.Equals(argument.Key, "PrefixMode", StringComparison.Ordinal) &&
+                argument.Value.Value is int value)
+            {
+                return value;
+            }
+        }
+
+        return CommandPrefixModeRequired;
+    }
+
+    private static bool HasInvalidNoPrefixConfiguration(
+        AttributeData attribute,
+        int prefixMode)
+    {
+        return prefixMode == CommandPrefixModeNoPrefix && HasNamedArgument(attribute, "Prefixes");
+    }
+
+    private static bool IsSupportedCommandPrefixMode(int value)
+    {
+        return value is CommandPrefixModeRequired or
+            CommandPrefixModeOptional or
+            CommandPrefixModeNoPrefix;
+    }
+
+    private static bool HasNamedArgument(
+        AttributeData attribute,
+        string name)
+    {
+        return attribute.NamedArguments.Any(argument => string.Equals(argument.Key, name, StringComparison.Ordinal));
     }
 
     private static bool CommandPatternStartsWithPrefix(
