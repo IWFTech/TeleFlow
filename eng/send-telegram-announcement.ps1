@@ -8,14 +8,16 @@ param(
     [string] $Body = "",
     [string] $Tag = "",
     [string] $Repository = "",
+    [string] $GitHubRef = "",
     [string] $BotToken = $env:TELEGRAM_NOTIFY_BOT_TOKEN,
     [string] $ChatId = $env:TELEGRAM_NOTIFY_CHAT_ID,
     [string] $ReleasesThreadId = $env:TELEGRAM_RELEASES_THREAD_ID,
     [string] $IssuesThreadId = $env:TELEGRAM_ISSUES_THREAD_ID,
     [string] $PullRequestsThreadId = $env:TELEGRAM_PULL_REQUESTS_THREAD_ID,
+    [int] $MaximumRichMessageLength = 32768,
     [int] $MaximumMessageLength = 4096,
-    [int] $IssueBodyPreviewLength = 600,
-    [int] $PullRequestBodyPreviewLength = 360,
+    [int] $IssueBodyPreviewLength = -1,
+    [int] $PullRequestBodyPreviewLength = -1,
     [switch] $DryRun
 )
 
@@ -25,12 +27,16 @@ if ($MaximumMessageLength -lt 512) {
     throw "MaximumMessageLength must be at least 512."
 }
 
-if ($IssueBodyPreviewLength -lt 0) {
-    throw "IssueBodyPreviewLength must not be negative."
+if ($MaximumRichMessageLength -lt 512 -or $MaximumRichMessageLength -gt 32768) {
+    throw "MaximumRichMessageLength must be between 512 and 32768."
 }
 
-if ($PullRequestBodyPreviewLength -lt 0) {
-    throw "PullRequestBodyPreviewLength must not be negative."
+if ($IssueBodyPreviewLength -lt -1) {
+    throw "IssueBodyPreviewLength must be -1 or greater."
+}
+
+if ($PullRequestBodyPreviewLength -lt -1) {
+    throw "PullRequestBodyPreviewLength must be -1 or greater."
 }
 
 function Read-GitHubEvent {
@@ -45,6 +51,16 @@ function Read-GitHubEvent {
     }
 
     return Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+}
+
+function Read-GitHubJson {
+    param([string] $ApiPath)
+
+    if ([string]::IsNullOrWhiteSpace($ApiPath)) {
+        throw "GitHub API path must not be empty."
+    }
+
+    return gh api $ApiPath | ConvertFrom-Json
 }
 
 function Select-FirstText {
@@ -83,6 +99,10 @@ function ConvertTo-PlainTextPreview {
     $normalized = [System.Text.RegularExpressions.Regex]::Replace($normalized, '(?m)^\s*[-*+]\s+', "- ")
     $normalized = [System.Text.RegularExpressions.Regex]::Replace($normalized, "\r\n?", "`n")
     $normalized = [System.Text.RegularExpressions.Regex]::Replace($normalized, "`n{3,}", "`n`n")
+
+    if ($MaximumLength -lt 0) {
+        return $normalized
+    }
 
     if ($normalized.Length -le $MaximumLength) {
         return $normalized
@@ -202,6 +222,132 @@ function ConvertTo-Announcement {
     throw "Unsupported GitHub event payload."
 }
 
+function Get-ManualReplayAction {
+    param(
+        [string] $AnnouncementKind,
+        [object] $GitHubObject,
+        [string] $OverrideState
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($OverrideState)) {
+        return $OverrideState
+    }
+
+    switch ($AnnouncementKind) {
+        "release" {
+            return "published"
+        }
+        "issue" {
+            if ($GitHubObject.state -eq "closed") {
+                return "closed"
+            }
+
+            return "opened"
+        }
+        "pull_request" {
+            if ($GitHubObject.merged -eq $true) {
+                return "merged"
+            }
+
+            if ($GitHubObject.state -eq "closed") {
+                return "closed"
+            }
+
+            return "opened"
+        }
+        default {
+            throw "Unsupported manual event kind: '$AnnouncementKind'."
+        }
+    }
+}
+
+function New-ManualReplayPayload {
+    param(
+        [string] $AnnouncementKind,
+        [string] $Reference,
+        [string] $RepositoryName,
+        [string] $OverrideState
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Reference)) {
+        return $null
+    }
+
+    if ([string]::IsNullOrWhiteSpace($RepositoryName)) {
+        throw "Repository is required when GitHubRef is used."
+    }
+
+    switch ($AnnouncementKind) {
+        "release" {
+            $release = Read-GitHubJson "repos/$RepositoryName/releases/tags/$Reference"
+
+            return @{
+                action = Get-ManualReplayAction `
+                    -AnnouncementKind $AnnouncementKind `
+                    -GitHubObject $release `
+                    -OverrideState $OverrideState
+                repository = @{ full_name = $RepositoryName }
+                release = $release
+            }
+        }
+        "issue" {
+            $issue = Read-GitHubJson "repos/$RepositoryName/issues/$Reference"
+
+            if ($null -ne $issue.pull_request) {
+                throw "GitHub ref '$Reference' is a pull request. Use Kind=pull_request."
+            }
+
+            return @{
+                action = Get-ManualReplayAction `
+                    -AnnouncementKind $AnnouncementKind `
+                    -GitHubObject $issue `
+                    -OverrideState $OverrideState
+                repository = @{ full_name = $RepositoryName }
+                issue = $issue
+            }
+        }
+        "pull_request" {
+            $pullRequest = Read-GitHubJson "repos/$RepositoryName/pulls/$Reference"
+
+            return @{
+                action = Get-ManualReplayAction `
+                    -AnnouncementKind $AnnouncementKind `
+                    -GitHubObject $pullRequest `
+                    -OverrideState $OverrideState
+                repository = @{ full_name = $RepositoryName }
+                pull_request = $pullRequest
+            }
+        }
+        default {
+            throw "Unsupported manual event kind: '$AnnouncementKind'."
+        }
+    }
+}
+
+function Resolve-AnnouncementPayload {
+    param(
+        [string] $Path,
+        [string] $Reference,
+        [string] $AnnouncementKind,
+        [string] $RepositoryName,
+        [string] $OverrideState
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($Path)) {
+        return Read-GitHubEvent $Path
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($Reference)) {
+        return New-ManualReplayPayload `
+            -AnnouncementKind $AnnouncementKind `
+            -Reference $Reference `
+            -RepositoryName $RepositoryName `
+            -OverrideState $OverrideState
+    }
+
+    return $null
+}
+
 function Get-ThreadIdForAnnouncement {
     param([string] $AnnouncementKind)
 
@@ -289,6 +435,44 @@ function Split-PlainTextForHtmlMessage {
     return $chunks.ToArray()
 }
 
+function Split-PlainTextForRichMessage {
+    param(
+        [AllowEmptyString()][string] $Text,
+        [int] $MaximumLength
+    )
+
+    $chunks = [System.Collections.Generic.List[string]]::new()
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return $chunks.ToArray()
+    }
+
+    $remaining = $Text.Trim()
+
+    while ($remaining.Length -gt $MaximumLength) {
+        $candidateLength = [Math]::Min($remaining.Length, $MaximumLength)
+        $candidate = $remaining.Substring(0, $candidateLength)
+        $splitAt = $candidate.LastIndexOf("`n`n", [StringComparison]::Ordinal)
+
+        if ($splitAt -lt 256) {
+            $splitAt = $candidate.LastIndexOf("`n", [StringComparison]::Ordinal)
+        }
+
+        if ($splitAt -lt 256) {
+            $splitAt = $candidateLength
+        }
+
+        $chunks.Add($remaining.Substring(0, $splitAt).TrimEnd())
+        $remaining = $remaining.Substring($splitAt).TrimStart()
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($remaining)) {
+        $chunks.Add($remaining)
+    }
+
+    return $chunks.ToArray()
+}
+
 function New-AnnouncementHeaderText {
     param([hashtable] $Announcement)
 
@@ -325,6 +509,180 @@ function New-AnnouncementHeaderText {
     }
 
     return ($lines -join "`n")
+}
+
+function New-AnnouncementRichMarkdownHeaderText {
+    param([hashtable] $Announcement)
+
+    $lines = [System.Collections.Generic.List[string]]::new()
+    $heading = Get-Heading `
+        -AnnouncementKind $Announcement.Kind `
+        -AnnouncementState $Announcement.State
+
+    $lines.Add("**$heading**")
+
+    if (-not [string]::IsNullOrWhiteSpace($Announcement.Title)) {
+        if ([string]::IsNullOrWhiteSpace($Announcement.Number)) {
+            $lines.Add($Announcement.Title)
+        }
+        else {
+            $lines.Add("#$($Announcement.Number): $($Announcement.Title)")
+        }
+    }
+
+    if ($Announcement.Kind -eq "release" -and -not [string]::IsNullOrWhiteSpace($Announcement.Tag)) {
+        $lines.Add("**Tag:** ``$($Announcement.Tag)``")
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($Announcement.Repository)) {
+        $lines.Add("**Repository:** ``$($Announcement.Repository)``")
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($Announcement.Url)) {
+        $lines.Add("[Open on GitHub]($($Announcement.Url))")
+    }
+
+    return ($lines -join "`n")
+}
+
+function Normalize-MarkdownText {
+    param([AllowEmptyString()][string] $Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return ""
+    }
+
+    $normalized = $Text.Trim()
+    $normalized = [System.Text.RegularExpressions.Regex]::Replace($normalized, "`r`n?", "`n")
+    $normalized = [System.Text.RegularExpressions.Regex]::Replace($normalized, "`n{4,}", "`n`n`n")
+
+    return $normalized
+}
+
+function Get-RichDetailsSummaryText {
+    param([string] $AnnouncementKind)
+
+    if ($AnnouncementKind -eq "release") {
+        return "Changelog"
+    }
+
+    return "Details"
+}
+
+function New-RichDetailsBlock {
+    param(
+        [string] $Summary,
+        [AllowEmptyString()][string] $Text
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return ""
+    }
+
+    return "<details><summary>$Summary</summary>`n`n$Text`n`n</details>"
+}
+
+function New-AnnouncementRichMarkdownText {
+    param([hashtable] $Announcement)
+
+    $header = New-AnnouncementRichMarkdownHeaderText $Announcement
+    $previewLength = Get-BodyPreviewLength $Announcement.Kind
+    $normalizedBody = Normalize-MarkdownText ([string] $Announcement.Body)
+    $summary = ""
+
+    if ($Announcement.Kind -eq "issue" -or $Announcement.Kind -eq "pull_request") {
+        $summary = Select-MarkdownSection `
+            -Text $normalizedBody `
+            -Heading "Summary"
+
+        $hasSummary = -not [string]::IsNullOrWhiteSpace($summary)
+        $summaryIsBody = [string]::Equals($summary, $normalizedBody, [StringComparison]::Ordinal)
+
+        if ($hasSummary -and -not $summaryIsBody) {
+            $normalizedBody = Remove-MarkdownSection `
+                -Text $normalizedBody `
+                -Heading "Summary"
+        }
+        else {
+            $summary = ""
+        }
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($summary) -and $previewLength -ge 0) {
+        $summary = ConvertTo-PlainTextPreview `
+            -Text $summary `
+            -MaximumLength $previewLength
+    }
+
+    if ($previewLength -ge 0) {
+        $normalizedBody = ConvertTo-PlainTextPreview `
+            -Text $normalizedBody `
+            -MaximumLength $previewLength
+    }
+
+    $visibleSummary = if ([string]::IsNullOrWhiteSpace($summary)) {
+        ""
+    }
+    else {
+        "**Summary**`n`n$summary"
+    }
+
+    if ([string]::IsNullOrWhiteSpace($normalizedBody)) {
+        if ([string]::IsNullOrWhiteSpace($visibleSummary)) {
+            return @($header)
+        }
+
+        return @($header + "`n`n" + $visibleSummary)
+    }
+
+    $bodyPrefix = "`n`n"
+    $visibleSummaryPrefix = if ([string]::IsNullOrWhiteSpace($visibleSummary)) {
+        ""
+    }
+    else {
+        $visibleSummary + "`n`n"
+    }
+    $detailsSummary = Get-RichDetailsSummaryText $Announcement.Kind
+    $detailsPrefix = "<details><summary>$detailsSummary</summary>`n`n"
+    $detailsSuffix = "`n`n</details>"
+    $partHeaderReserveLength = 32
+    $availableBodyLength = $MaximumRichMessageLength `
+        - $header.Length `
+        - $bodyPrefix.Length `
+        - $visibleSummaryPrefix.Length `
+        - $detailsPrefix.Length `
+        - $detailsSuffix.Length `
+        - $partHeaderReserveLength
+
+    if ($availableBodyLength -lt 256) {
+        throw "Announcement header is too long to fit into a Telegram rich message."
+    }
+
+    $bodyChunks = @(Split-PlainTextForRichMessage `
+            -Text $normalizedBody `
+            -MaximumLength $availableBodyLength)
+
+    $messages = [System.Collections.Generic.List[string]]::new()
+
+    for ($index = 0; $index -lt $bodyChunks.Count; $index++) {
+        $messageHeader = $header
+        $messageVisibleSummary = ""
+
+        if ($index -gt 0) {
+            $messageHeader = $header + "`nPart $($index + 1)"
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace($visibleSummaryPrefix)) {
+            $messageVisibleSummary = $visibleSummaryPrefix
+        }
+
+        $detailsBlock = New-RichDetailsBlock `
+            -Summary $detailsSummary `
+            -Text $bodyChunks[$index]
+
+        $messages.Add($messageHeader + $bodyPrefix + $messageVisibleSummary + $detailsBlock)
+    }
+
+    return $messages.ToArray()
 }
 
 function New-AnnouncementText {
@@ -474,38 +832,140 @@ function Send-TelegramMessage {
     }
 }
 
-$payload = Read-GitHubEvent $EventPath
+function Send-TelegramRichMessage {
+    param(
+        [string] $Token,
+        [string] $TargetChatId,
+        [int] $TargetThreadId,
+        [string] $Text
+    )
+
+    $uri = "https://api.telegram.org/bot$Token/sendRichMessage"
+    $payload = @{
+        chat_id = $TargetChatId
+        message_thread_id = $TargetThreadId
+        rich_message = @{
+            markdown = $Text
+        }
+    }
+
+    try {
+        Invoke-RestMethod `
+            -Method Post `
+            -Uri $uri `
+            -ContentType "application/json; charset=utf-8" `
+            -Body ($payload | ConvertTo-Json -Depth 10 -Compress) `
+            -ErrorAction Stop | Out-Null
+    }
+    catch {
+        throw "Telegram sendRichMessage request failed. Check rich markdown, bot token, chat id, topic id, and bot permissions."
+    }
+}
+
+function New-AnnouncementRenderResult {
+    param([hashtable] $Announcement)
+
+    return @{
+        Kind = $Announcement.Kind
+        ThreadId = Get-ThreadIdForAnnouncement $Announcement.Kind
+        RichMessages = @(New-AnnouncementRichMarkdownText $Announcement)
+        FallbackMessages = @(New-AnnouncementText $Announcement)
+    }
+}
+
+function Write-AnnouncementDryRun {
+    param([hashtable] $RenderResult)
+
+    Write-Host "Dry run enabled. Telegram messages were not sent."
+    Write-Host "Announcement kind: $($RenderResult.Kind)"
+    Write-Host "Rich message count: $($RenderResult.RichMessages.Count)"
+    Write-Host "Fallback message count: $($RenderResult.FallbackMessages.Count)"
+
+    for ($index = 0; $index -lt $RenderResult.RichMessages.Count; $index++) {
+        Write-Host ""
+        Write-Host "==> Telegram rich message $($index + 1)"
+        Write-Host $RenderResult.RichMessages[$index]
+    }
+}
+
+function Send-AnnouncementMessages {
+    param(
+        [hashtable] $RenderResult,
+        [string] $Token,
+        [string] $TargetChatId
+    )
+
+    $parsedThreadId = Assert-TelegramConfiguration `
+        -Token $Token `
+        -TargetChatId $TargetChatId `
+        -TargetThreadId $RenderResult.ThreadId
+
+    $sentRichMessageCount = 0
+
+    try {
+        foreach ($message in $RenderResult.RichMessages) {
+            Send-TelegramRichMessage `
+                -Token $Token `
+                -TargetChatId $TargetChatId `
+                -TargetThreadId $parsedThreadId `
+                -Text $message
+
+            $sentRichMessageCount++
+        }
+    }
+    catch {
+        if ($sentRichMessageCount -gt 0) {
+            throw "Telegram rich message announcement failed after $sentRichMessageCount message(s) had already been sent. Not sending fallback to avoid duplicate announcements."
+        }
+
+        Write-Warning "Rich message announcement failed before sending any messages. Sending HTML fallback."
+
+        foreach ($message in $RenderResult.FallbackMessages) {
+            Send-TelegramMessage `
+                -Token $Token `
+                -TargetChatId $TargetChatId `
+                -TargetThreadId $parsedThreadId `
+                -Text $message
+        }
+    }
+}
+
+function Send-Announcement {
+    param(
+        [hashtable] $RenderResult,
+        [string] $Token,
+        [string] $TargetChatId,
+        [bool] $PreviewOnly
+    )
+
+    if ($PreviewOnly) {
+        Write-AnnouncementDryRun $RenderResult
+        return
+    }
+
+    Send-AnnouncementMessages `
+        -RenderResult $RenderResult `
+        -Token $Token `
+        -TargetChatId $TargetChatId
+
+    Write-Host "Telegram announcement sent. Kind: $($RenderResult.Kind). Rich message count: $($RenderResult.RichMessages.Count)"
+}
+
+$payload = Resolve-AnnouncementPayload `
+    -Path $EventPath `
+    -Reference $GitHubRef `
+    -AnnouncementKind $Kind `
+    -RepositoryName $Repository `
+    -OverrideState $State
+
 $announcement = ConvertTo-Announcement $payload
 $announcement.Kind = Select-FirstText @($announcement.Kind, $Kind)
 $announcement.Title = Select-FirstText @($announcement.Title, $Title, "Untitled")
-$threadId = Get-ThreadIdForAnnouncement $announcement.Kind
-$messages = @(New-AnnouncementText $announcement)
 
-if ($DryRun) {
-    Write-Host "Dry run enabled. Telegram messages were not sent."
-    Write-Host "Announcement kind: $($announcement.Kind)"
-    Write-Host "Message count: $($messages.Count)"
+$renderResult = New-AnnouncementRenderResult $announcement
 
-    for ($index = 0; $index -lt $messages.Count; $index++) {
-        Write-Host ""
-        Write-Host "==> Telegram message $($index + 1)"
-        Write-Host $messages[$index]
-    }
-
-    return
-}
-
-$parsedThreadId = Assert-TelegramConfiguration `
+Send-Announcement `
+    -RenderResult $renderResult `
     -Token $BotToken `
     -TargetChatId $ChatId `
-    -TargetThreadId $threadId
-
-foreach ($message in $messages) {
-    Send-TelegramMessage `
-        -Token $BotToken `
-        -TargetChatId $ChatId `
-        -TargetThreadId $parsedThreadId `
-        -Text $message
-}
-
-Write-Host "Telegram announcement sent. Kind: $($announcement.Kind). Message count: $($messages.Count)"
+    -PreviewOnly:$DryRun

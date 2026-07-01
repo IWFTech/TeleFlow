@@ -31,28 +31,32 @@ on:
           - release
           - issue
           - pull_request
+      githubRef:
+        description: Issue/PR number or release tag to replay from GitHub. Leave blank to use manual fields.
+        required: false
+        type: string
       title:
-        description: Manual title.
+        description: Manual title override.
         required: false
         type: string
       number:
-        description: Manual issue or pull request number.
+        description: Manual issue or pull request number override.
         required: false
         type: string
       state:
-        description: Manual state or action.
+        description: Manual state or event action override.
         required: false
         type: string
       url:
-        description: Manual URL.
+        description: Manual URL override.
         required: false
         type: string
       body:
-        description: Manual body text.
+        description: Manual body text override.
         required: false
         type: string
       tag:
-        description: Manual release tag.
+        description: Manual release tag override.
         required: false
         type: string
 
@@ -93,17 +97,20 @@ jobs:
         env:
           MANUAL_DRY_RUN: ${{ github.event.inputs.dryRun }}
           MANUAL_EVENT_KIND: ${{ github.event.inputs.eventKind }}
+          MANUAL_GITHUB_REF: ${{ github.event.inputs.githubRef }}
           MANUAL_TITLE: ${{ github.event.inputs.title }}
           MANUAL_NUMBER: ${{ github.event.inputs.number }}
           MANUAL_STATE: ${{ github.event.inputs.state }}
           MANUAL_URL: ${{ github.event.inputs.url }}
           MANUAL_BODY: ${{ github.event.inputs.body }}
           MANUAL_TAG: ${{ github.event.inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           $dryRun = [System.Convert]::ToBoolean($env:MANUAL_DRY_RUN)
 
           .\eng\send-telegram-announcement.ps1 `
               -Kind $env:MANUAL_EVENT_KIND `
+              -GitHubRef $env:MANUAL_GITHUB_REF `
               -Title $env:MANUAL_TITLE `
               -Number $env:MANUAL_NUMBER `
               -State $env:MANUAL_STATE `
