@@ -10,7 +10,8 @@ Core contracts:
 - `IStateDataStore`: key-value data для current state key;
 - `IStateDataSerializer`: serialization для state data values;
 - `IStateHistoryStore`: wizard history;
-- `IStateKeyFactory`: mapping update в state key.
+- `IStateKeyFactory`: mapping update в structured state key;
+- `IStateStorageKeyBuilder`: строит stable external storage keys из structured state keys.
 
 ## Memory storage
 
@@ -47,12 +48,34 @@ Custom keys нужны для:
 - business connection partitioning;
 - custom worker или gateway topologies.
 
+`IStateKeyFactory` должна описывать ownership и isolation. В неё не надо прятать Redis, SQL или document-store formatting rules.
+
+## Собственный storage key builder
+
+Durable providers часто нужен string key. Для этого используется `IStateStorageKeyBuilder`:
+
+```csharp
+builder.Services.AddStateStorageKeyBuilder<MyStateStorageKeyBuilder>();
+```
+
+Default builder создаёт stable escaped keys для каждой группы state records:
+
+```text
+teleflow:state:scope=telegram:subject=user%3A5:partition=chat%3A100:destiny=default
+teleflow:data:scope=telegram:subject=user%3A5:partition=chat%3A100:destiny=default
+teleflow:history:scope=telegram:subject=user%3A5:partition=chat%3A100:destiny=default
+teleflow:lock:scope=telegram:subject=user%3A5:partition=chat%3A100:destiny=default
+```
+
+Memory storage не нуждается в этой conversion и продолжает использовать `StateKey` напрямую.
+
 ## Рекомендации для реализации storage
 
 Storage implementations должны:
 
 - respect `CancellationToken`;
 - использовать deterministic keys;
+- изолировать state, data, history и lock records;
 - не swallow serialization errors;
 - сохранять wizard history ordering;
 - быть safe under concurrent updates от одного user, если deployment это допускает;

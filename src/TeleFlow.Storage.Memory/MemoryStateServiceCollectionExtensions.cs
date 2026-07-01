@@ -15,6 +15,7 @@ public static class MemoryStateServiceCollectionExtensions
         services.TryAddSingleton<IStateDataStore, MemoryStateDataStore>();
         services.TryAddSingleton<IStateDataSerializer, JsonStateDataSerializer>();
         services.TryAddSingleton<IStateHistoryStore, MemoryStateHistoryStore>();
+        services.TryAddSingleton<IStateStorageKeyBuilder, DefaultStateStorageKeyBuilder>();
         services.AddUpdateMiddleware<UpdateStateMiddleware>();
 
         return services;

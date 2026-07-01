@@ -173,10 +173,30 @@ Scenes are useful when a flow grows and state names need a stable structure.
 
 ## State Key
 
-Telegram state keys are created from Telegram context. For message and callback flows this keeps state scoped to the user and chat. Advanced applications can replace `IStateKeyFactory`.
+Telegram state keys are created from Telegram context. For message and callback flows this keeps state scoped to the user and chat. When TeleFlow can safely read the bot id from the bot token prefix, the default key also isolates state by bot. Message thread id and business connection id are included when Telegram provides them.
+
+The structured key has five parts:
+
+| Part | Meaning |
+| --- | --- |
+| `Namespace` | Application or storage namespace. Defaults to `teleflow`. |
+| `Scope` | Runtime or domain scope. Telegram uses `telegram`. |
+| `Subject` | State owner. Telegram message and callback flows use `user:{id}`. |
+| `Partition` | Additional isolation boundary, such as bot, chat, thread, business connection, or inline callback chat instance. |
+| `Destiny` | Optional state branch. Defaults to `default`. |
+
+Advanced applications can replace `IStateKeyFactory`:
 
 ```csharp
 builder.Services.AddStateKeyFactory<MyStateKeyFactory>();
 ```
 
 Use custom keys when business requirements need tenant-aware, bot-aware, or cross-chat state partitioning.
+
+Durable storage providers can also replace `IStateStorageKeyBuilder` when they need a different Redis, SQL, or document-store key format:
+
+```csharp
+builder.Services.AddStateStorageKeyBuilder<MyStateStorageKeyBuilder>();
+```
+
+Memory storage keeps using the structured `StateKey` directly. String key building exists for storage providers that need stable external keys.

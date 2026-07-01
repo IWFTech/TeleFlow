@@ -106,6 +106,7 @@ services.AddStateDataStore<MyStateDataStore>();
 services.AddStateDataSerializer<MySerializer>();
 services.AddStateHistoryStore<MyHistoryStore>();
 services.AddStateKeyFactory<MyStateKeyFactory>();
+services.AddStateStorageKeyBuilder<MyStateStorageKeyBuilder>();
 ```
 
 Telegram framework:
