@@ -19,6 +19,7 @@ $strictAnalyzerScriptPath = Join-Path $repositoryRoot "eng\verify-strict-analyze
 $runtimePackages = @(
     @{ Id = "IWF.TeleFlow.Annotations"; Project = "src\TeleFlow.Annotations\TeleFlow.Annotations.csproj" },
     @{ Id = "IWF.TeleFlow.Framework.Core"; Project = "src\TeleFlow.Framework.Core\TeleFlow.Framework.Core.csproj" },
+    @{ Id = "IWF.TeleFlow.Framework.Hosting"; Project = "src\TeleFlow.Framework.Hosting\TeleFlow.Framework.Hosting.csproj" },
     @{ Id = "IWF.TeleFlow.Storage.Memory"; Project = "src\TeleFlow.Storage.Memory\TeleFlow.Storage.Memory.csproj" },
     @{ Id = "IWF.TeleFlow.Telegram.Schema"; Project = "src\TeleFlow.Telegram.Schema\TeleFlow.Telegram.Schema.csproj" },
     @{ Id = "IWF.TeleFlow.Telegram.Client"; Project = "src\TeleFlow.Telegram.Client\TeleFlow.Telegram.Client.csproj" },
