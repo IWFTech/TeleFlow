@@ -31,6 +31,7 @@ public sealed class PublicSurfaceTests
         "TeleFlow.Telegram.TelegramNotFoundException",
         "TeleFlow.Telegram.TelegramConflictException",
         "TeleFlow.Telegram.TelegramEntityTooLargeException",
+        "TeleFlow.Telegram.TelegramRetryAfterPolicy",
         "TeleFlow.Telegram.TelegramRetryAfterException",
         "TeleFlow.Telegram.TelegramMigrateToChatException",
         "TeleFlow.Telegram.TelegramServerException",

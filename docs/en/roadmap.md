@@ -94,6 +94,7 @@ Status: planned after handler-level rate limiting.
 Current state:
 
 - Telegram `429` responses with `response_parameters.retry_after` or HTTP `Retry-After` are respected by the Telegram request executor.
+- Automatic retry-after waiting is bounded by `TelegramRetryAfterPolicy` and documented in the Telegram client feature page.
 - Ordinary non-429 Telegram API failures are not retried automatically.
 
 Target state:

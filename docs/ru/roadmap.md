@@ -94,6 +94,7 @@ Non-goals для первой реализации:
 Текущее состояние:
 
 - Telegram `429` responses с `response_parameters.retry_after` или HTTP `Retry-After` уважаются Telegram request executor.
+- Automatic retry-after waiting ограничен `TelegramRetryAfterPolicy` и описан на странице Telegram client feature.
 - Обычные non-429 Telegram API failures не ретраятся автоматически.
 
 Целевое состояние:

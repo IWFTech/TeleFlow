@@ -84,24 +84,4 @@ internal static class TelegramApiExceptionFactory
         };
     }
 
-    public static TelegramRetryAfterException CreateRetryAfterException(
-        string methodName,
-        int statusCode,
-        TelegramTransportEnvelope envelope,
-        string fallbackDescription)
-    {
-        var description = envelope.Description ?? fallbackDescription;
-        var message = $"Telegram request '{methodName}' failed: {description}";
-        int? retryAfterSeconds = envelope.ResponseParameters?.RetryAfter is long retryAfter
-            ? checked((int)retryAfter)
-            : null;
-
-        return new TelegramRetryAfterException(
-            message,
-            methodName,
-            httpStatusCode: statusCode,
-            telegramErrorCode: envelope.ErrorCode,
-            description: description,
-            retryAfterSeconds: retryAfterSeconds);
-    }
 }
