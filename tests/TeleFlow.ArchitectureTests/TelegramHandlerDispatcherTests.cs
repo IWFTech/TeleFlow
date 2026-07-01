@@ -4,11 +4,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using TeleFlow.Annotations;
-using TeleFlow.Core.Application;
-using TeleFlow.Core.Callbacks;
-using TeleFlow.Core.Middleware;
-using TeleFlow.Core.States;
-using TeleFlow.Core.Updates;
+using TeleFlow.Framework.Application;
+using TeleFlow.Framework.Callbacks;
+using TeleFlow.Framework.Middleware;
+using TeleFlow.Framework.States;
+using TeleFlow.Framework.Updates;
 using TeleFlow.Storage.Memory;
 using TeleFlow.Telegram;
 using TeleFlow.Telegram.Internal;
@@ -2203,7 +2203,7 @@ public sealed class TelegramHandlerDispatcherTests
         });
 
         var exception = Assert.Throws<InvalidOperationException>(() =>
-            serviceProvider.GetRequiredService<TeleFlow.Core.Dispatching.IUpdateDispatcher>());
+            serviceProvider.GetRequiredService<TeleFlow.Framework.Dispatching.IUpdateDispatcher>());
 
         Assert.Contains("Duplicate Telegram callback data prefix 'del'", exception.Message);
     }
@@ -2570,7 +2570,7 @@ public sealed class TelegramHandlerDispatcherTests
         var services = CreateBaseServices();
         var dispatcher = new ModuleCustomDispatcher();
 
-        services.AddSingleton<TeleFlow.Core.Dispatching.IUpdateDispatcher>(dispatcher);
+        services.AddSingleton<TeleFlow.Framework.Dispatching.IUpdateDispatcher>(dispatcher);
         services.AddTelegramModule<AdminModuleHandler>();
 
         using var serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions
@@ -2581,7 +2581,7 @@ public sealed class TelegramHandlerDispatcherTests
 
         Assert.Same(
             dispatcher,
-            serviceProvider.GetRequiredService<TeleFlow.Core.Dispatching.IUpdateDispatcher>());
+            serviceProvider.GetRequiredService<TeleFlow.Framework.Dispatching.IUpdateDispatcher>());
     }
 
     [Fact]
@@ -2652,7 +2652,7 @@ public sealed class TelegramHandlerDispatcherTests
 
         Assert.Same(customSerializer, context.GetTelegramContext().CallbackData);
 
-        await scope.ServiceProvider.GetRequiredService<TeleFlow.Core.Dispatching.IUpdateDispatcher>()
+        await scope.ServiceProvider.GetRequiredService<TeleFlow.Framework.Dispatching.IUpdateDispatcher>()
             .DispatchAsync(context);
 
         Assert.Equal(["typed-callback:7"], probe.Events);
@@ -2884,7 +2884,7 @@ public sealed class TelegramHandlerDispatcherTests
             cancellationToken);
 
         await scope.ServiceProvider
-            .GetRequiredService<TeleFlow.Core.Dispatching.IUpdateDispatcher>()
+            .GetRequiredService<TeleFlow.Framework.Dispatching.IUpdateDispatcher>()
             .DispatchAsync(context, cancellationToken);
     }
 
@@ -2895,7 +2895,7 @@ public sealed class TelegramHandlerDispatcherTests
     {
         var processor = new DefaultUpdateProcessor(
             serviceProvider.GetRequiredService<IServiceScopeFactory>(),
-            serviceProvider.GetRequiredService<TeleFlow.Core.Dispatching.IUpdateDispatcher>(),
+            serviceProvider.GetRequiredService<TeleFlow.Framework.Dispatching.IUpdateDispatcher>(),
             serviceProvider.GetServices<UpdateMiddlewareRegistration>());
 
         await processor.ProcessAsync(new TelegramUpdatePayload(update), cancellationToken);
@@ -5178,7 +5178,7 @@ public sealed class TelegramHandlerDispatcherTests
         }
     }
 
-    private sealed class ModuleCustomDispatcher : TeleFlow.Core.Dispatching.IUpdateDispatcher
+    private sealed class ModuleCustomDispatcher : TeleFlow.Framework.Dispatching.IUpdateDispatcher
     {
         public Task DispatchAsync(UpdateContext context, CancellationToken cancellationToken = default)
         {

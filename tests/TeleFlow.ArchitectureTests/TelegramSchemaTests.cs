@@ -657,7 +657,7 @@ public sealed class TelegramSchemaTests
             .Select(static assembly => assembly.Name)
             .ToArray();
 
-        Assert.DoesNotContain("TeleFlow.Core", referencedAssemblies);
+        Assert.DoesNotContain("TeleFlow.Framework", referencedAssemblies);
         Assert.DoesNotContain("TeleFlow.Telegram", referencedAssemblies);
     }
 

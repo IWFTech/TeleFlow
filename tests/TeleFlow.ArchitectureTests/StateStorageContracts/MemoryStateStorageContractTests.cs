@@ -1,4 +1,4 @@
-using TeleFlow.Core.States;
+using TeleFlow.Framework.States;
 using TeleFlow.Storage.Memory;
 
 namespace TeleFlow.ArchitectureTests.StateStorageContracts;

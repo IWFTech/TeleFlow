@@ -1,10 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using TeleFlow.Annotations;
-using TeleFlow.Core.Application;
-using TeleFlow.Core.DependencyInjection;
-using TeleFlow.Core.States;
-using TeleFlow.Core.Updates;
+using TeleFlow.Framework.Application;
+using TeleFlow.Framework.DependencyInjection;
+using TeleFlow.Framework.States;
+using TeleFlow.Framework.Updates;
 using TeleFlow.Storage.Memory;
 using TeleFlow.Telegram;
 using TeleFlow.Telegram.Schema.Types;
@@ -292,7 +292,7 @@ public sealed class StageEightGeneratedRegistrationTests
         var services = new ServiceCollection();
 
         services.AddTelegramBot(options => options.Token = "test-token");
-        services.AddSingleton<TeleFlow.Core.Dispatching.IUpdateDispatcher>(dispatcher);
+        services.AddSingleton<TeleFlow.Framework.Dispatching.IUpdateDispatcher>(dispatcher);
         services.AddTelegramHandlersFromAssembly(typeof(StageEightGeneratedRegistrationTests).Assembly);
 
         using var serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions
@@ -303,7 +303,7 @@ public sealed class StageEightGeneratedRegistrationTests
 
         Assert.Same(
             dispatcher,
-            serviceProvider.GetRequiredService<TeleFlow.Core.Dispatching.IUpdateDispatcher>());
+            serviceProvider.GetRequiredService<TeleFlow.Framework.Dispatching.IUpdateDispatcher>());
     }
 
     [Fact]
@@ -406,7 +406,7 @@ public sealed class StageEightGeneratedRegistrationTests
             cancellationToken);
 
         await scope.ServiceProvider
-            .GetRequiredService<TeleFlow.Core.Dispatching.IUpdateDispatcher>()
+            .GetRequiredService<TeleFlow.Framework.Dispatching.IUpdateDispatcher>()
             .DispatchAsync(context, cancellationToken);
     }
 
@@ -1797,7 +1797,7 @@ internal sealed class GeneratedStateUpdateSource : IUpdateSource
     }
 }
 
-internal sealed class StageEightCustomDispatcher : TeleFlow.Core.Dispatching.IUpdateDispatcher
+internal sealed class StageEightCustomDispatcher : TeleFlow.Framework.Dispatching.IUpdateDispatcher
 {
     public Task DispatchAsync(UpdateContext context, CancellationToken cancellationToken = default)
     {

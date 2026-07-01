@@ -7,30 +7,30 @@ public sealed class ProjectGraphTests
     private static readonly string RepositoryRoot = ResolveRepositoryRoot();
 
     [Fact]
-    public void Solution_ContainsExpectedStageOneProjects()
+    public void Solution_ContainsExpectedProjects()
     {
         var solutionText = File.ReadAllText(Path.Combine(RepositoryRoot, "TeleFlow.sln"));
 
-        Assert.Contains("TeleFlow.Core", solutionText);
+        Assert.Contains("TeleFlow.Framework.Core", solutionText);
+        Assert.Contains("TeleFlow.Framework", solutionText);
+        Assert.Contains("TeleFlow.Framework.LongPolling", solutionText);
+        Assert.Contains("TeleFlow.Framework.Webhooks", solutionText);
+        Assert.Contains("TeleFlow.Framework.Hosting", solutionText);
         Assert.Contains("TeleFlow.Telegram", solutionText);
         Assert.Contains("TeleFlow.Telegram.Client", solutionText);
-        Assert.Contains("TeleFlow.Telegram.Framework", solutionText);
-        Assert.Contains("TeleFlow.Telegram.Framework.LongPolling", solutionText);
-        Assert.Contains("TeleFlow.Telegram.Framework.Webhooks", solutionText);
         Assert.Contains("TeleFlow.Telegram.LongPolling", solutionText);
         Assert.Contains("TeleFlow.Telegram.Schema", solutionText);
+        Assert.Contains("TeleFlow.Telegram.Webhooks", solutionText);
         Assert.Contains("TeleFlow.Annotations", solutionText);
         Assert.Contains("TeleFlow.Generators", solutionText);
-        Assert.Contains("TeleFlow.Hosting", solutionText);
         Assert.Contains("TeleFlow.Storage.Memory", solutionText);
-        Assert.Contains("TeleFlow.Telegram.Webhooks", solutionText);
         Assert.DoesNotContain("Project(\"{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}\") = \"TeleFlow\"", solutionText);
     }
 
     [Fact]
-    public void Core_HasNoProjectReferences()
+    public void FrameworkCore_HasNoProjectReferences()
     {
-        Assert.Empty(GetProjectReferences("src/TeleFlow.Core/TeleFlow.Core.csproj"));
+        Assert.Empty(GetProjectReferences("src/TeleFlow.Framework.Core/TeleFlow.Framework.Core.csproj"));
     }
 
     [Fact]
@@ -62,16 +62,16 @@ public sealed class ProjectGraphTests
     }
 
     [Fact]
-    public void TelegramFramework_ReferencesClientSchemaCoreAndAnnotationsOnly()
+    public void Framework_ReferencesClientSchemaCoreAndAnnotationsOnly()
     {
         Assert.Equal(
             [
                 "..\\TeleFlow.Annotations\\TeleFlow.Annotations.csproj",
-                "..\\TeleFlow.Core\\TeleFlow.Core.csproj",
+                "..\\TeleFlow.Framework.Core\\TeleFlow.Framework.Core.csproj",
                 "..\\TeleFlow.Telegram.Client\\TeleFlow.Telegram.Client.csproj",
                 "..\\TeleFlow.Telegram.Schema\\TeleFlow.Telegram.Schema.csproj"
             ],
-            GetProjectReferences("src/TeleFlow.Telegram.Framework/TeleFlow.Telegram.Framework.csproj"));
+            GetProjectReferences("src/TeleFlow.Framework/TeleFlow.Framework.csproj"));
     }
 
     [Fact]
@@ -86,27 +86,27 @@ public sealed class ProjectGraphTests
     }
 
     [Fact]
-    public void TelegramFrameworkLongPolling_ReferencesCoreFrameworkAndLongPollingOnly()
+    public void FrameworkLongPolling_ReferencesCoreFrameworkAndLongPollingOnly()
     {
         Assert.Equal(
             [
-                "..\\TeleFlow.Core\\TeleFlow.Core.csproj",
-                "..\\TeleFlow.Telegram.Framework\\TeleFlow.Telegram.Framework.csproj",
+                "..\\TeleFlow.Framework.Core\\TeleFlow.Framework.Core.csproj",
+                "..\\TeleFlow.Framework\\TeleFlow.Framework.csproj",
                 "..\\TeleFlow.Telegram.LongPolling\\TeleFlow.Telegram.LongPolling.csproj"
             ],
-            GetProjectReferences("src/TeleFlow.Telegram.Framework.LongPolling/TeleFlow.Telegram.Framework.LongPolling.csproj"));
+            GetProjectReferences("src/TeleFlow.Framework.LongPolling/TeleFlow.Framework.LongPolling.csproj"));
     }
 
     [Fact]
-    public void TelegramFrameworkWebhooks_ReferencesCoreFrameworkAndWebhooksOnly()
+    public void FrameworkWebhooks_ReferencesCoreFrameworkAndWebhooksOnly()
     {
         Assert.Equal(
             [
-                "..\\TeleFlow.Core\\TeleFlow.Core.csproj",
-                "..\\TeleFlow.Telegram.Framework\\TeleFlow.Telegram.Framework.csproj",
+                "..\\TeleFlow.Framework.Core\\TeleFlow.Framework.Core.csproj",
+                "..\\TeleFlow.Framework\\TeleFlow.Framework.csproj",
                 "..\\TeleFlow.Telegram.Webhooks\\TeleFlow.Telegram.Webhooks.csproj"
             ],
-            GetProjectReferences("src/TeleFlow.Telegram.Framework.Webhooks/TeleFlow.Telegram.Framework.Webhooks.csproj"));
+            GetProjectReferences("src/TeleFlow.Framework.Webhooks/TeleFlow.Framework.Webhooks.csproj"));
     }
 
     [Fact]
@@ -124,7 +124,7 @@ public sealed class ProjectGraphTests
     public void StorageMemory_ReferencesCoreOnly()
     {
         Assert.Equal(
-            ["..\\TeleFlow.Core\\TeleFlow.Core.csproj"],
+            ["..\\TeleFlow.Framework.Core\\TeleFlow.Framework.Core.csproj"],
             GetProjectReferences("src/TeleFlow.Storage.Memory/TeleFlow.Storage.Memory.csproj"));
     }
 
@@ -132,8 +132,8 @@ public sealed class ProjectGraphTests
     public void Hosting_ReferencesCoreOnly()
     {
         Assert.Equal(
-            ["..\\TeleFlow.Core\\TeleFlow.Core.csproj"],
-            GetProjectReferences("src/TeleFlow.Hosting/TeleFlow.Hosting.csproj"));
+            ["..\\TeleFlow.Framework.Core\\TeleFlow.Framework.Core.csproj"],
+            GetProjectReferences("src/TeleFlow.Framework.Hosting/TeleFlow.Framework.Hosting.csproj"));
     }
 
     [Fact]

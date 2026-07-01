@@ -1,11 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using TeleFlow.Core.Application;
-using TeleFlow.Core.DependencyInjection;
-using TeleFlow.Core.Dispatching;
-using TeleFlow.Core.Middleware;
-using TeleFlow.Core.Updates;
-using TeleFlow.Hosting;
+using TeleFlow.Framework.Application;
+using TeleFlow.Framework.DependencyInjection;
+using TeleFlow.Framework.Dispatching;
+using TeleFlow.Framework.Hosting;
+using TeleFlow.Framework.Middleware;
+using TeleFlow.Framework.Updates;
 
 namespace TeleFlow.ArchitectureTests;
 

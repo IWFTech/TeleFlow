@@ -29,15 +29,15 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\TeleFlow.Annotations\TeleFlow.Annotations.csproj" />
-    <ProjectReference Include="..\..\src\TeleFlow.Core\TeleFlow.Core.csproj" />
+    <ProjectReference Include="..\..\src\TeleFlow.Framework.Core\TeleFlow.Framework.Core.csproj" />
     <ProjectReference Include="..\..\src\TeleFlow.Generators\TeleFlow.Generators.csproj" />
-    <ProjectReference Include="..\..\src\TeleFlow.Hosting\TeleFlow.Hosting.csproj" />
+    <ProjectReference Include="..\..\src\TeleFlow.Framework.Hosting\TeleFlow.Framework.Hosting.csproj" />
     <ProjectReference Include="..\..\src\TeleFlow.Storage.Memory\TeleFlow.Storage.Memory.csproj" />
     <ProjectReference Include="..\..\src\TeleFlow.Telegram\TeleFlow.Telegram.csproj" />
     <ProjectReference Include="..\..\src\TeleFlow.Telegram.Client\TeleFlow.Telegram.Client.csproj" />
-    <ProjectReference Include="..\..\src\TeleFlow.Telegram.Framework\TeleFlow.Telegram.Framework.csproj" />
-    <ProjectReference Include="..\..\src\TeleFlow.Telegram.Framework.LongPolling\TeleFlow.Telegram.Framework.LongPolling.csproj" />
-    <ProjectReference Include="..\..\src\TeleFlow.Telegram.Framework.Webhooks\TeleFlow.Telegram.Framework.Webhooks.csproj" />
+    <ProjectReference Include="..\..\src\TeleFlow.Framework\TeleFlow.Framework.csproj" />
+    <ProjectReference Include="..\..\src\TeleFlow.Framework.LongPolling\TeleFlow.Framework.LongPolling.csproj" />
+    <ProjectReference Include="..\..\src\TeleFlow.Framework.Webhooks\TeleFlow.Framework.Webhooks.csproj" />
     <ProjectReference Include="..\..\src\TeleFlow.Telegram.LongPolling\TeleFlow.Telegram.LongPolling.csproj" />
     <ProjectReference Include="..\..\src\TeleFlow.Telegram.Webhooks\TeleFlow.Telegram.Webhooks.csproj" />
     <ProjectReference Include="..\..\src\TeleFlow.Telegram.Schema\TeleFlow.Telegram.Schema.csproj" />

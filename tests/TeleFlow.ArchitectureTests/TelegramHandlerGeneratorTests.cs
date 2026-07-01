@@ -5,9 +5,9 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using TeleFlow.Annotations;
-using TeleFlow.Core.Dispatching;
-using TeleFlow.Core.States;
-using TeleFlow.Core.Updates;
+using TeleFlow.Framework.Dispatching;
+using TeleFlow.Framework.States;
+using TeleFlow.Framework.Updates;
 using TeleFlow.Generators;
 using TeleFlow.Telegram;
 using TeleFlow.Telegram.Schema.Types;
@@ -1170,7 +1170,7 @@ public sealed class TelegramHandlerGeneratorTests
             """
             using System.Threading.Tasks;
             using TeleFlow.Annotations;
-            using TeleFlow.Core.States;
+            using TeleFlow.Framework.States;
             using TeleFlow.Telegram;
 
             namespace Bot;
@@ -1213,7 +1213,7 @@ public sealed class TelegramHandlerGeneratorTests
             .ToArray();
 
         Assert.Empty(errors);
-        Assert.Contains("public static partial global::TeleFlow.Core.States.State Name", stateGroupSource);
+        Assert.Contains("public static partial global::TeleFlow.Framework.States.State Name", stateGroupSource);
         Assert.Contains("\"registration:name\"", stateGroupSource);
         Assert.Contains("\"registration:customAge\"", stateGroupSource);
         Assert.Contains("\"registration:name\"", handlerSource);
@@ -1226,7 +1226,7 @@ public sealed class TelegramHandlerGeneratorTests
             """
             using System.Threading.Tasks;
             using TeleFlow.Annotations;
-            using TeleFlow.Core.States;
+            using TeleFlow.Framework.States;
             using TeleFlow.Telegram;
 
             namespace Bot;
@@ -1266,7 +1266,7 @@ public sealed class TelegramHandlerGeneratorTests
             .ToArray();
 
         Assert.Empty(errors);
-        Assert.Contains("public static partial global::TeleFlow.Core.States.State Name", stateGroupSource);
+        Assert.Contains("public static partial global::TeleFlow.Framework.States.State Name", stateGroupSource);
         Assert.Contains("\"registration:name\"", stateGroupSource);
         Assert.Contains("\"registration:customAge\"", stateGroupSource);
         Assert.Contains("\"registration:name\"", handlerSource);
@@ -1281,7 +1281,7 @@ public sealed class TelegramHandlerGeneratorTests
             """
             using System.Threading.Tasks;
             using TeleFlow.Annotations;
-            using TeleFlow.Core.States;
+            using TeleFlow.Framework.States;
             using TeleFlow.Telegram;
 
             namespace Bot;
@@ -1327,7 +1327,7 @@ public sealed class TelegramHandlerGeneratorTests
         var compilation = CreateCompilation(
             """
             using TeleFlow.Annotations;
-            using TeleFlow.Core.States;
+            using TeleFlow.Framework.States;
 
             namespace Bot;
 
@@ -1357,7 +1357,7 @@ public sealed class TelegramHandlerGeneratorTests
         Assert.Empty(errors);
         Assert.Contains("\"registration:name\"", stateGroupSource);
         Assert.DoesNotContain("\"registration:manual\"", stateGroupSource);
-        Assert.DoesNotContain("partial global::TeleFlow.Core.States.State Manual", stateGroupSource);
+        Assert.DoesNotContain("partial global::TeleFlow.Framework.States.State Manual", stateGroupSource);
     }
 
     [Theory]
@@ -1394,7 +1394,7 @@ public sealed class TelegramHandlerGeneratorTests
             using System.Threading;
             using System.Threading.Tasks;
             using TeleFlow.Annotations;
-            using TeleFlow.Core.States;
+            using TeleFlow.Framework.States;
             using TeleFlow.Telegram;
 
             public sealed class RouteLessHandlers
@@ -2383,7 +2383,7 @@ public sealed class TelegramHandlerGeneratorTests
             """
             using System.Threading.Tasks;
             using TeleFlow.Annotations;
-            using TeleFlow.Core.States;
+            using TeleFlow.Framework.States;
             using TeleFlow.Telegram;
 
             [StateGroup("registration")]
@@ -2410,7 +2410,7 @@ public sealed class TelegramHandlerGeneratorTests
             """
             using System.Threading.Tasks;
             using TeleFlow.Annotations;
-            using TeleFlow.Core.States;
+            using TeleFlow.Framework.States;
             using TeleFlow.Telegram;
 
             [Scene("registration")]
@@ -2435,7 +2435,7 @@ public sealed class TelegramHandlerGeneratorTests
             """
             using System.Threading.Tasks;
             using TeleFlow.Annotations;
-            using TeleFlow.Core.States;
+            using TeleFlow.Framework.States;
             using TeleFlow.Telegram;
 
             [Scene("")]
@@ -2524,7 +2524,7 @@ public sealed class TelegramHandlerGeneratorTests
             """
             using System.Threading.Tasks;
             using TeleFlow.Annotations;
-            using TeleFlow.Core.States;
+            using TeleFlow.Framework.States;
             using TeleFlow.Telegram;
 
             [Scene("private-state")]
