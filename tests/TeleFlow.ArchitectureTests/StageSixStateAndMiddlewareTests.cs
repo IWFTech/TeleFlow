@@ -924,6 +924,52 @@ public sealed class StageSixStateAndMiddlewareTests
         Assert.Equal(["rate-limit", "dispatch"], trace);
     }
 
+    [Fact]
+    public async Task UpdateRateLimitMiddleware_StopsPipelineAndLogsWarningWhenLimiterRejects()
+    {
+        using var serviceProvider = new ServiceCollection().BuildServiceProvider();
+        var logger = new RecordingLogger<UpdateRateLimitMiddleware>();
+        var middleware = new UpdateRateLimitMiddleware(
+            [new RejectingRateLimiter()],
+            logger);
+        var context = new UpdateContext(serviceProvider, new TestUpdatePayload("secret-user-input"));
+        var called = false;
+
+        await middleware.InvokeAsync(
+            context,
+            _ =>
+            {
+                called = true;
+                return Task.CompletedTask;
+            });
+
+        Assert.False(called);
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.Equal(1, entry.EventId.Id);
+        Assert.Contains("Update rejected by rate limiter", entry.Message, StringComparison.Ordinal);
+        Assert.Contains("policy=per-user-command", entry.Message, StringComparison.Ordinal);
+        Assert.Contains("retry_after=00:00:15", entry.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("secret-user-input", entry.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void UpdateRateLimitDecision_DefaultValueIsAccepted()
+    {
+        var decision = default(UpdateRateLimitDecision);
+
+        Assert.True(decision.IsAccepted);
+        Assert.False(decision.IsRejected);
+    }
+
+    [Fact]
+    public void UpdateRateLimitDecision_RejectsNegativeRetryAfter()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => UpdateRateLimitDecision.Rejected(TimeSpan.FromMilliseconds(-1)));
+    }
+
     private static ServiceProvider CreateTelegramServiceProvider(
         Action<IServiceCollection> configureServices,
         string token = "test-token")
@@ -1253,10 +1299,25 @@ public sealed class StageSixStateAndMiddlewareTests
 
     private sealed class RecordingRateLimiter(List<string> trace) : IUpdateRateLimiter
     {
-        public ValueTask WaitAsync(UpdateContext context, CancellationToken cancellationToken = default)
+        public ValueTask<UpdateRateLimitDecision> CheckAsync(
+            UpdateContext context,
+            CancellationToken cancellationToken = default)
         {
             trace.Add("rate-limit");
-            return ValueTask.CompletedTask;
+            return ValueTask.FromResult(UpdateRateLimitDecision.Accepted);
+        }
+    }
+
+    private sealed class RejectingRateLimiter : IUpdateRateLimiter
+    {
+        public ValueTask<UpdateRateLimitDecision> CheckAsync(
+            UpdateContext context,
+            CancellationToken cancellationToken = default)
+        {
+            return ValueTask.FromResult(
+                UpdateRateLimitDecision.Rejected(
+                    TimeSpan.FromSeconds(15),
+                    "per-user-command"));
         }
     }
 
@@ -1671,9 +1732,9 @@ public sealed class StageSixStateAndMiddlewareTests
             Exception? exception,
             Func<TState, Exception?, string> formatter)
         {
-            Entries.Add(new LogEntry(logLevel, formatter(state, exception), exception));
+            Entries.Add(new LogEntry(eventId, logLevel, formatter(state, exception), exception));
         }
     }
 
-    private sealed record LogEntry(LogLevel Level, string Message, Exception? Exception);
+    private sealed record LogEntry(EventId EventId, LogLevel Level, string Message, Exception? Exception);
 }
