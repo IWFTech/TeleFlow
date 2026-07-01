@@ -59,7 +59,7 @@ internal static class TelegramHandlerSymbols
     public const string GenericUseFilterAttribute = "TeleFlow.Annotations.UseFilterAttribute<TFilter>";
     public const string GenericTelegramFilterAttribute = "TeleFlow.Annotations.TelegramFilterAttribute<TFilter>";
     public const string TextMatchMode = "TeleFlow.Annotations.TextMatchMode";
-    public const string State = "TeleFlow.Core.States.State";
+    public const string State = "TeleFlow.Framework.States.State";
     public const string MessageContext = "TeleFlow.Telegram.MessageContext";
     public const string CallbackQueryContext = "TeleFlow.Telegram.CallbackQueryContext";
     public const string ChatMemberUpdatedContext = "TeleFlow.Telegram.ChatMemberUpdatedContext";

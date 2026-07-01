@@ -4,6 +4,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\TeleFlow.Core\TeleFlow.Core.csproj" />
+    <ProjectReference Include="..\TeleFlow.Framework.Core\TeleFlow.Framework.Core.csproj" />
   </ItemGroup>
 </Project>

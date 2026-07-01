@@ -1,0 +1,595 @@
+using System.Collections.Concurrent;
+using System.Collections.ObjectModel;
+using System.Globalization;
+using System.Reflection;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using TeleFlow.Framework.Callbacks;
+using TeleFlow.Telegram.Internal;
+using TeleFlow.Telegram.Schema.Types;
+
+namespace TeleFlow.Telegram.Internal.Handlers;
+
+internal sealed class TelegramHandlerSelector
+{
+    private static readonly IReadOnlyDictionary<string, object?> EmptyRouteValues =
+        new ReadOnlyDictionary<string, object?>(
+            new Dictionary<string, object?>(StringComparer.Ordinal));
+    private static readonly ConcurrentDictionary<Type, CallbackPayloadDeserializer> CallbackPayloadDeserializers = new();
+
+    private readonly TelegramHandlerTable _table;
+
+    public TelegramHandlerSelector(TelegramHandlerTable table)
+    {
+        ArgumentNullException.ThrowIfNull(table);
+        _table = table;
+    }
+
+    public bool HasStatefulHandlers => _table.HasStatefulHandlers;
+
+    public async ValueTask<TelegramRouteSelection?> SelectMessageHandlerAsync(
+        MessageContext context,
+        string? currentState,
+        CancellationToken cancellationToken)
+    {
+        var selection = await SelectMessageHandlerAsync(
+            context,
+            _table.CommandHandlerCandidates,
+            currentState,
+            cancellationToken).ConfigureAwait(false);
+
+        if (selection is not null)
+        {
+            return selection;
+        }
+
+        return await SelectMessageHandlerAsync(
+            context,
+            _table.MessageHandlerCandidates,
+            currentState,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public async ValueTask<TelegramRouteSelection?> SelectCallbackHandlerAsync(
+        CallbackQueryContext context,
+        string? currentState,
+        CancellationToken cancellationToken)
+    {
+        if (HasCurrentState(currentState))
+        {
+            var state = currentState!;
+            var statefulPayloadSelection = await SelectCallbackHandlerPassAsync(
+                context,
+                _table.CallbackHandlerCandidates.GetStatefulTypedCandidates(state),
+                cancellationToken).ConfigureAwait(false);
+
+            if (statefulPayloadSelection is not null)
+            {
+                return statefulPayloadSelection;
+            }
+
+            var statefulRawSelection = await SelectCallbackHandlerPassAsync(
+                context,
+                _table.CallbackHandlerCandidates.GetStatefulRawCandidates(state),
+                cancellationToken).ConfigureAwait(false);
+
+            if (statefulRawSelection is not null)
+            {
+                return statefulRawSelection;
+            }
+        }
+
+        var statelessPayloadSelection = await SelectCallbackHandlerPassAsync(
+            context,
+            _table.CallbackHandlerCandidates.StatelessTyped,
+            cancellationToken).ConfigureAwait(false);
+
+        if (statelessPayloadSelection is not null)
+        {
+            return statelessPayloadSelection;
+        }
+
+        return await SelectCallbackHandlerPassAsync(
+            context,
+            _table.CallbackHandlerCandidates.StatelessRaw,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public async ValueTask<TelegramRouteSelection?> SelectChatMemberHandlerAsync(
+        ChatMemberUpdatedContext context,
+        TelegramRouteKind updateRouteKind,
+        string? currentState,
+        CancellationToken cancellationToken)
+    {
+        if (HasCurrentState(currentState))
+        {
+            var state = currentState!;
+            var statefulSelection = await SelectChatMemberHandlerPassAsync(
+                context,
+                _table.ChatMemberHandlerCandidates.GetStatefulCandidates(state),
+                updateRouteKind,
+                cancellationToken).ConfigureAwait(false);
+
+            if (statefulSelection is not null)
+            {
+                return statefulSelection;
+            }
+        }
+
+        return await SelectChatMemberHandlerPassAsync(
+            context,
+            _table.ChatMemberHandlerCandidates.Stateless,
+            updateRouteKind,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async ValueTask<TelegramRouteSelection?> SelectMessageHandlerAsync(
+        MessageContext context,
+        TelegramHandlerCandidateSet candidates,
+        string? currentState,
+        CancellationToken cancellationToken)
+    {
+        if (HasCurrentState(currentState))
+        {
+            var state = currentState!;
+            var statefulSelection = await SelectMessageHandlerPassAsync(
+                context,
+                candidates.GetStatefulCandidates(state),
+                cancellationToken).ConfigureAwait(false);
+
+            if (statefulSelection is not null)
+            {
+                return statefulSelection;
+            }
+        }
+
+        return await SelectMessageHandlerPassAsync(
+            context,
+            candidates.Stateless,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async ValueTask<TelegramRouteSelection?> SelectMessageHandlerPassAsync(
+        MessageContext context,
+        IReadOnlyList<TelegramHandlerCandidate> candidates,
+        CancellationToken cancellationToken)
+    {
+        for (var index = 0; index < candidates.Count; index++)
+        {
+            var candidate = candidates[index];
+            var route = candidate.Route;
+
+            if (!TryMatchRoute(context.TelegramMessage, route, out var routeValues))
+            {
+                continue;
+            }
+
+            if (!await TelegramFilterEvaluator.MatchesAsync(
+                    context,
+                    candidate.Filters,
+                    cancellationToken).ConfigureAwait(false))
+            {
+                continue;
+            }
+
+            return new TelegramRouteSelection(candidate.Handler, route, routeValues, callbackPayload: null);
+        }
+
+        return null;
+    }
+
+    private static async ValueTask<TelegramRouteSelection?> SelectCallbackHandlerPassAsync(
+        CallbackQueryContext context,
+        IReadOnlyList<TelegramHandlerCandidate> candidates,
+        CancellationToken cancellationToken)
+    {
+        for (var index = 0; index < candidates.Count; index++)
+        {
+            var candidate = candidates[index];
+            var route = candidate.Route;
+
+            if (route.CallbackPayloadType is null)
+            {
+                if (!await TelegramFilterEvaluator.MatchesAsync(
+                        context,
+                        candidate.Filters,
+                        cancellationToken).ConfigureAwait(false))
+                {
+                    continue;
+                }
+
+                return new TelegramRouteSelection(candidate.Handler, route, EmptyRouteValues, callbackPayload: null);
+            }
+
+            if (string.IsNullOrWhiteSpace(context.TelegramCallbackQuery.Data))
+            {
+                continue;
+            }
+
+            if (!TryDeserializeCallbackPayload(
+                    context,
+                    route.CallbackPayloadType,
+                    out var callbackPayload))
+            {
+                continue;
+            }
+
+            if (!await TelegramFilterEvaluator.MatchesAsync(
+                    context,
+                    candidate.Filters,
+                    cancellationToken).ConfigureAwait(false))
+            {
+                continue;
+            }
+
+            return new TelegramRouteSelection(candidate.Handler, route, EmptyRouteValues, callbackPayload);
+        }
+
+        return null;
+    }
+
+    private static async ValueTask<TelegramRouteSelection?> SelectChatMemberHandlerPassAsync(
+        ChatMemberUpdatedContext context,
+        IReadOnlyList<TelegramHandlerCandidate> candidates,
+        TelegramRouteKind updateRouteKind,
+        CancellationToken cancellationToken)
+    {
+        for (var index = 0; index < candidates.Count; index++)
+        {
+            var candidate = candidates[index];
+            var route = candidate.Route;
+
+            if (route.RouteKind != updateRouteKind)
+            {
+                continue;
+            }
+
+            if (!MatchesChatMemberTransition(context, route))
+            {
+                continue;
+            }
+
+            if (!await TelegramFilterEvaluator.MatchesAsync(
+                    context,
+                    candidate.Filters,
+                    cancellationToken).ConfigureAwait(false))
+            {
+                continue;
+            }
+
+            return new TelegramRouteSelection(candidate.Handler, route, EmptyRouteValues, callbackPayload: null);
+        }
+
+        return null;
+    }
+
+    private static bool TryMatchRoute(
+        Message message,
+        TelegramRouteDescriptor route,
+        out IReadOnlyDictionary<string, object?> routeValues)
+    {
+        routeValues = EmptyRouteValues;
+
+        return route.RouteKind switch
+        {
+            TelegramRouteKind.MessageAny => MatchesTextFilters(message, route),
+            TelegramRouteKind.TextExact => MatchesTextFilters(message, route),
+            TelegramRouteKind.TextTemplate => TryMatchTextPattern(message.Text, route, isTemplate: true, out routeValues),
+            TelegramRouteKind.TextRegex => TryMatchTextPattern(message.Text, route, isTemplate: false, out routeValues),
+            TelegramRouteKind.CommandExact => TryGetCommandBody(message.Text, route, out var body) &&
+                                               TryMatchExactCommand(body, route),
+            TelegramRouteKind.CommandTemplate => TryGetCommandBody(message.Text, route, out var body) &&
+                                                 TryMatchCommandPattern(body, route, isTemplate: true, out routeValues),
+            TelegramRouteKind.CommandRegex => TryGetCommandBody(message.Text, route, out var body) &&
+                                              TryMatchCommandPattern(body, route, isTemplate: false, out routeValues),
+            _ => false
+        };
+    }
+
+    private static bool HasCurrentState(string? currentState)
+    {
+        return !string.IsNullOrWhiteSpace(currentState);
+    }
+
+    private static bool TryDeserializeCallbackPayload(
+        CallbackQueryContext context,
+        Type payloadType,
+        out object? payload)
+    {
+        var data = context.TelegramCallbackQuery.Data!;
+
+        if (context.CallbackData is ICallbackDataRouteDeserializer routeDeserializer)
+        {
+            try
+            {
+                return routeDeserializer.TryDeserializeForRoute(payloadType, data, out payload);
+            }
+            catch (Exception exception) when (IsCallbackPayloadNoMatchException(exception))
+            {
+                payload = null;
+                return false;
+            }
+        }
+
+        var deserializer = CallbackPayloadDeserializers.GetOrAdd(payloadType, CreateCallbackPayloadDeserializer);
+
+        try
+        {
+            payload = deserializer(context.CallbackData, data);
+            return true;
+        }
+        catch (Exception exception) when (IsCallbackPayloadNoMatchException(exception))
+        {
+            payload = null;
+            return false;
+        }
+    }
+
+    private static bool IsCallbackPayloadNoMatchException(Exception exception)
+    {
+        return exception is JsonException or FormatException or OverflowException;
+    }
+
+    private static CallbackPayloadDeserializer CreateCallbackPayloadDeserializer(Type payloadType)
+    {
+        var deserializeMethod = typeof(TelegramHandlerSelector)
+            .GetMethod(nameof(DeserializeCallbackPayload), BindingFlags.NonPublic | BindingFlags.Static)!
+            .MakeGenericMethod(payloadType);
+
+        return deserializeMethod.CreateDelegate<CallbackPayloadDeserializer>();
+    }
+
+    private static object? DeserializeCallbackPayload<TPayload>(
+        ICallbackDataSerializer serializer,
+        string data)
+    {
+        return serializer.Deserialize<TPayload>(data);
+    }
+
+    private static bool TryGetCommandBody(
+        string? text,
+        TelegramRouteDescriptor route,
+        out string commandBody)
+    {
+        commandBody = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return false;
+        }
+
+        foreach (var prefix in route.CommandPolicy.Prefixes)
+        {
+            if (!text.StartsWith(prefix, route.CommandPolicy.IgnoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            commandBody = text[prefix.Length..];
+
+            if (route.CommandPolicy.AllowSpaceAfterPrefix)
+            {
+                commandBody = commandBody.TrimStart(' ', '\t');
+            }
+
+            if (prefix == "/")
+            {
+                commandBody = TrimSlashCommandBotMention(commandBody);
+            }
+
+            return !string.IsNullOrWhiteSpace(commandBody);
+        }
+
+        return false;
+    }
+
+    private static string TrimSlashCommandBotMention(string commandBody)
+    {
+        var tokenEnd = commandBody.IndexOfAny([' ', '\t', '\r', '\n']);
+        var token = tokenEnd < 0 ? commandBody : commandBody[..tokenEnd];
+        var mentionIndex = token.IndexOf('@', StringComparison.Ordinal);
+
+        if (mentionIndex < 0)
+        {
+            return commandBody;
+        }
+
+        var trimmedToken = token[..mentionIndex];
+
+        return tokenEnd < 0
+            ? trimmedToken
+            : trimmedToken + commandBody[tokenEnd..];
+    }
+
+    private static bool TryMatchExactCommand(
+        string commandBody,
+        TelegramRouteDescriptor route)
+    {
+        if (string.IsNullOrWhiteSpace(route.Pattern))
+        {
+            return false;
+        }
+
+        var tokenEnd = commandBody.IndexOfAny([' ', '\t', '\r', '\n']);
+        var token = tokenEnd < 0 ? commandBody : commandBody[..tokenEnd];
+
+        return string.Equals(
+            token,
+            route.Pattern,
+            route.CommandPolicy.IgnoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+    }
+
+    private static bool TryMatchTextPattern(
+        string? text,
+        TelegramRouteDescriptor route,
+        bool isTemplate,
+        out IReadOnlyDictionary<string, object?> routeValues)
+    {
+        routeValues = EmptyRouteValues;
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return false;
+        }
+
+        return TryMatchPattern(text, route, isTemplate, route.CommandPolicy.IgnoreCase, out routeValues);
+    }
+
+    private static bool TryMatchCommandPattern(
+        string commandBody,
+        TelegramRouteDescriptor route,
+        bool isTemplate,
+        out IReadOnlyDictionary<string, object?> routeValues)
+    {
+        return TryMatchPattern(commandBody, route, isTemplate, route.CommandPolicy.IgnoreCase, out routeValues);
+    }
+
+    private static bool TryMatchPattern(
+        string value,
+        TelegramRouteDescriptor route,
+        bool isTemplate,
+        bool ignoreCase,
+        out IReadOnlyDictionary<string, object?> routeValues)
+    {
+        routeValues = EmptyRouteValues;
+
+        if (string.IsNullOrWhiteSpace(route.Pattern))
+        {
+            return false;
+        }
+
+        var regex = route.Matcher.Regex ?? (isTemplate
+            ? TelegramTemplateRouteParser.BuildRegex(route.Pattern, ignoreCase)
+            : new Regex(route.Pattern, TelegramTemplateRouteParser.GetRegexOptions(ignoreCase)));
+        var match = regex.Match(value);
+
+        if (!match.Success)
+        {
+            return false;
+        }
+
+        return TryBindRouteValues(route, match, out routeValues);
+    }
+
+    private static bool TryBindRouteValues(
+        TelegramRouteDescriptor route,
+        Match match,
+        out IReadOnlyDictionary<string, object?> routeValues)
+    {
+        routeValues = EmptyRouteValues;
+
+        if (route.RouteValues.Count == 0)
+        {
+            return true;
+        }
+
+        var values = new Dictionary<string, object?>(StringComparer.Ordinal);
+
+        foreach (var valueDescriptor in route.RouteValues)
+        {
+            var group = match.Groups[valueDescriptor.Name];
+
+            if (!group.Success)
+            {
+                if (!valueDescriptor.IsOptional)
+                {
+                    return false;
+                }
+
+                values[valueDescriptor.Name] = null;
+                continue;
+            }
+
+            if (!TryConvertRouteValue(valueDescriptor, group.Value, out var convertedValue))
+            {
+                return false;
+            }
+
+            values[valueDescriptor.Name] = convertedValue;
+        }
+
+        routeValues = values;
+        return true;
+    }
+
+    private static bool TryConvertRouteValue(
+        TelegramRouteValueDescriptor descriptor,
+        string value,
+        out object? convertedValue)
+    {
+        if (descriptor.ValueType == typeof(string))
+        {
+            convertedValue = value;
+            return true;
+        }
+
+        if (descriptor.ValueType == typeof(int) &&
+            int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var intValue))
+        {
+            convertedValue = intValue;
+            return true;
+        }
+
+        if (descriptor.ValueType == typeof(long) &&
+            long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var longValue))
+        {
+            convertedValue = longValue;
+            return true;
+        }
+
+        convertedValue = null;
+
+        if (descriptor.ValueType == typeof(int) ||
+            descriptor.ValueType == typeof(long))
+        {
+            return false;
+        }
+
+        throw new InvalidOperationException(
+            $"Route value '{descriptor.Name}' uses unsupported type {descriptor.ValueType.Name}.");
+    }
+
+    private static bool MatchesTextFilters(Message message, TelegramRouteDescriptor route)
+    {
+        var textFilters = route.TextFilters;
+
+        for (var index = 0; index < textFilters.Count; index++)
+        {
+            if (!textFilters[index].Matches(message.Text))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool MatchesChatMemberTransition(
+        ChatMemberUpdatedContext context,
+        TelegramRouteDescriptor route)
+    {
+        if (route.ChatMemberTransitions.Count == 0)
+        {
+            return true;
+        }
+
+        var oldStatus = TelegramChatMemberClassifier.GetStatus(context.OldChatMember);
+        var newStatus = TelegramChatMemberClassifier.GetStatus(context.NewChatMember);
+        var transitions = route.ChatMemberTransitions;
+
+        for (var index = 0; index < transitions.Count; index++)
+        {
+            var transition = transitions[index];
+
+            if ((transition.OldStatus & oldStatus) != 0 &&
+                (transition.NewStatus & newStatus) != 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private delegate object? CallbackPayloadDeserializer(ICallbackDataSerializer serializer, string data);
+}

@@ -1,18 +1,19 @@
 name: TeleFlow CodeQL
 
 paths:
-  - TeleFlow.Annotations
-  - TeleFlow.Core
-  - TeleFlow.Generators
-  - TeleFlow.Storage.Memory
-  - TeleFlow.Telegram
-  - TeleFlow.Telegram.Client
-  - TeleFlow.Telegram.Framework
-  - TeleFlow.Telegram.Framework.LongPolling
-  - TeleFlow.Telegram.Framework.Webhooks
-  - TeleFlow.Telegram.LongPolling
-  - TeleFlow.Telegram.Schema
-  - TeleFlow.Telegram.Webhooks
+  - src/TeleFlow.Annotations
+  - src/TeleFlow.Framework.Core
+  - src/TeleFlow.Framework
+  - src/TeleFlow.Framework.Hosting
+  - src/TeleFlow.Framework.LongPolling
+  - src/TeleFlow.Framework.Webhooks
+  - src/TeleFlow.Generators
+  - src/TeleFlow.Storage.Memory
+  - src/TeleFlow.Telegram
+  - src/TeleFlow.Telegram.Client
+  - src/TeleFlow.Telegram.LongPolling
+  - src/TeleFlow.Telegram.Schema
+  - src/TeleFlow.Telegram.Webhooks
   - tests
 
 paths-ignore:

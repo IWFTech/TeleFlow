@@ -18,15 +18,15 @@ $strictAnalyzerScriptPath = Join-Path $repositoryRoot "eng\verify-strict-analyze
 
 $runtimePackages = @(
     @{ Id = "IWF.TeleFlow.Annotations"; Project = "src\TeleFlow.Annotations\TeleFlow.Annotations.csproj" },
-    @{ Id = "IWF.TeleFlow.Core"; Project = "src\TeleFlow.Core\TeleFlow.Core.csproj" },
+    @{ Id = "IWF.TeleFlow.Framework.Core"; Project = "src\TeleFlow.Framework.Core\TeleFlow.Framework.Core.csproj" },
     @{ Id = "IWF.TeleFlow.Storage.Memory"; Project = "src\TeleFlow.Storage.Memory\TeleFlow.Storage.Memory.csproj" },
     @{ Id = "IWF.TeleFlow.Telegram.Schema"; Project = "src\TeleFlow.Telegram.Schema\TeleFlow.Telegram.Schema.csproj" },
     @{ Id = "IWF.TeleFlow.Telegram.Client"; Project = "src\TeleFlow.Telegram.Client\TeleFlow.Telegram.Client.csproj" },
-    @{ Id = "IWF.TeleFlow.Telegram.Framework"; Project = "src\TeleFlow.Telegram.Framework\TeleFlow.Telegram.Framework.csproj" },
+    @{ Id = "IWF.TeleFlow.Framework"; Project = "src\TeleFlow.Framework\TeleFlow.Framework.csproj" },
     @{ Id = "IWF.TeleFlow.Telegram.LongPolling"; Project = "src\TeleFlow.Telegram.LongPolling\TeleFlow.Telegram.LongPolling.csproj" },
     @{ Id = "IWF.TeleFlow.Telegram.Webhooks"; Project = "src\TeleFlow.Telegram.Webhooks\TeleFlow.Telegram.Webhooks.csproj" },
-    @{ Id = "IWF.TeleFlow.Telegram.Framework.LongPolling"; Project = "src\TeleFlow.Telegram.Framework.LongPolling\TeleFlow.Telegram.Framework.LongPolling.csproj" },
-    @{ Id = "IWF.TeleFlow.Telegram.Framework.Webhooks"; Project = "src\TeleFlow.Telegram.Framework.Webhooks\TeleFlow.Telegram.Framework.Webhooks.csproj" },
+    @{ Id = "IWF.TeleFlow.Framework.LongPolling"; Project = "src\TeleFlow.Framework.LongPolling\TeleFlow.Framework.LongPolling.csproj" },
+    @{ Id = "IWF.TeleFlow.Framework.Webhooks"; Project = "src\TeleFlow.Framework.Webhooks\TeleFlow.Framework.Webhooks.csproj" },
     @{ Id = "IWF.TeleFlow.Telegram"; Project = "src\TeleFlow.Telegram\TeleFlow.Telegram.csproj" }
 )
 
