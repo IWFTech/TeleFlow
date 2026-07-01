@@ -5,6 +5,11 @@ namespace TeleFlow.Telegram.Internal;
 
 internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
 {
+    private const int RequestStartedEventId = 1;
+    private const int RequestCompletedEventId = 2;
+    private const int RequestThrottledEventId = 3;
+    private const int RequestFailedEventId = 4;
+
     private readonly JsonSerializerOptions _serializerOptions;
     private readonly TelegramRequestSender _sender;
     private readonly TelegramTransportEnvelopeParser _envelopeParser;
@@ -376,7 +381,8 @@ internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
             methodName,
             attempt,
             httpStatusCode,
-            GetElapsedMilliseconds(attemptStarted, attemptEnded));
+            GetElapsedMilliseconds(attemptStarted, attemptEnded),
+            exception.GetType().FullName ?? exception.GetType().Name);
     }
 
     private double GetElapsedMilliseconds(long startingTimestamp, long endingTimestamp)
@@ -385,7 +391,7 @@ internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
     }
 
     [LoggerMessage(
-        EventId = 1,
+        EventId = RequestStartedEventId,
         Level = LogLevel.Debug,
         Message = "Telegram request started. method={MethodName}, attempt={Attempt}, content={ContentKind}.")]
     private static partial void LogRequestStarted(
@@ -395,7 +401,7 @@ internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
         string contentKind);
 
     [LoggerMessage(
-        EventId = 2,
+        EventId = RequestCompletedEventId,
         Level = LogLevel.Debug,
         Message = "Telegram request completed. method={MethodName}, attempt={Attempt}, status={HttpStatusCode}, request_ms={RequestElapsedMilliseconds:F2}.")]
     private static partial void LogRequestCompleted(
@@ -406,7 +412,7 @@ internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
         double requestElapsedMilliseconds);
 
     [LoggerMessage(
-        EventId = 3,
+        EventId = RequestThrottledEventId,
         Level = LogLevel.Warning,
         Message = "Telegram request throttled. method={MethodName}, attempt={Attempt}, retry_after={RetryAfter}.")]
     private static partial void LogRequestThrottledCore(
@@ -416,14 +422,15 @@ internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
         TimeSpan retryAfter);
 
     [LoggerMessage(
-        EventId = 4,
+        EventId = RequestFailedEventId,
         Level = LogLevel.Error,
-        Message = "Telegram request failed. method={MethodName}, attempt={Attempt}, status={HttpStatusCode}, request_ms={RequestElapsedMilliseconds:F2}.")]
+        Message = "Telegram request failed. method={MethodName}, attempt={Attempt}, status={HttpStatusCode}, request_ms={RequestElapsedMilliseconds:F2}, exception_type={ExceptionType}.")]
     private static partial void LogRequestFailed(
         ILogger logger,
         Exception exception,
         string methodName,
         int attempt,
         int? httpStatusCode,
-        double requestElapsedMilliseconds);
+        double requestElapsedMilliseconds,
+        string exceptionType);
 }

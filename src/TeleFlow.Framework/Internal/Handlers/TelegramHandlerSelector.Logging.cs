@@ -13,6 +13,11 @@ internal sealed partial class TelegramHandlerSelector
         /// A typed callback route matched callback data shape, but payload decoding failed.
         /// </summary>
         public const int CallbackDataDeserializationFailed = 1;
+
+        /// <summary>
+        /// A route matched the incoming update, but filters rejected the handler candidate.
+        /// </summary>
+        public const int HandlerRejectedByFilters = 2;
     }
 
     /// <summary>
@@ -30,4 +35,18 @@ internal sealed partial class TelegramHandlerSelector
         string handler,
         string route,
         int callbackDataBytes);
+
+    /// <summary>
+    /// Logs route candidates rejected by filters without exposing user message text or callback data.
+    /// </summary>
+    [LoggerMessage(
+        EventId = LogEventIds.HandlerRejectedByFilters,
+        Level = LogLevel.Debug,
+        Message = "Telegram handler candidate rejected by filters. update_id={UpdateId}, type={UpdateType}, handler={Handler}, route={Route}.")]
+    private static partial void LogHandlerRejectedByFilters(
+        ILogger logger,
+        long updateId,
+        string updateType,
+        string handler,
+        string route);
 }

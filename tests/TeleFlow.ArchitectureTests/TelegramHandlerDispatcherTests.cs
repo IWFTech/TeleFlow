@@ -132,6 +132,7 @@ public sealed class TelegramHandlerDispatcherTests
         Assert.Contains(
             loggerFactory.Entries,
             entry => entry.Level == LogLevel.Debug &&
+                     entry.EventId.Id == 2 &&
                      entry.Category.EndsWith("TelegramHandlerDispatcher", StringComparison.Ordinal) &&
                      entry.Message.Contains("Telegram handler matched", StringComparison.Ordinal) &&
                      entry.Message.Contains("handler=StartCommandHandler.Handle", StringComparison.Ordinal) &&
@@ -140,6 +141,7 @@ public sealed class TelegramHandlerDispatcherTests
         Assert.Contains(
             loggerFactory.Entries,
             entry => entry.Level == LogLevel.Debug &&
+                     entry.EventId.Id == 4 &&
                      entry.Message.Contains("Telegram handler completed", StringComparison.Ordinal) &&
                      entry.Message.Contains("handler_ms=", StringComparison.Ordinal) &&
                      entry.Message.Contains("telegram_request_count=0", StringComparison.Ordinal) &&
@@ -167,6 +169,7 @@ public sealed class TelegramHandlerDispatcherTests
         Assert.Contains(
             loggerFactory.Entries,
             entry => entry.Level == LogLevel.Debug &&
+                     entry.EventId.Id == 4 &&
                      entry.Message.Contains("Telegram handler completed", StringComparison.Ordinal) &&
                      entry.Message.Contains("handler=OneTelegramRequestMessageHandler.Handle", StringComparison.Ordinal) &&
                      entry.Message.Contains("telegram_request_count=1", StringComparison.Ordinal) &&
@@ -194,6 +197,7 @@ public sealed class TelegramHandlerDispatcherTests
         Assert.Contains(
             loggerFactory.Entries,
             entry => entry.Level == LogLevel.Debug &&
+                     entry.EventId.Id == 4 &&
                      entry.Message.Contains("Telegram handler completed", StringComparison.Ordinal) &&
                      entry.Message.Contains("handler=TwoTelegramRequestsCallbackHandler.Handle", StringComparison.Ordinal) &&
                      entry.Message.Contains("telegram_request_count=2", StringComparison.Ordinal) &&
@@ -248,6 +252,7 @@ public sealed class TelegramHandlerDispatcherTests
         Assert.Contains(
             loggerFactory.Entries,
             entry => entry.Level == LogLevel.Debug &&
+                     entry.EventId.Id == 1 &&
                      entry.Message.Contains("No Telegram handler matched", StringComparison.Ordinal) &&
                      entry.Message.Contains("type=message", StringComparison.Ordinal) &&
                      entry.Message.Contains("match_ms=", StringComparison.Ordinal));
@@ -274,6 +279,7 @@ public sealed class TelegramHandlerDispatcherTests
         Assert.Contains(
             loggerFactory.Entries,
             entry => entry.Level == LogLevel.Error &&
+                     entry.EventId.Id == 3 &&
                      ReferenceEquals(entry.Exception, expected) &&
                      entry.Message.Contains("Telegram handler failed", StringComparison.Ordinal) &&
                      entry.Message.Contains("handler=ThrowingMessageHandler.Handle", StringComparison.Ordinal) &&
@@ -304,6 +310,7 @@ public sealed class TelegramHandlerDispatcherTests
         var entry = Assert.Single(
             loggerFactory.Entries,
             entry => entry.Level == LogLevel.Error &&
+                     entry.EventId.Id == 3 &&
                      ReferenceEquals(entry.Exception, expected) &&
                      entry.Message.Contains("Telegram handler failed", StringComparison.Ordinal));
 
@@ -353,6 +360,7 @@ public sealed class TelegramHandlerDispatcherTests
         Assert.Contains(
             loggerFactory.Entries,
             entry => entry.Level == LogLevel.Debug &&
+                     entry.EventId.Id == 5 &&
                      entry.Message.Contains("Telegram error handler completed", StringComparison.Ordinal) &&
                      entry.Message.Contains("handler=ThrowingMessageHandler.Handle", StringComparison.Ordinal) &&
                      entry.Message.Contains("error_handler=HandledErrorHandler.Handle", StringComparison.Ordinal) &&
@@ -1524,6 +1532,37 @@ public sealed class TelegramHandlerDispatcherTests
     }
 
     [Fact]
+    public async Task FilterRejectedCandidate_LogsDebugDiagnosticWithoutMessageText()
+    {
+        var loggerFactory = new RecordingLoggerFactory();
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.RemoveAll<ILoggerFactory>();
+                services.AddSingleton<ILoggerFactory>(loggerFactory);
+                services.AddSingleton<DenyMessageFilter>();
+                services.AddTelegramHandler<DenyCustomFilterMessageHandler>();
+                services.AddTelegramHandler<AnyMessageHandler>();
+            });
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("sensitive-message-text"));
+
+        Assert.Equal(["message:sensitive-message-text"], probe.Events);
+        var diagnostic = Assert.Single(
+            loggerFactory.Entries,
+            entry => entry.Level == LogLevel.Debug &&
+                     entry.EventId.Id == 2 &&
+                     entry.Category == "TeleFlow.Telegram.Internal.Handlers.TelegramHandlerSelector");
+
+        Assert.Contains("Telegram handler candidate rejected by filters", diagnostic.Message, StringComparison.Ordinal);
+        Assert.Contains("handler=DenyCustomFilterMessageHandler.Handle", diagnostic.Message, StringComparison.Ordinal);
+        Assert.Contains("route=MessageAny", diagnostic.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("sensitive-message-text", diagnostic.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ClassAndMethodCustomFilters_AreAndComposed()
     {
         using var serviceProvider = CreateServiceProvider(
@@ -2333,6 +2372,7 @@ public sealed class TelegramHandlerDispatcherTests
             entry => entry.Level == LogLevel.Warning &&
                      entry.Category == "TeleFlow.Telegram.Internal.Handlers.TelegramHandlerSelector");
         Assert.Contains("Telegram callback data failed to deserialize", warning.Message);
+        Assert.Equal(1, warning.EventId.Id);
         Assert.Contains(nameof(CompactDeleteCallback), warning.Message);
         Assert.NotNull(warning.Exception);
     }

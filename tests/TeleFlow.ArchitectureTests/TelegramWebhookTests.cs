@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using TeleFlow.Telegram;
 using TeleFlow.Telegram.Schema.Abstractions;
 using TeleFlow.Telegram.Schema.Types;
@@ -118,6 +119,77 @@ public sealed class TelegramWebhookTests
     }
 
     [Fact]
+    public async Task RawWebhookEndpoint_LogsSecretTokenRejectionWithoutSecretValues()
+    {
+        var loggerFactory = new RecordingLoggerFactory();
+        await using var app = CreateApp(
+            static (_, _, _) => Task.FromResult<IResult>(Results.Ok()),
+            configure: options => options.SecretToken = "expected-secret-value",
+            loggerFactory: loggerFactory);
+
+        var context = await InvokeAsync(app, ValidUpdateJson, secretToken: "wrong-secret-value");
+
+        Assert.Equal(StatusCodes.Status401Unauthorized, context.Response.StatusCode);
+        var warning = Assert.Single(
+            loggerFactory.Entries,
+            entry => entry.Level == LogLevel.Warning &&
+                     entry.EventId.Id == 1 &&
+                     entry.Category == "TeleFlow.Telegram.Webhooks.Internal.TelegramRawWebhookEndpoint");
+
+        Assert.Contains("secret token validation failed", warning.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("expected-secret-value", warning.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("wrong-secret-value", warning.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RawWebhookEndpoint_LogsInvalidPayloadWithoutRequestBody()
+    {
+        var loggerFactory = new RecordingLoggerFactory();
+        await using var app = CreateApp(
+            static (_, _, _) => Task.FromResult<IResult>(Results.Ok()),
+            loggerFactory: loggerFactory);
+
+        var context = await InvokeAsync(app, "{ invalid");
+
+        Assert.Equal(StatusCodes.Status400BadRequest, context.Response.StatusCode);
+        var warning = Assert.Single(
+            loggerFactory.Entries,
+            entry => entry.Level == LogLevel.Warning &&
+                     entry.EventId.Id == 2 &&
+                     entry.Category == "TeleFlow.Telegram.Webhooks.Internal.TelegramRawWebhookEndpoint");
+
+        Assert.Contains("payload was invalid", warning.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("{ invalid", warning.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RawWebhookEndpoint_LogsAcceptedUpdateWithoutMessageText()
+    {
+        var loggerFactory = new RecordingLoggerFactory();
+        await using var app = CreateApp(
+            static (_, _, _) => Task.FromResult<IResult>(Results.Ok()),
+            loggerFactory: loggerFactory);
+
+        var context = await InvokeAsync(app, ValidUpdateJson);
+
+        Assert.Equal(StatusCodes.Status200OK, context.Response.StatusCode);
+        Assert.Contains(
+            loggerFactory.Entries,
+            entry => entry.Level == LogLevel.Debug &&
+                     entry.EventId.Id == 3 &&
+                     entry.Message.Contains("update_id=123", StringComparison.Ordinal) &&
+                     entry.Message.Contains("type=message", StringComparison.Ordinal) &&
+                     !entry.Message.Contains("hello", StringComparison.Ordinal));
+        Assert.Contains(
+            loggerFactory.Entries,
+            entry => entry.Level == LogLevel.Debug &&
+                     entry.EventId.Id == 4 &&
+                     entry.Message.Contains("update_id=123", StringComparison.Ordinal) &&
+                     entry.Message.Contains("type=message", StringComparison.Ordinal) &&
+                     !entry.Message.Contains("hello", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task RawWebhookEndpoint_AcceptsValidSecretToken()
     {
         var invoked = false;
@@ -228,11 +300,16 @@ public sealed class TelegramWebhookTests
         TelegramRawWebhookHandler handler,
         string path = "/telegram",
         FakeTelegramClient? bot = null,
-        Action<TelegramRawWebhookOptions>? configure = null)
+        Action<TelegramRawWebhookOptions>? configure = null,
+        RecordingLoggerFactory? loggerFactory = null)
     {
         var builder = WebApplication.CreateBuilder();
 
         builder.Services.AddSingleton<ITelegramClient>(bot ?? new FakeTelegramClient());
+        if (loggerFactory is not null)
+        {
+            builder.Services.AddSingleton<ILoggerFactory>(loggerFactory);
+        }
 
         var app = builder.Build();
         app.MapTelegramWebhook(path, handler, configure);

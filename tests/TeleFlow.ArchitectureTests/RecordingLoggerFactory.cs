@@ -42,13 +42,14 @@ internal sealed class RecordingLoggerFactory(LogLevel minimumLevel = LogLevel.Tr
             Exception? exception,
             Func<TState, Exception?, string> formatter)
         {
-            entries.Add(new TestLogEntry(categoryName, logLevel, formatter(state, exception), exception));
+            entries.Add(new TestLogEntry(categoryName, eventId, logLevel, formatter(state, exception), exception));
         }
     }
 }
 
 internal sealed record TestLogEntry(
     string Category,
+    EventId EventId,
     LogLevel Level,
     string Message,
     Exception? Exception);

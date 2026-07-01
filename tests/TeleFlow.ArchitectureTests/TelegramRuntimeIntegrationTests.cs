@@ -476,6 +476,7 @@ public sealed class TelegramRuntimeIntegrationTests
         Assert.Contains(
             loggerFactory.Entries,
             entry => entry.Level == LogLevel.Debug &&
+                     entry.EventId.Id == 1 &&
                      entry.Message.Contains("Telegram request started", StringComparison.Ordinal) &&
                      entry.Message.Contains("method=sendMessage", StringComparison.Ordinal) &&
                      entry.Message.Contains("attempt=1", StringComparison.Ordinal) &&
@@ -483,6 +484,7 @@ public sealed class TelegramRuntimeIntegrationTests
         Assert.Contains(
             loggerFactory.Entries,
             entry => entry.Level == LogLevel.Debug &&
+                     entry.EventId.Id == 2 &&
                      entry.Message.Contains("Telegram request completed", StringComparison.Ordinal) &&
                      entry.Message.Contains("method=sendMessage", StringComparison.Ordinal) &&
                      entry.Message.Contains("status=200", StringComparison.Ordinal) &&
@@ -537,6 +539,7 @@ public sealed class TelegramRuntimeIntegrationTests
         Assert.Contains(
             loggerFactory.Entries,
             entry => entry.Level == LogLevel.Warning &&
+                     entry.EventId.Id == 3 &&
                      entry.Message.Contains("Telegram request throttled", StringComparison.Ordinal) &&
                      entry.Message.Contains("method=getMe", StringComparison.Ordinal) &&
                      entry.Message.Contains("attempt=1", StringComparison.Ordinal) &&
@@ -544,6 +547,7 @@ public sealed class TelegramRuntimeIntegrationTests
         Assert.Contains(
             loggerFactory.Entries,
             entry => entry.Level == LogLevel.Debug &&
+                     entry.EventId.Id == 2 &&
                      entry.Message.Contains("Telegram request completed", StringComparison.Ordinal) &&
                      entry.Message.Contains("attempt=2", StringComparison.Ordinal) &&
                      entry.Message.Contains("status=200", StringComparison.Ordinal));
@@ -566,11 +570,13 @@ public sealed class TelegramRuntimeIntegrationTests
         Assert.Contains(
             loggerFactory.Entries,
             entry => entry.Level == LogLevel.Error &&
+                     entry.EventId.Id == 4 &&
                      ReferenceEquals(entry.Exception, exception) &&
                      entry.Message.Contains("Telegram request failed", StringComparison.Ordinal) &&
                      entry.Message.Contains("method=getMe", StringComparison.Ordinal) &&
                      entry.Message.Contains("status=400", StringComparison.Ordinal) &&
-                     entry.Message.Contains("request_ms=", StringComparison.Ordinal));
+                     entry.Message.Contains("request_ms=", StringComparison.Ordinal) &&
+                     entry.Message.Contains("exception_type=TeleFlow.Telegram.TelegramBadRequestException", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -589,11 +595,13 @@ public sealed class TelegramRuntimeIntegrationTests
         Assert.Contains(
             loggerFactory.Entries,
             entry => entry.Level == LogLevel.Error &&
+                     entry.EventId.Id == 4 &&
                      ReferenceEquals(entry.Exception, exception) &&
                      entry.Message.Contains("Telegram request failed", StringComparison.Ordinal) &&
                      entry.Message.Contains("method=getMe", StringComparison.Ordinal) &&
                      entry.Message.Contains("status=502", StringComparison.Ordinal) &&
-                     entry.Message.Contains("request_ms=", StringComparison.Ordinal));
+                     entry.Message.Contains("request_ms=", StringComparison.Ordinal) &&
+                     entry.Message.Contains("exception_type=TeleFlow.Telegram.TelegramNetworkException", StringComparison.Ordinal));
         AssertRequestLogsDoNotContainSensitiveData(loggerFactory);
     }
 
@@ -1629,15 +1637,18 @@ public sealed class TelegramRuntimeIntegrationTests
         Assert.Contains(
             loggerFactory.Entries,
             entry => entry.Level == LogLevel.Information &&
+                     entry.EventId.Id == 1 &&
                      entry.Message.Contains("Starting Telegram long polling", StringComparison.Ordinal) &&
                      entry.Message.Contains("allowed_updates=unset", StringComparison.Ordinal));
         Assert.Contains(
             loggerFactory.Entries,
             entry => entry.Level == LogLevel.Information &&
+                     entry.EventId.Id == 2 &&
                      entry.Message.Contains("Telegram long polling connected", StringComparison.Ordinal));
         Assert.Contains(
             loggerFactory.Entries,
             entry => entry.Level == LogLevel.Debug &&
+                     entry.EventId.Id == 3 &&
                      entry.Message.Contains("Telegram update received", StringComparison.Ordinal) &&
                      entry.Message.Contains("update_id=1", StringComparison.Ordinal) &&
                      entry.Message.Contains("type=message", StringComparison.Ordinal) &&
@@ -1645,11 +1656,13 @@ public sealed class TelegramRuntimeIntegrationTests
         Assert.Contains(
             loggerFactory.Entries,
             entry => entry.Level == LogLevel.Debug &&
+                     entry.EventId.Id == 5 &&
                      entry.Message.Contains("Telegram update processed", StringComparison.Ordinal) &&
                      entry.Message.Contains("total_ms=", StringComparison.Ordinal));
         Assert.Contains(
             loggerFactory.Entries,
             entry => entry.Level == LogLevel.Information &&
+                     entry.EventId.Id == 6 &&
                      entry.Message.Contains("Telegram long polling stopped", StringComparison.Ordinal));
     }
 
