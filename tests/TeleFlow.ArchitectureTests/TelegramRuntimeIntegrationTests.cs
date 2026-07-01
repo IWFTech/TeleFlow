@@ -82,6 +82,33 @@ public sealed class TelegramRuntimeIntegrationTests
         Assert.Equal(TelegramParseMode.Html, client.Defaults.ParseMode);
         Assert.True(client.Defaults.DisableNotification);
         Assert.True(client.Defaults.ProtectContent);
+        Assert.Same(TelegramRetryAfterPolicy.Default, serviceProvider.GetRequiredService<TelegramClientOptions>().RetryAfter);
+    }
+
+    [Fact]
+    public void AddTelegramBot_ValidatesRetryAfterPolicy()
+    {
+        var invalidCases = new (Action<TelegramBotOptions> Configure, string ExpectedMessage)[]
+        {
+            (options => options.RetryAfter = null!, "retry-after policy must be configured"),
+            (options => options.RetryAfter = TelegramRetryAfterPolicy.Default with { MaxRetries = -1 }, "maximum retry count must not be negative"),
+            (options => options.RetryAfter = TelegramRetryAfterPolicy.Default with { MaxDelay = TimeSpan.Zero }, "maximum retry delay must be greater than zero"),
+            (options => options.RetryAfter = TelegramRetryAfterPolicy.Default with { MaxDelay = TimeSpan.FromSeconds(-1) }, "maximum retry delay must be greater than zero")
+        };
+
+        foreach (var (configure, expectedMessage) in invalidCases)
+        {
+            var services = new ServiceCollection();
+
+            var exception = Assert.Throws<InvalidOperationException>(() =>
+                services.AddTelegramBot(options =>
+                {
+                    options.Token = "test-token";
+                    configure(options);
+                }));
+
+            Assert.Contains(expectedMessage, exception.Message, StringComparison.Ordinal);
+        }
     }
 
     [Fact]
@@ -1217,6 +1244,76 @@ public sealed class TelegramRuntimeIntegrationTests
     }
 
     [Fact]
+    public async Task Executor_StopsRetrying429AfterConfiguredMaximum()
+    {
+        var handler = new RecordingHttpMessageHandler(
+            CreateJsonResponse(
+                """{"ok":false,"error_code":429,"description":"Too Many Requests","response_parameters":{"retry_after":0}}""",
+                HttpStatusCode.TooManyRequests),
+            CreateJsonResponse(
+                """{"ok":false,"error_code":429,"description":"Too Many Requests","response_parameters":{"retry_after":0}}""",
+                HttpStatusCode.TooManyRequests));
+
+        using var serviceProvider = CreateTelegramServiceProvider(handler);
+        var client = serviceProvider.GetRequiredService<ITelegramClient>();
+
+        var exception = await Assert.ThrowsAsync<TelegramRetryAfterException>(() => client.SendAsync(new GetMe()));
+
+        Assert.Equal(429, exception.HttpStatusCode);
+        Assert.Equal(0, exception.RetryAfterSeconds);
+        Assert.Equal("getMe", exception.MethodName);
+        Assert.Equal(2, handler.Requests.Count);
+    }
+
+    [Fact]
+    public async Task Executor_DoesNotRetry429_WhenRetryAfterPolicyIsDisabled()
+    {
+        var handler = new RecordingHttpMessageHandler(
+            CreateJsonResponse(
+                """{"ok":false,"error_code":429,"description":"Too Many Requests","response_parameters":{"retry_after":0}}""",
+                HttpStatusCode.TooManyRequests));
+
+        using var serviceProvider = CreateTelegramServiceProvider(
+            handler,
+            configureBot: options => options.RetryAfter = TelegramRetryAfterPolicy.Disabled);
+        var client = serviceProvider.GetRequiredService<ITelegramClient>();
+
+        var exception = await Assert.ThrowsAsync<TelegramRetryAfterException>(() => client.SendAsync(new GetMe()));
+
+        Assert.Equal(429, exception.HttpStatusCode);
+        Assert.Equal(0, exception.RetryAfterSeconds);
+        Assert.Equal("getMe", exception.MethodName);
+        Assert.Single(handler.Requests);
+    }
+
+    [Fact]
+    public async Task Executor_DoesNotRetry429_WhenRetryAfterExceedsConfiguredMaximumDelay()
+    {
+        var timeProvider = new RecordingTimeProvider();
+        var handler = new RecordingHttpMessageHandler(
+            CreateJsonResponse(
+                """{"ok":false,"error_code":429,"description":"Too Many Requests","response_parameters":{"retry_after":6}}""",
+                HttpStatusCode.TooManyRequests));
+
+        using var serviceProvider = CreateTelegramServiceProvider(
+            handler,
+            configureBot: options => options.RetryAfter = TelegramRetryAfterPolicy.Default with
+            {
+                MaxDelay = TimeSpan.FromSeconds(5)
+            },
+            timeProvider: timeProvider);
+        var client = serviceProvider.GetRequiredService<ITelegramClient>();
+
+        var exception = await Assert.ThrowsAsync<TelegramRetryAfterException>(() => client.SendAsync(new GetMe()));
+
+        Assert.Equal(429, exception.HttpStatusCode);
+        Assert.Equal(6, exception.RetryAfterSeconds);
+        Assert.Equal("getMe", exception.MethodName);
+        Assert.Empty(timeProvider.Delays);
+        Assert.Single(handler.Requests);
+    }
+
+    [Fact]
     public async Task Executor_UsesRetryAfterHeaderFallback()
     {
         var throttledResponse = CreateJsonResponse(
@@ -1592,6 +1689,42 @@ public sealed class TelegramRuntimeIntegrationTests
             timeProvider.Delays);
         Assert.Equal([1L], dispatcher.UpdateIds);
         Assert.Equal(5, telegramClient.GetUpdatesRequests.Count);
+    }
+
+    [Fact]
+    public async Task LongPolling_UsesRetryAfterDelayForThrottledGetUpdates()
+    {
+        var timeProvider = new RecordingTimeProvider();
+        var handler = new RecordingHttpMessageHandler(
+            CreateJsonResponse(
+                """{"ok":false,"error_code":429,"description":"Too Many Requests","response_parameters":{"retry_after":3}}""",
+                HttpStatusCode.TooManyRequests),
+            CreateJsonResponse(
+                """{"ok":true,"result":[{"update_id":1,"message":{"message_id":10,"date":0,"chat":{"id":100,"type":"private"},"text":"first"}}]}"""));
+        var dispatcher = new RecordingDispatcher(cancelAfter: 1);
+        using var cancellation = new CancellationTokenSource();
+
+        var application = CreateTelegramApplication(
+            services =>
+            {
+                services.AddSingleton<TimeProvider>(timeProvider);
+                services.AddTelegramHttpTransport(_ => new HttpClient(handler));
+                services.AddSingleton<IUpdateDispatcher>(dispatcher);
+            },
+            services => services.AddLongPolling(options =>
+            {
+                options.Backoff.MinDelay = TimeSpan.FromSeconds(1);
+                options.Backoff.MaxDelay = TimeSpan.FromSeconds(1);
+                options.Backoff.Jitter = 0;
+            }),
+            cancellation,
+            configureBot: options => options.RetryAfter = TelegramRetryAfterPolicy.Disabled);
+
+        await application.RunAsync(cancellation.Token);
+
+        Assert.Equal([TimeSpan.FromSeconds(3)], timeProvider.Delays);
+        Assert.Equal([1L], dispatcher.UpdateIds);
+        Assert.Equal(2, handler.Requests.Count);
     }
 
     [Fact]
@@ -3049,10 +3182,15 @@ public sealed class TelegramRuntimeIntegrationTests
     private static ITeleFlowApplication CreateTelegramApplication(
         Action<IServiceCollection> configureServices,
         Action<IServiceCollection> configureTelegram,
-        CancellationTokenSource? cancellation = null)
+        CancellationTokenSource? cancellation = null,
+        Action<TelegramBotOptions>? configureBot = null)
     {
         var builder = TeleFlowApplication.CreateBuilder();
-        builder.Services.AddTelegramBot(options => options.Token = "test-token");
+        builder.Services.AddTelegramBot(options =>
+        {
+            options.Token = "test-token";
+            configureBot?.Invoke(options);
+        });
         configureTelegram(builder.Services);
         configureServices(builder.Services);
 

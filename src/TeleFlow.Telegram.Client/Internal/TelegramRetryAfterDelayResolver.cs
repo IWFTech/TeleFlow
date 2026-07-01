@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace TeleFlow.Telegram.Internal;
 
-internal static class TelegramRetryAfterPolicy
+internal static class TelegramRetryAfterDelayResolver
 {
     public static TelegramRetryAfterDelay? ResolveDelay(
         TelegramTransportResponse response,

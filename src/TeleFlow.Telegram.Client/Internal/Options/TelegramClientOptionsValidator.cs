@@ -30,5 +30,25 @@ internal static class TelegramClientOptionsValidator
         {
             throw new InvalidOperationException("Telegram bot defaults must be configured.");
         }
+
+        ValidateRetryAfter(options.RetryAfter);
+    }
+
+    private static void ValidateRetryAfter(TelegramRetryAfterPolicy? policy)
+    {
+        if (policy is null)
+        {
+            throw new InvalidOperationException("Telegram retry-after policy must be configured.");
+        }
+
+        if (policy.MaxRetries < 0)
+        {
+            throw new InvalidOperationException("Telegram retry-after maximum retry count must not be negative.");
+        }
+
+        if (policy.MaxDelay <= TimeSpan.Zero)
+        {
+            throw new InvalidOperationException("Telegram retry-after maximum retry delay must be greater than zero.");
+        }
     }
 }

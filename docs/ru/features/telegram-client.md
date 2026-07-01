@@ -70,6 +70,46 @@ builder.Services.AddTelegramBot(options =>
 
 Defaults удобны для cross-cutting Telegram request settings. Handler-specific values держи в handler.
 
+## Retry-After policy
+
+Telegram может вернуть `429 Too Many Requests` с `response_parameters.retry_after` или HTTP header `Retry-After`. TeleFlow обрабатывает это через явную bounded policy:
+
+```csharp
+builder.Services.AddTelegramBot(options =>
+{
+    options.Token = token;
+    options.RetryAfter = TelegramRetryAfterPolicy.Default;
+});
+```
+
+`TelegramRetryAfterPolicy.Default` делает один retry короткого throttled request и ждёт только если Telegram попросил задержку до пяти секунд. Если Telegram попросил ждать дольше, вернул `429` без retry metadata или retry count исчерпан, client бросает `TelegramRetryAfterException`.
+
+Отключи automatic waiting, если приложение должно само владеть всеми throttling decisions:
+
+```csharp
+builder.Services.AddTelegramBot(options =>
+{
+    options.Token = token;
+    options.RetryAfter = TelegramRetryAfterPolicy.Disabled;
+});
+```
+
+Или задай custom bounded policy:
+
+```csharp
+builder.Services.AddTelegramBot(options =>
+{
+    options.Token = token;
+    options.RetryAfter = TelegramRetryAfterPolicy.Default with
+    {
+        MaxRetries = 2,
+        MaxDelay = TimeSpan.FromSeconds(3)
+    };
+});
+```
+
+TeleFlow не делает automatic retry обычных Bot API failures или network failures для нормальных client calls. Так мы не создаём hidden duplicate sends для non-idempotent methods. Если нужен более широкий retry или outgoing rate limiting, добавляй эту policy в application code или осознанно заменяй request executor.
+
 ## Собственный transport
 
 Transport можно заменить:

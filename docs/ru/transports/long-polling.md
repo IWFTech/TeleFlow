@@ -43,7 +43,7 @@ options.AllowedUpdates = TelegramAllowedUpdates.Only(
     TelegramUpdateType.CallbackQuery);
 ```
 
-Long polling retry-ит transient `getUpdates` failures с настраиваемым backoff. Handler failures не swallowing. Offset продвигается только после успешной обработки update.
+Long polling retry-ит transient `getUpdates` failures с настраиваемым backoff. Если Telegram client отдаёт `TelegramRetryAfterException`, polling ждёт Telegram-provided retry delay вместо обычной backoff delay. Handler failures не swallowing. Offset продвигается только после успешной обработки update.
 
 ## Когда использовать long polling
 

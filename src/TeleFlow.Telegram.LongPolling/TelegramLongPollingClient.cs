@@ -208,7 +208,7 @@ public sealed partial class TelegramLongPollingClient : ITelegramLongPollingClie
             }
             catch (Exception exception) when (IsPollingTransient(exception) && !cancellationToken.IsCancellationRequested)
             {
-                var delay = backoff.NextDelay();
+                var delay = GetPollingRetryDelay(exception, backoff);
                 onTransientFailure();
 
                 LogGetUpdatesFailed(
@@ -260,6 +260,13 @@ public sealed partial class TelegramLongPollingClient : ITelegramLongPollingClie
             TelegramServerException or
             TelegramDecodeException or
             TelegramRetryAfterException;
+    }
+
+    private static TimeSpan GetPollingRetryDelay(Exception exception, TelegramRawLongPollingBackoff backoff)
+    {
+        return exception is TelegramRetryAfterException { RetryAfter: { } retryAfter }
+            ? retryAfter
+            : backoff.NextDelay();
     }
 
     [LoggerMessage(

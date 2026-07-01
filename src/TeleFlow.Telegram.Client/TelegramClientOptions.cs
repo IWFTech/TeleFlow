@@ -15,4 +15,9 @@ public sealed class TelegramClientOptions
     public string BaseUrl { get; set; } = "https://api.telegram.org";
 
     public TelegramBotDefaults Defaults { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the bounded retry policy used when Telegram returns Bot API throttling metadata.
+    /// </summary>
+    public TelegramRetryAfterPolicy RetryAfter { get; set; } = TelegramRetryAfterPolicy.Default;
 }

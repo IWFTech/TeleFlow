@@ -11,6 +11,7 @@ builder.Services.AddTelegramBot(options =>
     options.BotUsername = "my_bot";
     options.BaseUrl = "https://api.telegram.org";
     options.Defaults.ParseMode = TelegramParseMode.Html;
+    options.RetryAfter = TelegramRetryAfterPolicy.Default;
     options.RoleFilter.CacheEnabled = true;
     options.RoleFilter.CacheTtl = TimeSpan.FromSeconds(30);
 });
@@ -26,10 +27,13 @@ services.AddTelegramClient(options =>
     options.Token = token;
     options.BotUsername = "my_bot";
     options.BaseUrl = "https://api.telegram.org";
+    options.RetryAfter = TelegramRetryAfterPolicy.Default;
 });
 ```
 
 Используй это для client-only applications.
+
+`RetryAfter` управляет bounded automatic handling для Telegram `429` responses. Default policy retry-ит один короткий retry-after response и бросает `TelegramRetryAfterException`, когда настроенные границы превышены.
 
 ## Long polling options
 

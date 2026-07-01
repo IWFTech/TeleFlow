@@ -15,4 +15,9 @@ public sealed class TelegramBotOptions
     public TelegramBotDefaults Defaults { get; set; } = new();
 
     public TelegramRoleFilterOptions RoleFilter { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the bounded retry policy forwarded to the low-level Telegram client.
+    /// </summary>
+    public TelegramRetryAfterPolicy RetryAfter { get; set; } = TelegramRetryAfterPolicy.Default;
 }

@@ -8,6 +8,7 @@ internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
     private readonly JsonSerializerOptions _serializerOptions;
     private readonly TelegramRequestSender _sender;
     private readonly TelegramTransportEnvelopeParser _envelopeParser;
+    private readonly TelegramRetryAfterPolicy _retryAfterPolicy;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<TelegramRequestExecutor> _logger;
 
@@ -30,6 +31,7 @@ internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
             options,
             new TelegramRequestContentBuilder(_serializerOptions));
         _envelopeParser = new TelegramTransportEnvelopeParser(_serializerOptions);
+        _retryAfterPolicy = options.RetryAfter;
         _timeProvider = timeProvider;
         _logger = loggerFactory.CreateLogger<TelegramRequestExecutor>();
     }
@@ -132,28 +134,30 @@ internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
 
             if (envelope is null)
             {
-                var retryAfterHeaderDelay = TelegramRetryAfterPolicy.ResolveDelay(response, envelope, _timeProvider);
+                var retryAfterHeaderDelay = TelegramRetryAfterDelayResolver.ResolveDelay(response, envelope, _timeProvider);
                 if (response.StatusCode == 429)
                 {
-                    if (retryAfterHeaderDelay is not null)
+                    if (retryAfterHeaderDelay is not null &&
+                        CanRetryAfter(attempt, retryAfterHeaderDelay.Value))
                     {
                         if (!isPollingRequest && _logger.IsEnabled(LogLevel.Warning))
                         {
                             LogRequestThrottled(executableRequest.MethodName, attempt, retryAfterHeaderDelay.Value);
                         }
 
-                        await TelegramRetryAfterPolicy.DelayAsync(
+                        await TelegramRetryAfterDelayResolver.DelayAsync(
                             retryAfterHeaderDelay.Value,
                             _timeProvider,
                             cancellationToken).ConfigureAwait(false);
                         continue;
                     }
 
-                    var exception = new TelegramRetryAfterException(
-                        $"Telegram request '{executableRequest.MethodName}' was throttled, but the response did not provide retry timing metadata.",
+                    var exception = CreateRetryAfterException(
                         executableRequest.MethodName,
-                        httpStatusCode: response.StatusCode,
-                        description: "Telegram throttling response did not provide retry timing metadata.");
+                        response.StatusCode,
+                        envelope: null,
+                        retryAfterHeaderDelay,
+                        GetRetryAfterFailureDescription(retryAfterHeaderDelay));
                     if (requestErrorEnabled)
                     {
                         LogRequestFailure(
@@ -240,28 +244,31 @@ internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
                 }
             }
 
-            var retryAfterDelay = TelegramRetryAfterPolicy.ResolveDelay(response, envelope, _timeProvider);
-            if (TelegramApiExceptionFactory.IsThrottling(response.StatusCode, envelope) && retryAfterDelay is not null)
+            var retryAfterDelay = TelegramRetryAfterDelayResolver.ResolveDelay(response, envelope, _timeProvider);
+            if (TelegramApiExceptionFactory.IsThrottling(response.StatusCode, envelope) &&
+                retryAfterDelay is not null &&
+                CanRetryAfter(attempt, retryAfterDelay.Value))
             {
                 if (!isPollingRequest && _logger.IsEnabled(LogLevel.Warning))
                 {
                     LogRequestThrottled(executableRequest.MethodName, attempt, retryAfterDelay.Value);
                 }
 
-                await TelegramRetryAfterPolicy.DelayAsync(
+                await TelegramRetryAfterDelayResolver.DelayAsync(
                     retryAfterDelay.Value,
                     _timeProvider,
                     cancellationToken).ConfigureAwait(false);
                 continue;
             }
 
-            if (TelegramApiExceptionFactory.IsThrottling(response.StatusCode, envelope) && retryAfterDelay is null)
+            if (TelegramApiExceptionFactory.IsThrottling(response.StatusCode, envelope))
             {
-                var retryAfterException = TelegramApiExceptionFactory.CreateRetryAfterException(
+                var retryAfterException = CreateRetryAfterException(
                     executableRequest.MethodName,
                     response.StatusCode,
                     envelope,
-                    "Telegram throttling response did not provide retry timing metadata.");
+                    retryAfterDelay,
+                    GetRetryAfterFailureDescription(retryAfterDelay));
                 if (requestErrorEnabled)
                 {
                     LogRequestFailure(
@@ -298,6 +305,39 @@ internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
     private static bool IsPollingRequest(string methodName)
     {
         return string.Equals(methodName, "getUpdates", StringComparison.Ordinal);
+    }
+
+    private bool CanRetryAfter(int attempt, TelegramRetryAfterDelay retryAfter)
+    {
+        return _retryAfterPolicy.Enabled &&
+            attempt <= _retryAfterPolicy.MaxRetries &&
+            retryAfter.Value <= _retryAfterPolicy.MaxDelay;
+    }
+
+    private static TelegramRetryAfterException CreateRetryAfterException(
+        string methodName,
+        int httpStatusCode,
+        TelegramTransportEnvelope? envelope,
+        TelegramRetryAfterDelay? retryAfter,
+        string fallbackDescription)
+    {
+        var description = envelope?.Description ?? fallbackDescription;
+        var message = $"Telegram request '{methodName}' failed: {description}";
+
+        return new TelegramRetryAfterException(
+            message,
+            methodName,
+            httpStatusCode: httpStatusCode,
+            telegramErrorCode: envelope?.ErrorCode,
+            description: description,
+            retryAfterSeconds: retryAfter?.Seconds);
+    }
+
+    private static string GetRetryAfterFailureDescription(TelegramRetryAfterDelay? retryAfter)
+    {
+        return retryAfter is null
+            ? "Telegram throttling response did not provide retry timing metadata."
+            : "Telegram request was throttled and automatic retry-after handling was not applied by the configured policy.";
     }
 
     private static string GetContentKind(TelegramTransportContent content)
