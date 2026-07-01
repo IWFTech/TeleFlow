@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using TeleFlow.Framework.Updates;
 
 namespace TeleFlow.Framework.Application;
 
@@ -8,6 +9,7 @@ internal sealed class TeleFlowApplicationBuilder : ITeleFlowApplicationBuilder
     {
         Services = new ServiceCollection();
         Services.AddSingleton(new TeleFlowApplicationArguments(args));
+        Services.AddUpdateContextAccessor();
     }
 
     public IServiceCollection Services { get; }

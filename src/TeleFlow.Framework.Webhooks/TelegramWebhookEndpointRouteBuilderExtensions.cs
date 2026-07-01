@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using TeleFlow.Framework.Application;
 using TeleFlow.Framework.Updates;
 
 namespace TeleFlow.Telegram.Webhooks;
@@ -14,6 +15,8 @@ public static class TelegramWebhookEndpointRouteBuilderExtensions
 
         var options = endpoints.ServiceProvider.GetRequiredService<TelegramWebhookOptions>();
         var processor = endpoints.ServiceProvider.GetRequiredService<IUpdateProcessor>();
+
+        TeleFlowRuntimeValidatorRunner.Validate(endpoints.ServiceProvider);
 
         return endpoints.MapTelegramWebhook(
             options.Path,

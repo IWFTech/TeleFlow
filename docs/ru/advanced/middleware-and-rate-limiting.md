@@ -113,6 +113,8 @@ builder.Services.AddUpdateMiddleware<UserGateMiddleware>();
 
 `AddUpdateMiddleware<T>()` добавляет middleware в update pipeline и создаёт его из текущего update scope. Поэтому middleware может принимать scoped-зависимости в конструкторе: repositories, unit-of-work services, database contexts и другие update-scoped application services.
 
+Middleware получает `UpdateContext` напрямую, потому что middleware является частью framework pipeline. Обычным application services обычно не нужно принимать `UpdateContext` или `MessageContext`. Если scoped service нужен текущий Telegram user или chat, внедри в этот service `ITelegramCurrentUpdateAccessor`.
+
 Если middleware нужна application configuration, используй обычный .NET options pattern. В минимальном console-проекте пакет с options лучше добавить явно:
 
 ```bash
@@ -166,6 +168,8 @@ builder.Services.AddSingletonUpdateMiddleware<MyStatelessMiddleware>();
 ```
 
 Singleton middleware не должен принимать scoped services в конструкторе.
+
+Singleton middleware также не должен принимать `ITelegramCurrentUpdateAccessor` или `IUpdateContextAccessor`. Current-update accessors scoped на один update.
 
 Не регистрируй middleware напрямую как `IUpdateMiddleware` в `IServiceCollection`. TeleFlow строит middleware pipeline из middleware-регистраций, а не из произвольных `IUpdateMiddleware` services, и startup приложения намеренно падает с понятной ошибкой, если находит прямые регистрации.
 

@@ -74,6 +74,7 @@ public sealed class PublicSurfaceTests
         "TeleFlow.Telegram.ChatMemberUpdateHandler",
         "TeleFlow.Telegram.ITelegramFilter`1",
         "TeleFlow.Telegram.ITelegramFilter`2",
+        "TeleFlow.Telegram.ITelegramCurrentUpdateAccessor",
         "TeleFlow.Telegram.TelegramUpdatePayload",
         "TeleFlow.Telegram.TelegramServiceCollectionExtensions",
         "TeleFlow.Telegram.TelegramBotOptions",

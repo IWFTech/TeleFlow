@@ -51,6 +51,8 @@ internal static class TeleFlowApplicationRuntimeFactory
 
     private static ITeleFlowApplication Create(IServiceProvider serviceProvider, bool ownsServices)
     {
+        TeleFlowRuntimeValidatorRunner.Validate(serviceProvider);
+
         var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
         var updateSource = ResolveSingleRequiredService<IUpdateSource>(serviceProvider);
         var dispatcher = ResolveSingleRequiredService<IUpdateDispatcher>(serviceProvider);

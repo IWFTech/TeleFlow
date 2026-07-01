@@ -67,6 +67,53 @@ public Task Name(MessageContext ctx, CancellationToken ct)
 
 Use `[Message]`, `[Command]`, `[Callback]`, `[ChatMemberUpdated]`, or another explicit route attribute before adding state and filter constraints.
 
+## `Handler dependency was not registered`
+
+TeleFlow validates handler method parameters before normal update processing starts. If a handler asks for a service, that service must be registered in DI:
+
+```csharp
+public sealed class TicketHandler
+{
+    [CommandTemplate("ticket {id:long}")]
+    public Task Ticket(
+        MessageContext ctx,
+        ITicketRepository tickets,
+        CancellationToken ct)
+    {
+        // ...
+    }
+}
+```
+
+Register the dependency before building the app:
+
+```csharp
+builder.Services.AddScoped<ITicketRepository, EfTicketRepository>();
+```
+
+The same rule applies to Telegram error handlers and custom filters.
+
+## Current Update Accessor Fails Outside Update Processing
+
+`ITelegramCurrentUpdateAccessor` is scoped to one incoming Telegram update. It works inside handlers, middleware, and scoped services reached from the update pipeline.
+
+It does not work from application startup, background jobs, singleton services, or code that runs before an update exists.
+
+Use it from scoped services:
+
+```csharp
+public sealed class UserService(ITelegramCurrentUpdateAccessor current)
+{
+    public long RequireUserId()
+    {
+        return current.User?.Id
+            ?? throw new InvalidOperationException("This operation requires a Telegram user.");
+    }
+}
+```
+
+Do not inject it into singleton services.
+
 ## Can I Read The Token From `appsettings.json`?
 
 Yes. TeleFlow does not care where the token comes from. Read it through normal .NET configuration and pass the resolved value explicitly:

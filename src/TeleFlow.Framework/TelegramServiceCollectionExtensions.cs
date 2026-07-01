@@ -1,9 +1,11 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using TeleFlow.Framework.Application;
 using TeleFlow.Framework.Callbacks;
 using TeleFlow.Framework.Dispatching;
 using TeleFlow.Framework.States;
+using TeleFlow.Framework.Updates;
 using TeleFlow.Telegram.Internal;
 using TeleFlow.Telegram.Internal.Handlers;
 using TeleFlow.Telegram.Internal.Options;
@@ -44,12 +46,15 @@ public static class TelegramServiceCollectionExtensions
         });
 
         services.AddSingleton(options);
+        services.AddUpdateContextAccessor();
         services.TryAddSingleton(options.RoleFilter);
         services.AddSingleton<TelegramContextFactory>();
+        services.TryAddScoped<ITelegramCurrentUpdateAccessor, TelegramCurrentUpdateAccessor>();
         services.TryAddSingleton<IStateKeyFactory, TelegramStateKeyFactory>();
         services.TryAddSingleton<ICallbackDataSerializer, JsonCallbackDataSerializer>();
         services.TryAddSingleton<ITelegramChatMemberStatusResolver, TelegramChatMemberStatusResolver>();
         services.TryAddSingleton<ITelegramChatMemberStatusCache, MemoryTelegramChatMemberStatusCache>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<ITeleFlowRuntimeValidator, TelegramRuntimeDependencyValidator>());
 
         return services;
     }
