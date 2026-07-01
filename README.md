@@ -59,6 +59,8 @@ The documentation is available as a GitHub Pages site and as Markdown in this re
 
 TeleFlow is currently published as a public alpha. Use `--prerelease` or pin an exact alpha version.
 
+Most applications start from one scenario package. The lower-level packages are pulled in transitively and are documented separately for advanced use.
+
 For a handler-based long polling bot:
 
 ```bash
@@ -84,6 +86,8 @@ For a .NET worker that should run TeleFlow through Microsoft.Extensions.Hosting,
 ```bash
 dotnet add package IWF.TeleFlow.Framework.Hosting --prerelease
 ```
+
+You normally do not install `IWF.TeleFlow.Framework.Core`, `IWF.TeleFlow.Framework`, `IWF.TeleFlow.Telegram.Client`, `IWF.TeleFlow.Telegram.Schema`, or `IWF.TeleFlow.Annotations` directly. They are dependency or advanced packages behind the recommended entry points above.
 
 ## First Bot
 

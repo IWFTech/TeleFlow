@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Microsoft.Extensions.Hosting integration for running TeleFlow applications as hosted services.</Description>
+    <Description>Optional TeleFlow framework entry add-on for running a configured TeleFlow application through Microsoft.Extensions.Hosting as an IHostedService.</Description>
   </PropertyGroup>
 
   <ItemGroup>

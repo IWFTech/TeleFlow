@@ -10,32 +10,47 @@ NuGet package IDs используют prefix `IWF.TeleFlow.*`. C# namespaces о
 
 ## Быстрый выбор
 
+Большинство приложений ставит небольшой набор входных пакетов. Остальная часть package graph нужна для чистых внутренних границ и обычно подтягивается транзитивно.
+
+### Рекомендуемые входные пакеты
+
 | Сценарий | Package reference | Что даёт |
 | --- | --- | --- |
-| Прямой доступ к Telegram Bot API | `IWF.TeleFlow.Telegram` | Low-level `ITelegramClient`, generated Bot API methods, defaults, JSON, transport, exceptions, deep links |
-| Прямой client через owner package | `IWF.TeleFlow.Telegram.Client` | Тот же client runtime через явное package-boundary имя |
 | Handler framework с long polling | `IWF.TeleFlow.Framework.LongPolling` | Handler framework плюс long-polling transport |
 | Handler framework с webhooks | `IWF.TeleFlow.Framework.Webhooks` | Handler framework плюс ASP.NET Core webhook transport |
-| Generic Host integration | `IWF.TeleFlow.Framework.Hosting` | `IHostedService` adapter для запуска настроенного TeleFlow application через Microsoft.Extensions.Hosting |
-| Raw long polling без handlers | `IWF.TeleFlow.Telegram.LongPolling` | `getUpdates` runner и acknowledged update stream поверх raw Telegram `Update` values |
-| Raw ASP.NET Core webhooks без handlers | `IWF.TeleFlow.Telegram.Webhooks` | ASP.NET Core endpoint helpers поверх raw Telegram `Update` values |
+| Прямой доступ к Telegram Bot API | `IWF.TeleFlow.Telegram` | Low-level `ITelegramClient`, generated Bot API methods, defaults, JSON, transport, exceptions, deep links |
+| Generated handler metadata | `IWF.TeleFlow.Generators` | Source generator и analyzer package для build-time handler registration. Подключай напрямую с `PrivateAssets="all"` |
 | In-memory state storage | `IWF.TeleFlow.Storage.Memory` | Process-local state, state data, wizard history и регистрация state middleware |
-| Handler attributes | `IWF.TeleFlow.Annotations` | Атрибуты вроде `[Command]`, `[Text]`, `[Callback]`, `[State]` и filters |
-| Generated handler metadata | `IWF.TeleFlow.Generators` | Source generator и analyzer package для build-time handler registration |
+| Generic Host integration | `IWF.TeleFlow.Framework.Hosting` | Optional `IHostedService` adapter для запуска настроенного TeleFlow application через Microsoft.Extensions.Hosting |
 
-`IWF.TeleFlow.Telegram.Schema` обычно подтягивается Telegram-пакетами. Подключай его напрямую только если намеренно работаешь с generated Telegram DTOs и method models без client/framework runtime.
+### Advanced и dependency packages
+
+| Сценарий | Package reference | Когда подключать напрямую |
+| --- | --- | --- |
+| Framework runtime без bundled transport | `IWF.TeleFlow.Framework` | Только если ты делаешь custom framework update source или transport package |
+| Framework primitives | `IWF.TeleFlow.Framework.Core` | В обычных bot projects почти никогда. Storage и framework packages подтягивают его транзитивно |
+| Direct client runtime boundary | `IWF.TeleFlow.Telegram.Client` | Только если намеренно нужен явный lower-level client package вместо owner package `IWF.TeleFlow.Telegram` |
+| Generated Telegram schema | `IWF.TeleFlow.Telegram.Schema` | Только если намеренно работаешь с generated Telegram DTOs и method models без client/framework runtime |
+| Handler attributes | `IWF.TeleFlow.Annotations` | Обычно подтягивается framework packages. Подключай напрямую только для advanced compile-only сценариев |
+| Raw long polling без handlers | `IWF.TeleFlow.Telegram.LongPolling` | Когда нужны `getUpdates` и acknowledged update streaming поверх raw Telegram `Update` values |
+| Raw ASP.NET Core webhooks без handlers | `IWF.TeleFlow.Telegram.Webhooks` | Когда нужны ASP.NET Core endpoint helpers поверх raw Telegram `Update` values |
 
 ## Установка alpha packages
 
 TeleFlow сейчас опубликован как public alpha. Используй `--prerelease` с `dotnet add package` или фиксируй конкретную alpha version в project file.
 
-Рекомендуемая alpha-установка для long polling bot:
+Рекомендуемая alpha-установка для маленького long polling bot:
 
 ```bash
 dotnet add package IWF.TeleFlow.Framework.LongPolling --prerelease
-dotnet add package IWF.TeleFlow.Framework.Hosting --prerelease
 dotnet add package IWF.TeleFlow.Generators --prerelease
 dotnet add package IWF.TeleFlow.Storage.Memory --prerelease
+```
+
+Generic Host integration добавляй только если приложение является worker service или ASP.NET Core host:
+
+```bash
+dotnet add package IWF.TeleFlow.Framework.Hosting --prerelease
 ```
 
 ## Рекомендуемый дефолт
@@ -44,9 +59,14 @@ dotnet add package IWF.TeleFlow.Storage.Memory --prerelease
 
 ```xml
 <PackageReference Include="IWF.TeleFlow.Framework.LongPolling" Version="..." />
-<PackageReference Include="IWF.TeleFlow.Framework.Hosting" Version="..." />
 <PackageReference Include="IWF.TeleFlow.Generators" Version="..." PrivateAssets="all" />
 <PackageReference Include="IWF.TeleFlow.Storage.Memory" Version="..." />
+```
+
+Для worker-service style приложения добавь hosting:
+
+```xml
+<PackageReference Include="IWF.TeleFlow.Framework.Hosting" Version="..." />
 ```
 
 ```csharp

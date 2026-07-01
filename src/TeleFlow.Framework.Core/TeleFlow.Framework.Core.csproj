@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Transport-agnostic application, middleware, update processing, state, and rate-limiting primitives for TeleFlow.</Description>
+    <Description>Dependency package with transport-agnostic TeleFlow framework primitives for application lifetime, middleware, update processing, state, and rate limiting. Most bot applications should install a framework entry package instead.</Description>
   </PropertyGroup>
 
   <ItemGroup>

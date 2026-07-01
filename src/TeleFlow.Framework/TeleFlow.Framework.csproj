@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Attribute-based Telegram bot framework runtime for TeleFlow, including contexts, dispatcher, filters, callbacks, state integration, and generated handler registration.</Description>
+    <Description>Dependency package with the advanced TeleFlow Telegram handler framework runtime. Most applications should install IWF.TeleFlow.Framework.LongPolling or IWF.TeleFlow.Framework.Webhooks instead.</Description>
     <RootNamespace>TeleFlow.Telegram</RootNamespace>
   </PropertyGroup>
 

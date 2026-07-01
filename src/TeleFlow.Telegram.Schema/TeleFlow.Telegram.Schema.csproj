@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Generated Telegram Bot API schema DTOs, method models, union wrappers, and shared abstractions used by TeleFlow client and framework packages.</Description>
+    <Description>Dependency package with generated Telegram Bot API schema DTOs, method models, union wrappers, and shared abstractions used by TeleFlow client and framework packages.</Description>
   </PropertyGroup>
 </Project>
