@@ -10,7 +10,8 @@ Core contracts:
 - `IStateDataStore`: key-value data for the current state key;
 - `IStateDataSerializer`: serialization for state data values;
 - `IStateHistoryStore`: wizard history;
-- `IStateKeyFactory`: maps an update to a state key.
+- `IStateKeyFactory`: maps an update to a structured state key;
+- `IStateStorageKeyBuilder`: builds stable external storage keys from structured state keys.
 
 ## Memory Storage
 
@@ -47,12 +48,34 @@ Use custom keys for:
 - business connection partitioning;
 - custom worker or gateway topologies.
 
+`IStateKeyFactory` should describe ownership and isolation. It should not contain Redis, SQL, or document-store formatting rules.
+
+## Custom Storage Key Builder
+
+Durable providers often need a string key. Use `IStateStorageKeyBuilder` for that conversion:
+
+```csharp
+builder.Services.AddStateStorageKeyBuilder<MyStateStorageKeyBuilder>();
+```
+
+The default builder produces stable escaped keys for each state record family:
+
+```text
+teleflow:state:scope=telegram:subject=user%3A5:partition=chat%3A100:destiny=default
+teleflow:data:scope=telegram:subject=user%3A5:partition=chat%3A100:destiny=default
+teleflow:history:scope=telegram:subject=user%3A5:partition=chat%3A100:destiny=default
+teleflow:lock:scope=telegram:subject=user%3A5:partition=chat%3A100:destiny=default
+```
+
+Memory storage does not need this conversion and continues to use `StateKey` directly.
+
 ## Storage Implementation Guidance
 
 Storage implementations should:
 
 - respect `CancellationToken`;
 - use deterministic keys;
+- keep state, data, history, and lock records isolated;
 - avoid swallowing serialization errors;
 - preserve wizard history ordering;
 - be safe under concurrent updates from the same user if your deployment allows it;

@@ -495,11 +495,13 @@ public sealed class StageSixStateAndMiddlewareTests
         var customDataStore = new RecordingStateDataStore();
         var customSerializer = new RecordingStateDataSerializer();
         var customHistoryStore = new RecordingStateHistoryStore();
+        var customKeyBuilder = new RecordingStateStorageKeyBuilder();
 
         services.AddSingleton<IStateStore>(customStore);
         services.AddSingleton<IStateDataStore>(customDataStore);
         services.AddSingleton<IStateDataSerializer>(customSerializer);
         services.AddSingleton<IStateHistoryStore>(customHistoryStore);
+        services.AddSingleton<IStateStorageKeyBuilder>(customKeyBuilder);
         services.AddSingleton<IStateKeyFactory>(new StaticStateKeyFactory(StateKey.Create("scope", "subject")));
         services.AddMemoryStateStorage();
 
@@ -513,6 +515,7 @@ public sealed class StageSixStateAndMiddlewareTests
         Assert.Same(customDataStore, serviceProvider.GetRequiredService<IStateDataStore>());
         Assert.Same(customSerializer, serviceProvider.GetRequiredService<IStateDataSerializer>());
         Assert.Same(customHistoryStore, serviceProvider.GetRequiredService<IStateHistoryStore>());
+        Assert.Same(customKeyBuilder, serviceProvider.GetRequiredService<IStateStorageKeyBuilder>());
         Assert.Contains(
             serviceProvider.GetServices<UpdateMiddlewareRegistration>(),
             registration => registration.MiddlewareType == typeof(UpdateStateMiddleware));
@@ -653,6 +656,59 @@ public sealed class StageSixStateAndMiddlewareTests
         Assert.NotEqual(first, sameUserDifferentChat);
         Assert.NotEqual(first, sameChatDifferentUser);
         Assert.Equal(StateKey.Create("telegram", "user:5", "inline:inline-chat"), inlineCallback);
+    }
+
+    [Fact]
+    public void TelegramStateKeyFactory_IncludesBotThreadAndBusinessIsolationWhenAvailable()
+    {
+        using var serviceProvider = CreateTelegramServiceProvider(
+            static _ => { },
+            token: "777:secret");
+        using var scope = serviceProvider.CreateScope();
+        var factory = serviceProvider.GetRequiredService<IStateKeyFactory>();
+
+        var key = CreateStateKey(
+            factory,
+            scope.ServiceProvider,
+            CreateMessageUpdate(
+                "business",
+                userId: 5,
+                chatId: 100,
+                messageThreadId: 45,
+                businessConnectionId: "bc-1"));
+
+        Assert.Equal(
+            new StateKey(
+                StateKeyDefaults.DefaultNamespace,
+                "telegram",
+                "user:5",
+                "bot:777:business:bc-1:chat:100:thread:45",
+                StateKeyDefaults.DefaultDestiny),
+            key);
+    }
+
+    [Fact]
+    public void TelegramStateKeyFactory_IsolatesInlineCallbacksByBotAndChatInstance()
+    {
+        using var serviceProvider = CreateTelegramServiceProvider(
+            static _ => { },
+            token: "777:secret");
+        using var scope = serviceProvider.CreateScope();
+        var factory = serviceProvider.GetRequiredService<IStateKeyFactory>();
+
+        var key = CreateStateKey(
+            factory,
+            scope.ServiceProvider,
+            CreateCallbackUpdate("data", userId: 5, chatId: null, chatInstance: "inline-chat"));
+
+        Assert.Equal(
+            new StateKey(
+                StateKeyDefaults.DefaultNamespace,
+                "telegram",
+                "user:5",
+                "bot:777:inline:inline-chat",
+                StateKeyDefaults.DefaultDestiny),
+            key);
     }
 
     [Fact]
@@ -868,10 +924,12 @@ public sealed class StageSixStateAndMiddlewareTests
         Assert.Equal(["rate-limit", "dispatch"], trace);
     }
 
-    private static ServiceProvider CreateTelegramServiceProvider(Action<IServiceCollection> configureServices)
+    private static ServiceProvider CreateTelegramServiceProvider(
+        Action<IServiceCollection> configureServices,
+        string token = "test-token")
     {
         var services = new ServiceCollection();
-        services.AddTelegramBot(options => options.Token = "test-token");
+        services.AddTelegramBot(options => options.Token = token);
         configureServices(services);
 
         return services.BuildServiceProvider(new ServiceProviderOptions
@@ -958,7 +1016,12 @@ public sealed class StageSixStateAndMiddlewareTests
         return key;
     }
 
-    private static Update CreateMessageUpdate(string text, long userId, long chatId)
+    private static Update CreateMessageUpdate(
+        string text,
+        long userId,
+        long chatId,
+        long? messageThreadId = null,
+        string? businessConnectionId = null)
     {
         return new Update
         {
@@ -967,6 +1030,8 @@ public sealed class StageSixStateAndMiddlewareTests
             {
                 MessageId = 10,
                 Date = 0,
+                MessageThreadId = messageThreadId,
+                BusinessConnectionId = businessConnectionId,
                 From = new User
                 {
                     Id = userId,
@@ -1428,6 +1493,14 @@ public sealed class StageSixStateAndMiddlewareTests
             CancellationToken cancellationToken = default)
         {
             return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class RecordingStateStorageKeyBuilder : IStateStorageKeyBuilder
+    {
+        public string Build(StateKey key, StateStorageKeyPart part)
+        {
+            return $"{key.Namespace}:{part}";
         }
     }
 

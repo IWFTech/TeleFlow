@@ -35,6 +35,7 @@ public static class TelegramServiceCollectionExtensions
         var options = new TelegramBotOptions();
         configure(options);
         TelegramBotOptionsValidator.Validate(options);
+        var stateKeyOptions = TelegramStateKeyOptions.FromToken(options.Token);
 
         services.AddTelegramClient(clientOptions =>
         {
@@ -46,10 +47,12 @@ public static class TelegramServiceCollectionExtensions
         });
 
         services.AddSingleton(options);
+        services.AddSingleton(stateKeyOptions);
         services.AddUpdateContextAccessor();
         services.TryAddSingleton(options.RoleFilter);
         services.AddSingleton<TelegramContextFactory>();
         services.TryAddScoped<ITelegramCurrentUpdateAccessor, TelegramCurrentUpdateAccessor>();
+        services.TryAddSingleton<IStateStorageKeyBuilder, DefaultStateStorageKeyBuilder>();
         services.TryAddSingleton<IStateKeyFactory, TelegramStateKeyFactory>();
         services.TryAddSingleton<ICallbackDataSerializer, JsonCallbackDataSerializer>();
         services.TryAddSingleton<ITelegramChatMemberStatusResolver, TelegramChatMemberStatusResolver>();

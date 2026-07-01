@@ -90,6 +90,16 @@ public static class PolicyServiceCollectionExtensions
         return services;
     }
 
+    public static IServiceCollection AddStateStorageKeyBuilder<TBuilder>(this IServiceCollection services)
+        where TBuilder : class, IStateStorageKeyBuilder
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.RemoveAll<IStateStorageKeyBuilder>();
+        services.AddSingleton<IStateStorageKeyBuilder, TBuilder>();
+        return services;
+    }
+
     public static IServiceCollection AddUpdateRateLimiter<TLimiter>(this IServiceCollection services)
         where TLimiter : class, IUpdateRateLimiter
     {

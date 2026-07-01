@@ -1,11 +1,21 @@
 using TeleFlow.Framework.States;
 using TeleFlow.Framework.Updates;
+using TeleFlow.Telegram.Internal.Options;
 using TeleFlow.Telegram.Schema.Types;
 
 namespace TeleFlow.Telegram.Internal;
 
 internal sealed class TelegramStateKeyFactory : IStateKeyFactory
 {
+    private readonly string? _botPartitionSegment;
+
+    public TelegramStateKeyFactory(TelegramStateKeyOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        _botPartitionSegment = options.BotId is { } botId ? $"bot:{botId}" : null;
+    }
+
     public bool TryCreateStateKey(UpdateContext context, out StateKey key)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -26,7 +36,7 @@ internal sealed class TelegramStateKeyFactory : IStateKeyFactory
         return false;
     }
 
-    private static bool TryCreateFromMessage(Message? message, out StateKey key)
+    private bool TryCreateFromMessage(Message? message, out StateKey key)
     {
         if (message?.From is null)
         {
@@ -37,11 +47,11 @@ internal sealed class TelegramStateKeyFactory : IStateKeyFactory
         key = StateKey.Create(
             scope: "telegram",
             subject: CreateUserSubject(message.From.Id),
-            partition: CreateChatPartition(message.Chat.Id));
+            partition: CreateMessagePartition(message));
         return true;
     }
 
-    private static bool TryCreateFromCallback(CallbackQuery? callbackQuery, out StateKey key)
+    private bool TryCreateFromCallback(CallbackQuery? callbackQuery, out StateKey key)
     {
         if (callbackQuery is null)
         {
@@ -56,13 +66,13 @@ internal sealed class TelegramStateKeyFactory : IStateKeyFactory
         return true;
     }
 
-    private static string ResolveCallbackPartition(CallbackQuery callbackQuery)
+    private string ResolveCallbackPartition(CallbackQuery callbackQuery)
     {
         if (callbackQuery.Message is not null)
         {
             if (callbackQuery.Message.TryGetMessage(out var message) && message is not null)
             {
-                return CreateChatPartition(message.Chat.Id);
+                return CreateMessagePartition(message);
             }
 
             if (callbackQuery.Message.TryGetInaccessibleMessage(out var inaccessibleMessage) &&
@@ -73,8 +83,8 @@ internal sealed class TelegramStateKeyFactory : IStateKeyFactory
         }
 
         return string.IsNullOrWhiteSpace(callbackQuery.ChatInstance)
-            ? "inline:unknown"
-            : $"inline:{callbackQuery.ChatInstance}";
+            ? CreateInlinePartition("unknown")
+            : CreateInlinePartition(callbackQuery.ChatInstance);
     }
 
     private static string CreateUserSubject(long userId)
@@ -82,8 +92,52 @@ internal sealed class TelegramStateKeyFactory : IStateKeyFactory
         return $"user:{userId}";
     }
 
-    private static string CreateChatPartition(long chatId)
+    private string CreateMessagePartition(Message message)
     {
-        return $"chat:{chatId}";
+        var segments = CreatePartitionSegments(capacity: 4);
+
+        if (!string.IsNullOrWhiteSpace(message.BusinessConnectionId))
+        {
+            segments.Add($"business:{message.BusinessConnectionId}");
+        }
+
+        segments.Add($"chat:{message.Chat.Id}");
+
+        if (message.MessageThreadId is not null)
+        {
+            segments.Add($"thread:{message.MessageThreadId.Value}");
+        }
+
+        return string.Join(':', segments);
+    }
+
+    private string CreateChatPartition(long chatId)
+    {
+        var segments = CreatePartitionSegments(capacity: 2);
+
+        segments.Add($"chat:{chatId}");
+
+        return string.Join(':', segments);
+    }
+
+    private string CreateInlinePartition(string chatInstance)
+    {
+        var segments = CreatePartitionSegments(capacity: 2);
+
+        segments.Add($"inline:{chatInstance}");
+
+        return string.Join(':', segments);
+    }
+
+    private List<string> CreatePartitionSegments(int capacity)
+    {
+        var segments = new List<string>(capacity);
+
+        if (_botPartitionSegment is not null)
+        {
+            segments.Add(_botPartitionSegment);
+        }
+
+        return segments;
     }
 }
