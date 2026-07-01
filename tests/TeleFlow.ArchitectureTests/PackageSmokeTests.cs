@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
 namespace TeleFlow.ArchitectureTests;
@@ -113,6 +114,27 @@ public sealed class PackageSmokeTests
         {
             tempDirectory.Delete(recursive: true);
         }
+    }
+
+    [Fact]
+    public void VerifyReleaseScript_UsesTheSamePackageInventory()
+    {
+        var scriptPath = Path.Combine(RepositoryRoot, "eng", "verify-release.ps1");
+        var script = File.ReadAllText(scriptPath);
+
+        var packageIds = Regex
+            .Matches(script, "Id\\s*=\\s*\"(?<id>IWF\\.TeleFlow\\.[^\"]+)\"")
+            .Select(static match => match.Groups["id"].Value)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var expectedPackageIds = RuntimePackageProjects
+            .Concat(ReleaseAlignedToolingPackageProjects)
+            .Select(static project => project.PackageId)
+            .ToHashSet(StringComparer.Ordinal);
+
+        Assert.Equal(
+            expectedPackageIds.Order(StringComparer.Ordinal),
+            packageIds.Order(StringComparer.Ordinal));
     }
 
     private static async Task PackRuntimePackagesAsync(string packageSource)
