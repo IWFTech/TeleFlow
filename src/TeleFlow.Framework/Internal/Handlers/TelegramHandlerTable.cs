@@ -57,14 +57,12 @@ internal sealed class TelegramHandlerTable
     {
         var duplicatePrefix = callbackHandlers
             .Where(static handler => handler.CallbackPayloadType is not null)
-            .Select(static handler => new
-            {
-                Handler = handler,
-                HasMetadata = CallbackDataMetadata.TryCreate(handler.CallbackPayloadType!, out var metadata),
-                Metadata = metadata
-            })
-            .Where(static item => item.HasMetadata)
-            .GroupBy(static item => item.Metadata.Prefix, StringComparer.Ordinal)
+            .Select(static handler => TryGetCallbackPayloadPrefix(handler, out var prefix)
+                ? new CallbackPayloadPrefix(handler, prefix)
+                : null)
+            .Where(static item => item is not null)
+            .Cast<CallbackPayloadPrefix>()
+            .GroupBy(static item => item.Prefix, StringComparer.Ordinal)
             .FirstOrDefault(static group => group.Count() > 1);
 
         if (duplicatePrefix is null)
@@ -78,6 +76,28 @@ internal sealed class TelegramHandlerTable
 
         throw new InvalidOperationException(
             $"Duplicate Telegram callback data prefix '{duplicatePrefix.Key}' is used by multiple handlers: {handlers}.");
+    }
+
+    private static bool TryGetCallbackPayloadPrefix(
+        TelegramHandlerDescriptor handler,
+        out string prefix)
+    {
+        var payloadType = handler.CallbackPayloadType!;
+
+        if (CallbackDataCodec.TryGetGenerated(payloadType, out var generatedCodec))
+        {
+            prefix = generatedCodec.Prefix;
+            return true;
+        }
+
+        if (CallbackDataMetadata.TryCreate(payloadType, out var metadata))
+        {
+            prefix = metadata.Prefix;
+            return true;
+        }
+
+        prefix = string.Empty;
+        return false;
     }
 
     private static TelegramHandlerDescriptor[] OrderForRouteSelection(IEnumerable<TelegramHandlerDescriptor> handlers)
@@ -108,4 +128,6 @@ internal sealed class TelegramHandlerTable
             _ => 100
         };
     }
+
+    private sealed record CallbackPayloadPrefix(TelegramHandlerDescriptor Handler, string Prefix);
 }

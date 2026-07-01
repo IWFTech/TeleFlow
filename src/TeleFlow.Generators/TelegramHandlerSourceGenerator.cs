@@ -42,12 +42,19 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
             .Where(static group => group is not null)
             .Collect();
 
+        IncrementalValueProvider<ImmutableArray<GeneratedCallbackDataPayload?>> callbackDataPayloads = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                static (node, _) => node is TypeDeclarationSyntax { AttributeLists.Count: > 0 },
+                static (syntaxContext, _) => GetCallbackDataPayload(syntaxContext))
+            .Where(static payload => payload is not null)
+            .Collect();
+
         context.RegisterSourceOutput(
-            methodHandlers.Combine(classBasedHandlers).Combine(errorHandlers),
+            methodHandlers.Combine(classBasedHandlers).Combine(errorHandlers).Combine(callbackDataPayloads),
             static (sourceContext, collectedHandlers) =>
         {
-            GeneratedHandlerMethod[] handlers = collectedHandlers.Left.Left
-                .Concat(collectedHandlers.Left.Right)
+            GeneratedHandlerMethod[] handlers = collectedHandlers.Left.Left.Left
+                .Concat(collectedHandlers.Left.Left.Right)
                 .Where(static handler => handler is not null)
                 .Cast<GeneratedHandlerMethod>()
                 .GroupBy(static handler => handler.SignatureKey, StringComparer.Ordinal)
@@ -56,7 +63,7 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
                 .ThenBy(static handler => handler.SourcePath, StringComparer.Ordinal)
                 .ThenBy(static handler => handler.SourceSpanStart)
                 .ToArray();
-            GeneratedErrorHandlerMethod[] errors = collectedHandlers.Right
+            GeneratedErrorHandlerMethod[] errors = collectedHandlers.Left.Right
                 .Where(static handler => handler is not null)
                 .Cast<GeneratedErrorHandlerMethod>()
                 .GroupBy(static handler => handler.SignatureKey, StringComparer.Ordinal)
@@ -65,15 +72,24 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
                 .ThenBy(static handler => handler.SourcePath, StringComparer.Ordinal)
                 .ThenBy(static handler => handler.SourceSpanStart)
                 .ToArray();
+            GeneratedCallbackDataPayload[] callbackPayloads = collectedHandlers.Right
+                .Where(static payload => payload is not null)
+                .Cast<GeneratedCallbackDataPayload>()
+                .GroupBy(static payload => payload.TypeMetadataName, StringComparer.Ordinal)
+                .Select(static group => group.First())
+                .OrderBy(static payload => payload.TypeMetadataName, StringComparer.Ordinal)
+                .ThenBy(static payload => payload.SourcePath, StringComparer.Ordinal)
+                .ThenBy(static payload => payload.SourceSpanStart)
+                .ToArray();
 
-            if (handlers.Length == 0 && errors.Length == 0)
+            if (handlers.Length == 0 && errors.Length == 0 && callbackPayloads.Length == 0)
             {
                 return;
             }
 
             sourceContext.AddSource(
                 "TeleFlow.Telegram.GeneratedHandlers.g.cs",
-                SourceText.From(GenerateSource(handlers, errors), Encoding.UTF8));
+                SourceText.From(GenerateSource(handlers, errors, callbackPayloads), Encoding.UTF8));
         });
 
         context.RegisterSourceOutput(stateGroups, static (sourceContext, collectedGroups) =>
@@ -112,6 +128,41 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
         }
 
         return handler;
+    }
+
+    private static GeneratedCallbackDataPayload? GetCallbackDataPayload(GeneratorSyntaxContext context)
+    {
+        if (context.SemanticModel.GetDeclaredSymbol(context.Node) is not INamedTypeSymbol type)
+        {
+            return null;
+        }
+
+        AttributeData? attribute = TelegramHandlerSymbols
+            .GetAttributes(type, TelegramHandlerSymbols.CallbackDataAttribute, inherit: false)
+            .FirstOrDefault();
+
+        if (attribute is null)
+        {
+            return null;
+        }
+
+        string? prefix = GetConstructorString(attribute);
+
+        if (!TelegramCallbackDataFacts.IsValidPayloadPrefix(prefix) ||
+            !IsAccessibleFromGeneratedCode(type) ||
+            !TryGetCallbackDataFields(type, out bool usesConstructor, out ImmutableArray<GeneratedCallbackDataField> fields))
+        {
+            return null;
+        }
+
+        return new GeneratedCallbackDataPayload(
+            type.ToDisplayString(FullyQualifiedFormat),
+            type.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
+            prefix!,
+            usesConstructor,
+            fields,
+            context.Node.SyntaxTree.FilePath,
+            context.Node.SpanStart);
     }
 
     private static GeneratedHandlerMethod? GetClassBasedHandlerMethod(GeneratorSyntaxContext context)
@@ -1244,6 +1295,137 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
     private static bool IsInvalidCallbackPayloadType(ITypeSymbol type)
     {
         return IsInvalidConcreteNamedType(type);
+    }
+
+    private static bool IsAccessibleFromGeneratedCode(INamedTypeSymbol type)
+    {
+        for (INamedTypeSymbol? current = type; current is not null; current = current.ContainingType)
+        {
+            if (current.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool TryGetCallbackDataFields(
+        INamedTypeSymbol type,
+        out bool usesConstructor,
+        out ImmutableArray<GeneratedCallbackDataField> fields)
+    {
+        usesConstructor = false;
+        fields = ImmutableArray<GeneratedCallbackDataField>.Empty;
+
+        IMethodSymbol? constructor = type.InstanceConstructors
+            .Where(static candidate =>
+                candidate.DeclaredAccessibility == Accessibility.Public &&
+                candidate.Parameters.Length > 0)
+            .OrderByDescending(static candidate => candidate.Parameters.Length)
+            .FirstOrDefault();
+
+        if (constructor is not null)
+        {
+            return TryGetConstructorCallbackDataFields(type, constructor, out usesConstructor, out fields);
+        }
+
+        return TryGetPropertyCallbackDataFields(type, out fields);
+    }
+
+    private static bool TryGetConstructorCallbackDataFields(
+        INamedTypeSymbol type,
+        IMethodSymbol constructor,
+        out bool usesConstructor,
+        out ImmutableArray<GeneratedCallbackDataField> fields)
+    {
+        usesConstructor = true;
+        fields = ImmutableArray<GeneratedCallbackDataField>.Empty;
+
+        Dictionary<string, IPropertySymbol> properties = type
+            .GetMembers()
+            .OfType<IPropertySymbol>()
+            .Where(static property =>
+                !property.IsStatic &&
+                property.GetMethod is { DeclaredAccessibility: Accessibility.Public })
+            .ToDictionary(static property => property.Name, StringComparer.OrdinalIgnoreCase);
+        ImmutableArray<GeneratedCallbackDataField>.Builder builder = ImmutableArray.CreateBuilder<GeneratedCallbackDataField>();
+
+        foreach (IParameterSymbol parameter in constructor.Parameters)
+        {
+            if (!properties.TryGetValue(parameter.Name, out IPropertySymbol? property) ||
+                !TryGetCallbackDataFieldKind(property.Type, out GeneratedCallbackDataFieldKind kind))
+            {
+                return false;
+            }
+
+            builder.Add(new GeneratedCallbackDataField(
+                property.Name,
+                property.Type.ToDisplayString(FullyQualifiedFormat),
+                kind));
+        }
+
+        fields = builder.ToImmutable();
+        return true;
+    }
+
+    private static bool TryGetPropertyCallbackDataFields(
+        INamedTypeSymbol type,
+        out ImmutableArray<GeneratedCallbackDataField> fields)
+    {
+        ImmutableArray<GeneratedCallbackDataField>.Builder builder = ImmutableArray.CreateBuilder<GeneratedCallbackDataField>();
+
+        foreach (IPropertySymbol property in type
+                     .GetMembers()
+                     .OfType<IPropertySymbol>()
+                     .Where(static property =>
+                         !property.IsStatic &&
+                         property.GetMethod is { DeclaredAccessibility: Accessibility.Public }))
+        {
+            if (property.SetMethod is not { DeclaredAccessibility: Accessibility.Public } ||
+                !TryGetCallbackDataFieldKind(property.Type, out GeneratedCallbackDataFieldKind kind))
+            {
+                return false;
+            }
+
+            builder.Add(new GeneratedCallbackDataField(
+                property.Name,
+                property.Type.ToDisplayString(FullyQualifiedFormat),
+                kind));
+        }
+
+        fields = builder.ToImmutable();
+        return true;
+    }
+
+    private static bool TryGetCallbackDataFieldKind(
+        ITypeSymbol type,
+        out GeneratedCallbackDataFieldKind kind)
+    {
+        kind = type.SpecialType switch
+        {
+            SpecialType.System_String => GeneratedCallbackDataFieldKind.String,
+            SpecialType.System_Int32 => GeneratedCallbackDataFieldKind.Int32,
+            SpecialType.System_Int64 => GeneratedCallbackDataFieldKind.Int64,
+            SpecialType.System_Boolean => GeneratedCallbackDataFieldKind.Boolean,
+            _ => default
+        };
+
+        if (type.SpecialType is SpecialType.System_String or
+            SpecialType.System_Int32 or
+            SpecialType.System_Int64 or
+            SpecialType.System_Boolean)
+        {
+            return true;
+        }
+
+        if (type.TypeKind == TypeKind.Enum)
+        {
+            kind = GeneratedCallbackDataFieldKind.Enum;
+            return true;
+        }
+
+        return false;
     }
 
     private static bool IsInvalidConcreteNamedType(ITypeSymbol type)

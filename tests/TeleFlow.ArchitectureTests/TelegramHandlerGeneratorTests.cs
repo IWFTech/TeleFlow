@@ -5,6 +5,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using TeleFlow.Annotations;
+using TeleFlow.Framework.Callbacks;
 using TeleFlow.Framework.Dispatching;
 using TeleFlow.Framework.States;
 using TeleFlow.Framework.Updates;
@@ -89,6 +90,125 @@ public sealed class TelegramHandlerGeneratorTests
         Assert.Contains("TextMatchMode)1", generatedSource);
         Assert.Contains("Invoke_0", generatedSource);
         Assert.Contains("services.GetService(typeof(global::Bot.MyHandlers))", generatedSource);
+    }
+
+    [Fact]
+    public void Generator_EmitsCallbackDataCodecRegistrarAndDirectCodecs()
+    {
+        var compilation = CreateCompilation(
+            """
+            using TeleFlow.Annotations;
+
+            namespace Bot;
+
+            [CallbackData("ticket")]
+            public sealed record TicketAction(long Id, string Action, bool Confirmed, TicketActionKind Kind);
+
+            public enum TicketActionKind
+            {
+                Take,
+                Resolve
+            }
+            """);
+
+        var generatedCompilation = RunGenerator(compilation, out var diagnostics);
+        var generatedTree = generatedCompilation.SyntaxTrees
+            .Single(tree => tree.FilePath.EndsWith("TeleFlow.Telegram.GeneratedHandlers.g.cs", StringComparison.Ordinal));
+        var generatedSource = generatedTree.ToString();
+        var errors = generatedCompilation.GetDiagnostics()
+            .Concat(diagnostics)
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+
+        Assert.Empty(errors);
+        Assert.Contains("TelegramGeneratedCallbackDataCodecsAttribute", generatedSource);
+        Assert.Contains("ITelegramGeneratedCallbackDataCodecRegistrar", generatedSource);
+        Assert.Contains("RegisterCallbackDataCodec", generatedSource);
+        Assert.Contains("typeof(global::Bot.TicketAction)", generatedSource);
+        Assert.Contains("\"ticket\"", generatedSource);
+        Assert.Contains("PackCallbackData_0", generatedSource);
+        Assert.Contains("UnpackCallbackData_0", generatedSource);
+        Assert.Contains("MatchesCallbackData_0", generatedSource);
+        Assert.DoesNotContain("PropertyInfo", generatedSource);
+        Assert.DoesNotContain("ConstructorInfo", generatedSource);
+        Assert.DoesNotContain("Activator.CreateInstance", generatedSource);
+    }
+
+    [Fact]
+    public async Task Generator_CallbackDataCodecsRunThroughKeyboardSerializerAndDispatcher()
+    {
+        var runId = Guid.NewGuid().ToString("N");
+        GeneratedErrorRuntimeProbe.Clear(runId);
+        var compilation = CreateCompilation(
+            $$"""
+            using System.Threading.Tasks;
+            using TeleFlow.Annotations;
+            using TeleFlow.ArchitectureTests;
+            using TeleFlow.Telegram;
+
+            namespace GeneratedCallbackCodecs;
+
+            [CallbackData("ticket")]
+            public sealed record TicketAction(long Id, string Action, bool Confirmed, TicketActionKind Kind);
+
+            public enum TicketActionKind
+            {
+                Take,
+                Resolve
+            }
+
+            public sealed class CallbackHandlers
+            {
+                [Callback<TicketAction>]
+                public Task Handle(CallbackQueryContext context, TicketAction payload)
+                {
+                    GeneratedErrorRuntimeProbe.Record(
+                        "{{runId}}",
+                        $"callback:{payload.Id}:{payload.Action}:{payload.Confirmed}:{payload.Kind}");
+                    return Task.CompletedTask;
+                }
+            }
+            """);
+        var generatedCompilation = RunGenerator(compilation, out var diagnostics);
+        var errors = generatedCompilation.GetDiagnostics()
+            .Concat(diagnostics)
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+
+        Assert.Empty(errors);
+
+        var assembly = EmitAndLoad(generatedCompilation);
+        var payloadType = assembly.GetType("GeneratedCallbackCodecs.TicketAction", throwOnError: true)!;
+        var payloadKindType = assembly.GetType("GeneratedCallbackCodecs.TicketActionKind", throwOnError: true)!;
+        var takeKind = Enum.Parse(payloadKindType, "Take");
+        var payload = Activator.CreateInstance(payloadType, 42L, "a:b%z", true, takeKind)!;
+        var services = new ServiceCollection();
+        services.AddTelegramBot(options => options.Token = "test-token");
+        services.AddTelegramHandlersFromAssembly(assembly);
+        using var serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateOnBuild = true,
+            ValidateScopes = true
+        });
+        using var cancellation = new CancellationTokenSource();
+
+        var keyboard = InlineKeyboardBuilder.Create()
+            .Button("Take", payload)
+            .Build();
+        var callbackData = keyboard.InlineKeyboard[0][0].CallbackData;
+        var serializer = serviceProvider.GetRequiredService<ICallbackDataSerializer>();
+
+        Assert.Equal("ticket:42:a%3Ab%25z:true:Take", callbackData);
+        Assert.Equal(callbackData, serializer.Serialize((dynamic)payload));
+
+        await DispatchAsync(
+            serviceProvider,
+            CreateCallbackUpdate(callbackData),
+            cancellation.Token);
+
+        Assert.Equal(
+            ["callback:42:a:b%z:True:Take"],
+            GeneratedErrorRuntimeProbe.GetEvents(runId));
     }
 
     [Fact]
@@ -2685,6 +2805,26 @@ public sealed class TelegramHandlerGeneratorTests
                 Chat = new Chat { Id = 100, Type = "private" },
                 From = new User { Id = 5, IsBot = false, FirstName = "User" },
                 Text = text
+            }
+        };
+    }
+
+    private static Update CreateCallbackUpdate(string? data)
+    {
+        return new Update
+        {
+            UpdateId = 1,
+            CallbackQuery = new CallbackQuery
+            {
+                Id = "cb",
+                From = new User
+                {
+                    Id = 5,
+                    IsBot = false,
+                    FirstName = "User"
+                },
+                ChatInstance = "chat-instance",
+                Data = data
             }
         };
     }
