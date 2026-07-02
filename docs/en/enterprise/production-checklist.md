@@ -41,7 +41,8 @@ Related pages:
 
 - Keep handlers thin.
 - Move business logic into application services.
-- Pass `CancellationToken` to I/O.
+- Pass `CancellationToken` to application I/O.
+- Use context-bound Telegram helpers without an explicit token when update cancellation is intended.
 - Keep template and regex routes readable.
 - Avoid overly broad catch-all handlers.
 
