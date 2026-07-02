@@ -126,6 +126,26 @@ builder.Services.AddTelegramTransport<MyTelegramTransport>();
 
 Это нужно для tests, custom networking, proxies, diagnostics или контролируемого `HttpClient` ownership.
 
+Custom transport возвращает raw Telegram response body как UTF-8 bytes:
+
+```csharp
+public sealed class MyTelegramTransport : ITelegramTransport
+{
+    public async Task<TelegramTransportResponse> SendAsync(
+        TelegramTransportRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        byte[] body = await SendThroughCustomStackAsync(request, cancellationToken);
+
+        return new TelegramTransportResponse(
+            statusCode: 200,
+            body: body);
+    }
+}
+```
+
+`string` constructor остаётся для простых tests и adapters, но client pipeline парсит bytes напрямую, чтобы не пересобирать JSON text перед deserialization.
+
 ## JSON options
 
 Telegram JSON options можно заменить:

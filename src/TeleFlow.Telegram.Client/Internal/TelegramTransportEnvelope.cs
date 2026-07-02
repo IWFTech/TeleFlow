@@ -1,16 +1,50 @@
+using System.Text.Json;
 using TeleFlow.Telegram.Schema.Types;
 
 namespace TeleFlow.Telegram.Internal;
 
-internal sealed class TelegramTransportEnvelope
+/// <summary>
+/// Owns a parsed Telegram Bot API response envelope for one request attempt.
+/// The request executor uses it to decide between success, API error, retry-after, and decode failure paths.
+/// </summary>
+internal sealed class TelegramTransportEnvelope : IDisposable
 {
-    public required bool Ok { get; init; }
+    private readonly JsonDocument _document;
 
-    public string? ResultJson { get; init; }
+    public TelegramTransportEnvelope(
+        JsonDocument document,
+        bool ok,
+        bool hasResult,
+        JsonElement result,
+        string? description,
+        int? errorCode,
+        ResponseParameters? responseParameters)
+    {
+        ArgumentNullException.ThrowIfNull(document);
 
-    public string? Description { get; init; }
+        _document = document;
+        Ok = ok;
+        HasResult = hasResult;
+        Result = result;
+        Description = description;
+        ErrorCode = errorCode;
+        ResponseParameters = responseParameters;
+    }
 
-    public int? ErrorCode { get; init; }
+    public bool Ok { get; }
 
-    public ResponseParameters? ResponseParameters { get; init; }
+    public bool HasResult { get; }
+
+    public JsonElement Result { get; }
+
+    public string? Description { get; }
+
+    public int? ErrorCode { get; }
+
+    public ResponseParameters? ResponseParameters { get; }
+
+    public void Dispose()
+    {
+        _document.Dispose();
+    }
 }

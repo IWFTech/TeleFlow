@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using TeleFlow.Framework.Application;
@@ -665,9 +666,30 @@ public sealed class PublicSurfaceTests
         Assert.Equal(global::TeleFlow.Telegram.TelegramParseMode.Html, defaults.ParseMode);
         Assert.False(jsonOptions.SerializerOptions.PropertyNameCaseInsensitive);
         Assert.Same(content, request.Content);
+        Assert.Equal("{}", Encoding.UTF8.GetString(response.Body.Span));
         Assert.True(response.TryGetHeaderValues("retry-after", out var values));
         Assert.Equal("1", Assert.Single(values));
         Assert.Equal(TimeSpan.FromSeconds(1), exception.RetryAfter);
+    }
+
+    [Fact]
+    public void TelegramTransportResponse_BodyUsesUtf8BytesAsPrimaryRepresentation()
+    {
+        var body = Encoding.UTF8.GetBytes("""{"ok":true,"result":true}""");
+        var response = new global::TeleFlow.Telegram.TelegramTransportResponse(200, body);
+
+        Assert.Equal("""{"ok":true,"result":true}""", Encoding.UTF8.GetString(response.Body.Span));
+    }
+
+    [Fact]
+    public void TelegramTransportResponse_CopiesPublicByteArrays()
+    {
+        var body = Encoding.UTF8.GetBytes("{}");
+        var response = new global::TeleFlow.Telegram.TelegramTransportResponse(200, body);
+
+        body[0] = (byte)'[';
+
+        Assert.Equal("{}", Encoding.UTF8.GetString(response.Body.Span));
     }
 
     [Fact]
