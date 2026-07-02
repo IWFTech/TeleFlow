@@ -6,6 +6,28 @@ TeleFlow follows SemVer for published NuGet packages and documented public behav
 
 No unreleased changes yet.
 
+## 1.0.0-alpha.9 - 2026-07-02
+
+This alpha focuses on Telegram client response execution internals: clearer request execution stages and less JSON rematerialization on successful Bot API responses.
+
+### Changed
+
+- Split `TelegramRequestExecutor` request processing into explicit send, parse, retry-after, success deserialization, API failure, and decode failure stages.
+- Telegram response envelopes are now parsed from UTF-8 response bytes instead of first materializing the whole HTTP body as a `string`.
+- Successful Telegram response `result` payloads are now deserialized from the parsed `JsonElement` instead of using `GetRawText()` and deserializing a second JSON string.
+- `HttpClientTelegramTransport` now reads Telegram response bodies as bytes and passes owned response buffers into the client pipeline.
+- Custom transport documentation now describes the byte-based response body contract in English and Russian.
+
+### Fixed
+
+- Request diagnostics, retry-after handling, decode failure mapping, API failure mapping, cancellation, and `getUpdates` diagnostic suppression now have more focused regression coverage.
+- Documentation home page example spacing was adjusted after the alpha.8 docs site update.
+
+### Breaking Changes
+
+- `TelegramTransportResponse.Body` changed from `string` to `ReadOnlyMemory<byte>`.
+  Existing custom transports can still construct responses from `string`, but code that reads `Body` directly must decode the UTF-8 bytes explicitly.
+
 ## 1.0.0-alpha.8 - 2026-07-02
 
 This alpha focuses on production diagnostics, bounded Telegram retry-after handling, scoped current-update access, state storage key isolation, and explicit command prefix routing.
