@@ -178,6 +178,37 @@ public sealed class TelegramHandlerDispatcherTests
     }
 
     [Fact]
+    public async Task Dispatcher_RecordsTelegramRequestTimingForTransportAttemptOnly()
+    {
+        var loggerFactory = new RecordingLoggerFactory();
+        var timeProvider = new SequencedTimestampTimeProvider(0, 0, 0, 10, 20, 100);
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.RemoveAll<ILoggerFactory>();
+                services.AddSingleton<ILoggerFactory>(loggerFactory);
+                services.RemoveAll<TimeProvider>();
+                services.AddSingleton<TimeProvider>(timeProvider);
+                services.RemoveAll<ITelegramTransport>();
+                services.AddSingleton<ITelegramTransport>(
+                    new SequencedTelegramTransport(CreateGetMeResponse()));
+                services.AddTelegramHandler<OneTelegramRequestMessageHandler>();
+            });
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("hello"));
+
+        Assert.Contains(
+            loggerFactory.Entries,
+            entry => entry.Level == LogLevel.Debug &&
+                     entry.EventId.Id == 4 &&
+                     entry.Message.Contains("Telegram handler completed", StringComparison.Ordinal) &&
+                     entry.Message.Contains("handler=OneTelegramRequestMessageHandler.Handle", StringComparison.Ordinal) &&
+                     entry.Message.Contains("telegram_request_count=1", StringComparison.Ordinal) &&
+                     entry.Message.Contains("telegram_request_ms=10", StringComparison.Ordinal) &&
+                     entry.Message.Contains("handler_logic_ms=90", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Dispatcher_LogsHandlerTimingForMultipleTelegramRequests()
     {
         var loggerFactory = new RecordingLoggerFactory();
@@ -5402,6 +5433,23 @@ public sealed class TelegramHandlerDispatcherTests
             }
 
             return Task.FromResult(_responses.Dequeue());
+        }
+    }
+
+    private sealed class SequencedTimestampTimeProvider(params long[] timestamps) : TimeProvider
+    {
+        private int _index;
+
+        public override long TimestampFrequency => 1000;
+
+        public override long GetTimestamp()
+        {
+            if (_index >= timestamps.Length)
+            {
+                return timestamps[^1];
+            }
+
+            return timestamps[_index++];
         }
     }
 
