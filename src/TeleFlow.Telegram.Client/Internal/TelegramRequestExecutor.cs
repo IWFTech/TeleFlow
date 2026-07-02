@@ -65,9 +65,9 @@ internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
                         response,
                         envelope: null,
                         cancellationToken).ConfigureAwait(false))
-                    {
+                {
                     continue;
-                    }
+                }
 
                 throw CreateUnparsedResponseException(
                     context,
