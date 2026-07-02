@@ -107,6 +107,8 @@ Policy:
 
 - schema updates нужно автоматизировать насколько возможно;
 - generated output должен проходить review перед release;
+- generated schema/client changes должны включать note в `CHANGELOG.md` с версией Telegram Bot API;
+- CI проверяет, что generated manifest, Telegram Bot API badge и generated file headers согласованы между собой;
 - schema changes, которые только добавляют новые Telegram fields или methods, могут быть minor releases;
 - schema changes, которые rename или reshape existing public generated types, могут требовать major release, даже если upstream behavior поменял Telegram.
 

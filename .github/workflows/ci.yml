@@ -107,6 +107,22 @@ jobs:
         shell: pwsh
         run: dotnet test ./TeleFlow.sln -c Release --no-build --no-restore /nodeReuse:false --logger "console;verbosity=minimal"
 
+  schema-update-guardrails:
+    name: Schema update guardrails
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Verify schema update guardrails
+        shell: pwsh
+        run: ./eng/verify-schema-update-guardrails.ps1 -BaseRef "${{ github.base_ref }}"
+
   minimum-sdk-generator-smoke:
     name: Minimum SDK generator smoke
     needs: changes
