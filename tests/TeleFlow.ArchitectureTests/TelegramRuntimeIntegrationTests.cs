@@ -2173,6 +2173,96 @@ public sealed class TelegramRuntimeIntegrationTests
     }
 
     [Fact]
+    public async Task MessageActions_AnswerAsync_UsesUpdateCancellationWhenTokenIsDefault()
+    {
+        using var updateCancellation = new CancellationTokenSource();
+        var fakeClient = new RecordingTelegramClient
+        {
+            Handler = method => method is SendMessage
+                ? new Message
+                {
+                    MessageId = 20,
+                    Date = 0,
+                    Chat = new Chat { Id = 100, Type = "private" },
+                    Text = "done"
+                }
+                : throw new InvalidOperationException("Unexpected method.")
+        };
+
+        using var serviceProvider = CreateTelegramServiceProvider(clientOverride: fakeClient);
+        var context = CreateScopedMessageUpdateContext(serviceProvider, updateCancellation.Token);
+
+        await context.GetMessageContext().Message.AnswerAsync("done");
+
+        Assert.Equal(updateCancellation.Token, fakeClient.CancellationTokens.Single());
+    }
+
+    [Fact]
+    public async Task MessageActions_AnswerAsync_ExplicitTokenOverridesUpdateCancellation()
+    {
+        using var updateCancellation = new CancellationTokenSource();
+        using var explicitCancellation = new CancellationTokenSource();
+        var fakeClient = new RecordingTelegramClient
+        {
+            Handler = method => method is SendMessage
+                ? new Message
+                {
+                    MessageId = 20,
+                    Date = 0,
+                    Chat = new Chat { Id = 100, Type = "private" },
+                    Text = "done"
+                }
+                : throw new InvalidOperationException("Unexpected method.")
+        };
+
+        using var serviceProvider = CreateTelegramServiceProvider(clientOverride: fakeClient);
+        var context = CreateScopedMessageUpdateContext(serviceProvider, updateCancellation.Token);
+
+        await context.GetMessageContext().Message.AnswerAsync("done", explicitCancellation.Token);
+
+        Assert.Equal(explicitCancellation.Token, fakeClient.CancellationTokens.Single());
+    }
+
+    [Fact]
+    public async Task CallbackQueryActions_AnswerAsync_UsesUpdateCancellationWhenTokenIsDefault()
+    {
+        using var updateCancellation = new CancellationTokenSource();
+        var fakeClient = new RecordingTelegramClient
+        {
+            Handler = method => method is AnswerCallbackQuery
+                ? true
+                : throw new InvalidOperationException("Unexpected method.")
+        };
+
+        using var serviceProvider = CreateTelegramServiceProvider(clientOverride: fakeClient);
+        var context = CreateCallbackQueryUpdateContext(serviceProvider, updateCancellation.Token);
+
+        await context.GetCallbackQueryContext().Callback.AnswerAsync();
+
+        Assert.Equal(updateCancellation.Token, fakeClient.CancellationTokens.Single());
+    }
+
+    [Fact]
+    public async Task ChatActions_ActionAsync_UsesUpdateCancellationWhenTokenIsDefault()
+    {
+        using var updateCancellation = new CancellationTokenSource();
+        var fakeClient = new RecordingTelegramClient
+        {
+            Handler = method => method is SendChatAction
+                ? true
+                : throw new InvalidOperationException("Unexpected method.")
+        };
+
+        using var serviceProvider = CreateTelegramServiceProvider(clientOverride: fakeClient);
+        var context = CreateScopedMessageUpdateContext(serviceProvider, updateCancellation.Token);
+
+        var lease = await context.GetMessageContext().Chat.ActionAsync(ChatAction.Typing);
+        await lease.DisposeAsync();
+
+        Assert.Equal(updateCancellation.Token, fakeClient.CancellationTokens.Single());
+    }
+
+    [Fact]
     public void TelegramContextBot_ForwardsDefaults()
     {
         var fakeClient = new RecordingTelegramClient();
@@ -3225,6 +3315,33 @@ public sealed class TelegramRuntimeIntegrationTests
                         Date = 0,
                         Chat = new Chat { Id = 100, Type = "private" },
                         Text = "hello"
+                    }
+                }),
+            cancellationToken);
+    }
+
+    private static UpdateContext CreateCallbackQueryUpdateContext(
+        IServiceProvider serviceProvider,
+        CancellationToken cancellationToken = default)
+    {
+        return new UpdateContext(
+            serviceProvider,
+            new TelegramUpdatePayload(
+                new Update
+                {
+                    UpdateId = 1,
+                    CallbackQuery = new CallbackQuery
+                    {
+                        Id = "cb-1",
+                        From = new User { Id = 5, IsBot = false, FirstName = "User" },
+                        Message = MaybeInaccessibleMessage.From(
+                            new Message
+                            {
+                                MessageId = 99,
+                                Date = 1,
+                                Chat = new Chat { Id = 100, Type = "private" }
+                            }),
+                        ChatInstance = "chat-instance"
                     }
                 }),
             cancellationToken);
