@@ -46,268 +46,412 @@ internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
         CancellationToken cancellationToken = default)
         where TResponse : ITelegramResponse
     {
-        if (request is not ITelegramExecutableRequest<TResponse> executableRequest)
+        var executableRequest = GetExecutableRequest(request);
+        var context = TelegramRequestExecutionContext.Create(executableRequest.MethodName);
+
+        for (var attempt = 1; ; attempt++)
         {
-            throw new InvalidOperationException(
-                $"Request type '{request.GetType().FullName}' is not executable by the Telegram runtime.");
-        }
+            var diagnostics = TelegramRequestAttemptDiagnostics.Create(this, context, attempt);
+            var response = await SendAttemptAsync(
+                executableRequest,
+                diagnostics,
+                cancellationToken).ConfigureAwait(false);
 
-        var attempt = 0;
-        var isPollingRequest = IsPollingRequest(executableRequest.MethodName);
-
-        while (true)
-        {
-            attempt++;
-            TelegramTransportResponse response;
-            var requestDebugEnabled = !isPollingRequest && _logger.IsEnabled(LogLevel.Debug);
-            var requestErrorEnabled = !isPollingRequest && _logger.IsEnabled(LogLevel.Error);
-            var requestTimingEnabled = !isPollingRequest && TelegramHandlerRequestTimingScope.HasCurrent;
-            var requestDiagnosticsEnabled = requestDebugEnabled || requestErrorEnabled || requestTimingEnabled;
-            var attemptStarted = requestDiagnosticsEnabled ? _timeProvider.GetTimestamp() : 0;
-
-            try
+            if (!_envelopeParser.TryParse(response.Body, out var envelope, out var parseException))
             {
-                var transportRequest = _sender.CreateRequest(executableRequest);
-
-                if (requestDebugEnabled)
-                {
-                    LogRequestStarted(
-                        _logger,
-                        executableRequest.MethodName,
+                if (await TryDelayRetryAfterAsync(
+                        diagnostics,
                         attempt,
-                        GetContentKind(transportRequest.Content));
-                }
-
-                response = await _sender.SendAsync(transportRequest, cancellationToken).ConfigureAwait(false);
-
-                if (requestDiagnosticsEnabled)
-                {
-                    var attemptEnded = _timeProvider.GetTimestamp();
-
-                    if (requestTimingEnabled)
-                    {
-                        TelegramHandlerRequestTimingScope.Record(attemptStarted, attemptEnded);
-                    }
-
-                    if (requestDebugEnabled)
-                    {
-                        LogRequestCompleted(
-                            _logger,
-                            executableRequest.MethodName,
-                            attempt,
-                            response.StatusCode,
-                            GetElapsedMilliseconds(attemptStarted, attemptEnded));
-                    }
-                }
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception exception)
-            {
-                var httpStatusCode = exception is TelegramRequestException requestException
-                    ? requestException.HttpStatusCode
-                    : null;
-                if (requestDiagnosticsEnabled)
-                {
-                    var attemptEnded = _timeProvider.GetTimestamp();
-
-                    if (requestTimingEnabled)
-                    {
-                        TelegramHandlerRequestTimingScope.Record(attemptStarted, attemptEnded);
-                    }
-
-                    if (requestErrorEnabled)
-                    {
-                        LogRequestFailure(
-                            executableRequest.MethodName,
-                            attempt,
-                            httpStatusCode,
-                            attemptStarted,
-                            attemptEnded,
-                            exception);
-                    }
-                }
-
-                throw;
-            }
-
-            var envelope = _envelopeParser.TryParse(response.Body, out var parsedEnvelope, out var parseException)
-                ? parsedEnvelope
-                : null;
-
-            if (envelope is null)
-            {
-                var retryAfterHeaderDelay = TelegramRetryAfterDelayResolver.ResolveDelay(response, envelope, _timeProvider);
-                if (response.StatusCode == 429)
-                {
-                    if (retryAfterHeaderDelay is not null &&
-                        CanRetryAfter(attempt, retryAfterHeaderDelay.Value))
-                    {
-                        if (!isPollingRequest && _logger.IsEnabled(LogLevel.Warning))
-                        {
-                            LogRequestThrottled(executableRequest.MethodName, attempt, retryAfterHeaderDelay.Value);
-                        }
-
-                        await TelegramRetryAfterDelayResolver.DelayAsync(
-                            retryAfterHeaderDelay.Value,
-                            _timeProvider,
-                            cancellationToken).ConfigureAwait(false);
-                        continue;
-                    }
-
-                    var exception = CreateRetryAfterException(
-                        executableRequest.MethodName,
-                        response.StatusCode,
+                        response,
                         envelope: null,
-                        retryAfterHeaderDelay,
-                        GetRetryAfterFailureDescription(retryAfterHeaderDelay));
-                    if (requestErrorEnabled)
-                    {
-                        LogRequestFailure(
-                            executableRequest.MethodName,
-                            attempt,
-                            response.StatusCode,
-                            attemptStarted,
-                            _timeProvider.GetTimestamp(),
-                            exception);
-                    }
-
-                    throw exception;
-                }
-
-                var decodeException = new TelegramDecodeException(
-                    $"Failed to parse Telegram API response envelope for method '{executableRequest.MethodName}'.",
-                    parseException,
-                    executableRequest.MethodName,
-                    httpStatusCode: response.StatusCode,
-                    retryAfterHeaderDelay?.Seconds);
-                if (requestErrorEnabled)
+                        cancellationToken).ConfigureAwait(false))
                 {
-                    LogRequestFailure(
-                        executableRequest.MethodName,
-                        attempt,
-                        response.StatusCode,
-                        attemptStarted,
-                        _timeProvider.GetTimestamp(),
-                        decodeException);
+                    continue;
                 }
 
-                throw decodeException;
+                throw CreateUnparsedResponseException(
+                    context,
+                    diagnostics,
+                    response,
+                    parseException);
             }
 
             if (envelope.Ok)
             {
-                if (string.IsNullOrWhiteSpace(envelope.ResultJson))
-                {
-                    var missingResultException = new TelegramDecodeException(
-                        $"Telegram response for method '{executableRequest.MethodName}' did not contain a result payload.",
-                        methodName: executableRequest.MethodName,
-                        httpStatusCode: response.StatusCode);
-                    if (requestErrorEnabled)
-                    {
-                        LogRequestFailure(
-                            executableRequest.MethodName,
-                            attempt,
-                            response.StatusCode,
-                            attemptStarted,
-                            _timeProvider.GetTimestamp(),
-                            missingResultException);
-                    }
-
-                    throw missingResultException;
-                }
-
-                try
-                {
-                    return executableRequest.DeserializeResponse(_serializerOptions, envelope.ResultJson);
-                }
-                catch (TelegramRequestException)
-                {
-                    throw;
-                }
-                catch (Exception exception) when (exception is JsonException or NotSupportedException)
-                {
-                    var decodeException = new TelegramDecodeException(
-                        $"Failed to deserialize Telegram response for method '{executableRequest.MethodName}'.",
-                        exception,
-                        executableRequest.MethodName,
-                        httpStatusCode: response.StatusCode);
-                    if (requestErrorEnabled)
-                    {
-                        LogRequestFailure(
-                            executableRequest.MethodName,
-                            attempt,
-                            response.StatusCode,
-                            attemptStarted,
-                            _timeProvider.GetTimestamp(),
-                            decodeException);
-                    }
-
-                    throw decodeException;
-                }
+                return DeserializeSuccessResponse(
+                    executableRequest,
+                    context,
+                    diagnostics,
+                    response,
+                    envelope);
             }
 
-            var retryAfterDelay = TelegramRetryAfterDelayResolver.ResolveDelay(response, envelope, _timeProvider);
-            if (TelegramApiExceptionFactory.IsThrottling(response.StatusCode, envelope) &&
-                retryAfterDelay is not null &&
-                CanRetryAfter(attempt, retryAfterDelay.Value))
+            if (await TryDelayRetryAfterAsync(
+                    diagnostics,
+                    attempt,
+                    response,
+                    envelope,
+                    cancellationToken).ConfigureAwait(false))
             {
-                if (!isPollingRequest && _logger.IsEnabled(LogLevel.Warning))
-                {
-                    LogRequestThrottled(executableRequest.MethodName, attempt, retryAfterDelay.Value);
-                }
-
-                await TelegramRetryAfterDelayResolver.DelayAsync(
-                    retryAfterDelay.Value,
-                    _timeProvider,
-                    cancellationToken).ConfigureAwait(false);
                 continue;
             }
 
-            if (TelegramApiExceptionFactory.IsThrottling(response.StatusCode, envelope))
-            {
-                var retryAfterException = CreateRetryAfterException(
-                    executableRequest.MethodName,
-                    response.StatusCode,
-                    envelope,
-                    retryAfterDelay,
-                    GetRetryAfterFailureDescription(retryAfterDelay));
-                if (requestErrorEnabled)
-                {
-                    LogRequestFailure(
-                        executableRequest.MethodName,
-                        attempt,
-                        response.StatusCode,
-                        attemptStarted,
-                        _timeProvider.GetTimestamp(),
-                        retryAfterException);
-                }
-
-                throw retryAfterException;
-            }
-
-            var apiException = TelegramApiExceptionFactory.CreateApiException(
-                executableRequest.MethodName,
-                response.StatusCode,
+            throw CreateApiFailureException(
+                context,
+                diagnostics,
+                response,
                 envelope);
-            if (requestErrorEnabled)
-            {
-                LogRequestFailure(
-                    executableRequest.MethodName,
-                    attempt,
-                    response.StatusCode,
-                    attemptStarted,
-                    _timeProvider.GetTimestamp(),
-                    apiException);
-            }
-
-            throw apiException;
         }
     }
 
-    private static bool IsPollingRequest(string methodName)
+    private static ITelegramExecutableRequest<TResponse> GetExecutableRequest<TResponse>(
+        ITelegramRequest<TResponse> request)
+        where TResponse : ITelegramResponse
+    {
+        if (request is ITelegramExecutableRequest<TResponse> executableRequest)
+        {
+            return executableRequest;
+        }
+
+        throw new InvalidOperationException(
+            $"Request type '{request.GetType().FullName}' is not executable by the Telegram runtime.");
+    }
+
+    private async Task<TelegramTransportResponse> SendAttemptAsync<TResponse>(
+        ITelegramExecutableRequest<TResponse> executableRequest,
+        TelegramRequestAttemptDiagnostics diagnostics,
+        CancellationToken cancellationToken)
+        where TResponse : ITelegramResponse
+    {
+        try
+        {
+            var transportRequest = _sender.CreateRequest(executableRequest);
+            diagnostics.LogStarted(transportRequest.Content);
+
+            var response = await _sender.SendAsync(transportRequest, cancellationToken).ConfigureAwait(false);
+            diagnostics.LogCompleted(response.StatusCode);
+
+            return response;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            diagnostics.LogAttemptFailure(GetHttpStatusCode(exception), exception);
+            throw;
+        }
+    }
+
+    private async ValueTask<bool> TryDelayRetryAfterAsync(
+        TelegramRequestAttemptDiagnostics diagnostics,
+        int attempt,
+        TelegramTransportResponse response,
+        TelegramTransportEnvelope? envelope,
+        CancellationToken cancellationToken)
+    {
+        if (!IsThrottlingResponse(response.StatusCode, envelope))
+        {
+            return false;
+        }
+
+        var retryAfterDelay = TelegramRetryAfterDelayResolver.ResolveDelay(response, envelope, _timeProvider);
+        if (retryAfterDelay is null ||
+            !CanRetryAfter(attempt, retryAfterDelay.Value))
+        {
+            return false;
+        }
+
+        diagnostics.LogThrottled(retryAfterDelay.Value);
+
+        await TelegramRetryAfterDelayResolver.DelayAsync(
+            retryAfterDelay.Value,
+            _timeProvider,
+            cancellationToken).ConfigureAwait(false);
+
+        return true;
+    }
+
+    private TResponse DeserializeSuccessResponse<TResponse>(
+        ITelegramExecutableRequest<TResponse> executableRequest,
+        TelegramRequestExecutionContext context,
+        TelegramRequestAttemptDiagnostics diagnostics,
+        TelegramTransportResponse response,
+        TelegramTransportEnvelope envelope)
+        where TResponse : ITelegramResponse
+    {
+        if (string.IsNullOrWhiteSpace(envelope.ResultJson))
+        {
+            var exception = new TelegramDecodeException(
+                $"Telegram response for method '{context.MethodName}' did not contain a result payload.",
+                methodName: context.MethodName,
+                httpStatusCode: response.StatusCode);
+
+            diagnostics.LogFinalFailure(response.StatusCode, exception);
+            throw exception;
+        }
+
+        try
+        {
+            return executableRequest.DeserializeResponse(_serializerOptions, envelope.ResultJson);
+        }
+        catch (TelegramRequestException)
+        {
+            throw;
+        }
+        catch (Exception exception) when (exception is JsonException or NotSupportedException)
+        {
+            var decodeException = new TelegramDecodeException(
+                $"Failed to deserialize Telegram response for method '{context.MethodName}'.",
+                exception,
+                context.MethodName,
+                httpStatusCode: response.StatusCode);
+
+            diagnostics.LogFinalFailure(response.StatusCode, decodeException);
+            throw decodeException;
+        }
+    }
+
+    private Exception CreateUnparsedResponseException(
+        TelegramRequestExecutionContext context,
+        TelegramRequestAttemptDiagnostics diagnostics,
+        TelegramTransportResponse response,
+        JsonException? parseException)
+    {
+        var retryAfterHeaderDelay = TelegramRetryAfterDelayResolver.ResolveDelay(response, envelope: null, _timeProvider);
+
+        if (response.StatusCode == 429)
+        {
+            var exception = CreateRetryAfterException(
+                context.MethodName,
+                response.StatusCode,
+                envelope: null,
+                retryAfterHeaderDelay,
+                GetRetryAfterFailureDescription(retryAfterHeaderDelay));
+
+            diagnostics.LogFinalFailure(response.StatusCode, exception);
+            return exception;
+        }
+
+        var decodeException = new TelegramDecodeException(
+            $"Failed to parse Telegram API response envelope for method '{context.MethodName}'.",
+            parseException,
+            context.MethodName,
+            httpStatusCode: response.StatusCode,
+            retryAfterHeaderDelay?.Seconds);
+
+        diagnostics.LogFinalFailure(response.StatusCode, decodeException);
+        return decodeException;
+    }
+
+    private Exception CreateApiFailureException(
+        TelegramRequestExecutionContext context,
+        TelegramRequestAttemptDiagnostics diagnostics,
+        TelegramTransportResponse response,
+        TelegramTransportEnvelope envelope)
+    {
+        if (TelegramApiExceptionFactory.IsThrottling(response.StatusCode, envelope))
+        {
+            var retryAfterDelay = TelegramRetryAfterDelayResolver.ResolveDelay(response, envelope, _timeProvider);
+            var exception = CreateRetryAfterException(
+                context.MethodName,
+                response.StatusCode,
+                envelope,
+                retryAfterDelay,
+                GetRetryAfterFailureDescription(retryAfterDelay));
+
+            diagnostics.LogFinalFailure(response.StatusCode, exception);
+            return exception;
+        }
+
+        var apiException = TelegramApiExceptionFactory.CreateApiException(
+            context.MethodName,
+            response.StatusCode,
+            envelope);
+
+        diagnostics.LogFinalFailure(response.StatusCode, apiException);
+        return apiException;
+    }
+
+    private static bool IsThrottlingResponse(
+        int statusCode,
+        TelegramTransportEnvelope? envelope)
+    {
+        return envelope is null
+            ? statusCode == 429
+            : TelegramApiExceptionFactory.IsThrottling(statusCode, envelope);
+    }
+
+    private static int? GetHttpStatusCode(Exception exception)
+    {
+        return exception is TelegramRequestException requestException
+            ? requestException.HttpStatusCode
+            : null;
+    }
+
+    private readonly record struct TelegramRequestExecutionContext(
+        string MethodName,
+        bool IsPollingRequest)
+    {
+        public static TelegramRequestExecutionContext Create(string methodName)
+        {
+            return new TelegramRequestExecutionContext(
+                methodName,
+                IsPollingMethod(methodName));
+        }
+    }
+
+    private readonly struct TelegramRequestAttemptDiagnostics
+    {
+        private readonly TelegramRequestExecutor _executor;
+        private readonly TelegramRequestExecutionContext _context;
+        private readonly int _attempt;
+        private readonly bool _debugEnabled;
+        private readonly bool _errorEnabled;
+        private readonly bool _timingEnabled;
+        private readonly bool _enabled;
+        private readonly long _started;
+
+        private TelegramRequestAttemptDiagnostics(
+            TelegramRequestExecutor executor,
+            TelegramRequestExecutionContext context,
+            int attempt,
+            bool debugEnabled,
+            bool errorEnabled,
+            bool timingEnabled)
+        {
+            _executor = executor;
+            _context = context;
+            _attempt = attempt;
+            _debugEnabled = debugEnabled;
+            _errorEnabled = errorEnabled;
+            _timingEnabled = timingEnabled;
+            _enabled = debugEnabled || errorEnabled || timingEnabled;
+            _started = _enabled ? executor._timeProvider.GetTimestamp() : 0;
+        }
+
+        public static TelegramRequestAttemptDiagnostics Create(
+            TelegramRequestExecutor executor,
+            TelegramRequestExecutionContext context,
+            int attempt)
+        {
+            var debugEnabled = !context.IsPollingRequest && executor._logger.IsEnabled(LogLevel.Debug);
+            var errorEnabled = !context.IsPollingRequest && executor._logger.IsEnabled(LogLevel.Error);
+            var timingEnabled = !context.IsPollingRequest && TelegramHandlerRequestTimingScope.HasCurrent;
+
+            return new TelegramRequestAttemptDiagnostics(
+                executor,
+                context,
+                attempt,
+                debugEnabled,
+                errorEnabled,
+                timingEnabled);
+        }
+
+        public void LogStarted(TelegramTransportContent content)
+        {
+            if (!_debugEnabled)
+            {
+                return;
+            }
+
+            LogRequestStarted(
+                _executor._logger,
+                _context.MethodName,
+                _attempt,
+                GetContentKind(content));
+        }
+
+        public void LogCompleted(int httpStatusCode)
+        {
+            if (!_enabled)
+            {
+                return;
+            }
+
+            var ended = _executor._timeProvider.GetTimestamp();
+            RecordTiming(ended);
+
+            if (!_debugEnabled)
+            {
+                return;
+            }
+
+            LogRequestCompleted(
+                _executor._logger,
+                _context.MethodName,
+                _attempt,
+                httpStatusCode,
+                _executor.GetElapsedMilliseconds(_started, ended));
+        }
+
+        public void LogAttemptFailure(
+            int? httpStatusCode,
+            Exception exception)
+        {
+            if (!_enabled)
+            {
+                return;
+            }
+
+            var ended = _executor._timeProvider.GetTimestamp();
+            RecordTiming(ended);
+
+            if (_errorEnabled)
+            {
+                _executor.LogRequestFailure(
+                    _context.MethodName,
+                    _attempt,
+                    httpStatusCode,
+                    _started,
+                    ended,
+                    exception);
+            }
+        }
+
+        public void LogFinalFailure(
+            int httpStatusCode,
+            Exception exception)
+        {
+            if (!_errorEnabled)
+            {
+                return;
+            }
+
+            _executor.LogRequestFailure(
+                _context.MethodName,
+                _attempt,
+                httpStatusCode,
+                _started,
+                _executor._timeProvider.GetTimestamp(),
+                exception);
+        }
+
+        public void LogThrottled(TelegramRetryAfterDelay retryAfter)
+        {
+            if (_context.IsPollingRequest ||
+                !_executor._logger.IsEnabled(LogLevel.Warning))
+            {
+                return;
+            }
+
+            _executor.LogRequestThrottled(
+                _context.MethodName,
+                _attempt,
+                retryAfter);
+        }
+
+        private void RecordTiming(long ended)
+        {
+            if (_timingEnabled)
+            {
+                TelegramHandlerRequestTimingScope.Record(_started, ended);
+            }
+        }
+    }
+
+    private static bool IsPollingMethod(string methodName)
     {
         return string.Equals(methodName, "getUpdates", StringComparison.Ordinal);
     }

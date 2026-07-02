@@ -606,6 +606,52 @@ public sealed class TelegramRuntimeIntegrationTests
     }
 
     [Fact]
+    public async Task Executor_LogsDecodeFailureOnceBeforeThrowingDecodeException()
+    {
+        var loggerFactory = new RecordingLoggerFactory();
+        var handler = new RecordingHttpMessageHandler(
+            CreateTextResponse("<html>gateway failure</html>", HttpStatusCode.BadGateway));
+
+        using var serviceProvider = CreateTelegramServiceProvider(handler, loggerFactory: loggerFactory);
+        var client = serviceProvider.GetRequiredService<ITelegramClient>();
+
+        var exception = await Assert.ThrowsAsync<TelegramDecodeException>(() => client.SendAsync(new GetMe()));
+        var failureLogs = loggerFactory.Entries
+            .Where(entry => entry.EventId.Id == 4)
+            .ToArray();
+
+        var failureLog = Assert.Single(failureLogs);
+        Assert.Equal(LogLevel.Error, failureLog.Level);
+        Assert.Same(exception, failureLog.Exception);
+        Assert.Contains("method=getMe", failureLog.Message, StringComparison.Ordinal);
+        Assert.Contains("status=502", failureLog.Message, StringComparison.Ordinal);
+        Assert.Contains(
+            "exception_type=TeleFlow.Telegram.TelegramDecodeException",
+            failureLog.Message,
+            StringComparison.Ordinal);
+        AssertRequestLogsDoNotContainSensitiveData(loggerFactory);
+    }
+
+    [Fact]
+    public async Task Executor_DoesNotLogFailedGetUpdatesAsOrdinaryRequestDiagnostics()
+    {
+        var loggerFactory = new RecordingLoggerFactory();
+        var handler = new RecordingHttpMessageHandler(
+            CreateJsonResponse(
+                """{"ok":false,"error_code":400,"description":"Bad Request"}""",
+                HttpStatusCode.BadRequest));
+
+        using var serviceProvider = CreateTelegramServiceProvider(handler, loggerFactory: loggerFactory);
+        var client = serviceProvider.GetRequiredService<ITelegramClient>();
+
+        await Assert.ThrowsAsync<TelegramBadRequestException>(() => client.SendAsync(new GetUpdates()));
+
+        Assert.DoesNotContain(
+            loggerFactory.Entries,
+            entry => entry.Message.Contains("method=getUpdates", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task TelegramClient_GetMeAsyncExtension_UsesGeneratedMethodModel()
     {
         var client = new RecordingTelegramClient
