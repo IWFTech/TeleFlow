@@ -456,6 +456,42 @@ public sealed class TelegramRuntimeIntegrationTests
     }
 
     [Fact]
+    public async Task TelegramClient_SendAsync_DeserializesResultFromUtf8TransportBody()
+    {
+        var services = new ServiceCollection();
+        services.AddTelegramBot(options => options.Token = "test-token");
+        services.AddSingleton<ITelegramTransport>(
+            new RecordingTelegramTransport(
+                new TelegramTransportResponse(
+                    200,
+                    Encoding.UTF8.GetBytes(
+                        """{"ok":true,"result":{"id":42,"is_bot":true,"first_name":"TeleFlow Bot"}}"""))));
+
+        using var serviceProvider = services.BuildServiceProvider();
+        var client = serviceProvider.GetRequiredService<ITelegramClient>();
+
+        var user = await client.SendAsync(new GetMe());
+
+        Assert.Equal(42, user.Id);
+        Assert.Equal("TeleFlow Bot", user.FirstName);
+    }
+
+    [Fact]
+    public async Task TelegramClient_SendAsync_ReturnsJsonElementResultAfterEnvelopeDisposal()
+    {
+        var handler = new RecordingHttpMessageHandler(
+            CreateJsonResponse("""{"ok":true,"result":{"id":42,"name":"raw"}}"""));
+
+        using var serviceProvider = CreateTelegramServiceProvider(handler);
+        var client = serviceProvider.GetRequiredService<ITelegramClient>();
+
+        var result = await client.SendAsync(new JsonElementResultMethod());
+
+        Assert.Equal(42, result.GetProperty("id").GetInt32());
+        Assert.Equal("raw", result.GetProperty("name").GetString());
+    }
+
+    [Fact]
     public async Task Executor_LogsSuccessfulRequestDiagnosticsWithoutSensitiveData()
     {
         var loggerFactory = new RecordingLoggerFactory();
@@ -1513,6 +1549,23 @@ public sealed class TelegramRuntimeIntegrationTests
     }
 
     [Fact]
+    public async Task Executor_InvalidUtf8Response_PreservesHttpStatusCode()
+    {
+        var services = new ServiceCollection();
+        services.AddTelegramBot(options => options.Token = "test-token");
+        services.AddSingleton<ITelegramTransport>(
+            new RecordingTelegramTransport(new TelegramTransportResponse(200, [0xFF, 0x7B])));
+
+        using var serviceProvider = services.BuildServiceProvider();
+        var client = serviceProvider.GetRequiredService<ITelegramClient>();
+
+        var exception = await Assert.ThrowsAsync<TelegramDecodeException>(() => client.SendAsync(new GetMe()));
+
+        Assert.Equal(200, exception.HttpStatusCode);
+        Assert.Equal("getMe", exception.MethodName);
+    }
+
+    [Fact]
     public async Task Executor_DoesNotRetryNon429Failures()
     {
         var handler = new RecordingHttpMessageHandler(
@@ -1560,7 +1613,7 @@ public sealed class TelegramRuntimeIntegrationTests
     }
 
     [Fact]
-    public async Task Executor_ThrowsDecodeException_WhenResultJsonIsInvalid()
+    public async Task Executor_ThrowsDecodeException_WhenTypedResultCannotBeDeserialized()
     {
         var handler = new RecordingHttpMessageHandler(
             CreateJsonResponse("""{"ok":true,"result":{"id":"not-a-number","is_bot":true,"first_name":"Bot"}}"""));
@@ -3536,6 +3589,11 @@ public sealed class TelegramRuntimeIntegrationTests
         [JsonIgnore]
         public object Poison =>
             throw new InvalidOperationException("JSON-only request content should not scan ignored properties.");
+    }
+
+    private sealed partial record class JsonElementResultMethod : ITelegramApiMethod<JsonElement>
+    {
+        public static string MethodName => "jsonElementResult";
     }
 
     private sealed class RecordingTelegramTransport : ITelegramTransport

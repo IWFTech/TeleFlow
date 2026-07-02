@@ -5,6 +5,10 @@ using TeleFlow.Telegram.Schema.Abstractions;
 
 namespace TeleFlow.Telegram.Internal;
 
+/// <summary>
+/// Adapts a generated schema method object to the executable request contract used by the Telegram client runtime.
+/// It resolves the generated method name and maps a parsed Telegram result element into the strongly typed method result.
+/// </summary>
 internal sealed class SchemaTelegramRequest<TResult> :
     ITelegramExecutableRequest<TelegramRequestResult<TResult>>
 {
@@ -23,20 +27,19 @@ internal sealed class SchemaTelegramRequest<TResult> :
 
     public TelegramRequestResult<TResult> DeserializeResponse(
         JsonSerializerOptions serializerOptions,
-        string resultJson)
+        JsonElement result)
     {
         ArgumentNullException.ThrowIfNull(serializerOptions);
-        ArgumentNullException.ThrowIfNull(resultJson);
 
-        var result = JsonSerializer.Deserialize<TResult>(resultJson, serializerOptions);
+        var value = result.Deserialize<TResult>(serializerOptions);
 
-        if (result is null)
+        if (value is null)
         {
             throw new TelegramRequestException(
                 $"Telegram response for method '{MethodName}' did not contain a deserializable result payload.");
         }
 
-        return new TelegramRequestResult<TResult>(result);
+        return new TelegramRequestResult<TResult>(value);
     }
 
     private static string ResolveMethodName(Type methodType)

@@ -3,6 +3,10 @@ using TeleFlow.Telegram.Schema.Types;
 
 namespace TeleFlow.Telegram.Internal;
 
+/// <summary>
+/// Parses raw Telegram Bot API response bytes into an owned envelope used by the request executor.
+/// It keeps the parsed JSON document alive so successful result payloads can be deserialized without rematerializing JSON text.
+/// </summary>
 internal sealed class TelegramTransportEnvelopeParser
 {
     private readonly JsonSerializerOptions _serializerOptions;
@@ -14,24 +18,22 @@ internal sealed class TelegramTransportEnvelopeParser
     }
 
     public bool TryParse(
-        string responseText,
+        ReadOnlyMemory<byte> responseBody,
         out TelegramTransportEnvelope envelope,
         out JsonException? exception)
     {
+        JsonDocument? document = null;
+
         try
         {
-            using var document = JsonDocument.Parse(responseText);
+            document = JsonDocument.Parse(responseBody);
             var root = document.RootElement;
 
             var ok = root.TryGetProperty("ok", out var okElement) && okElement.ValueKind is JsonValueKind.True or JsonValueKind.False
                 ? okElement.GetBoolean()
                 : throw new JsonException("Telegram response does not contain a valid 'ok' property.");
 
-            string? resultJson = null;
-            if (root.TryGetProperty("result", out var resultElement))
-            {
-                resultJson = resultElement.GetRawText();
-            }
+            var hasResult = root.TryGetProperty("result", out var resultElement);
 
             string? description = null;
             if (root.TryGetProperty("description", out var descriptionElement) &&
@@ -52,18 +54,19 @@ internal sealed class TelegramTransportEnvelopeParser
             if (root.TryGetProperty("response_parameters", out var responseParametersElement))
             {
                 responseParameters = JsonSerializer.Deserialize<ResponseParameters>(
-                    responseParametersElement.GetRawText(),
+                    responseParametersElement,
                     _serializerOptions);
             }
 
-            envelope = new TelegramTransportEnvelope
-            {
-                Ok = ok,
-                ResultJson = resultJson,
-                Description = description,
-                ErrorCode = errorCode,
-                ResponseParameters = responseParameters
-            };
+            envelope = new TelegramTransportEnvelope(
+                document,
+                ok,
+                hasResult,
+                resultElement,
+                description,
+                errorCode,
+                responseParameters);
+            document = null;
             exception = null;
             return true;
         }
@@ -72,6 +75,10 @@ internal sealed class TelegramTransportEnvelopeParser
             envelope = null!;
             exception = jsonException;
             return false;
+        }
+        finally
+        {
+            document?.Dispose();
         }
     }
 }

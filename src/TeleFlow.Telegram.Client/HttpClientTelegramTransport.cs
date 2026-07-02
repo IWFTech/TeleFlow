@@ -4,6 +4,10 @@ using System.Text;
 
 namespace TeleFlow.Telegram;
 
+/// <summary>
+/// Default <see cref="ITelegramTransport"/> implementation that sends Telegram Bot API requests through <see cref="HttpClient"/>.
+/// It is used by the generated client pipeline unless an application registers a custom transport.
+/// </summary>
 public sealed class HttpClientTelegramTransport : ITelegramTransport, IDisposable
 {
     private readonly HttpClient _httpClient;
@@ -42,9 +46,9 @@ public sealed class HttpClientTelegramTransport : ITelegramTransport, IDisposabl
         try
         {
             using var response = await _httpClient.SendAsync(message, cancellationToken).ConfigureAwait(false);
-            var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            var body = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
 
-            return new TelegramTransportResponse(
+            return TelegramTransportResponse.FromOwnedBytes(
                 (int)response.StatusCode,
                 body,
                 CopyHeaders(response));

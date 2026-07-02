@@ -76,21 +76,23 @@ internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
                     parseException);
             }
 
-            if (envelope.Ok)
+            using var parsedEnvelope = envelope;
+
+            if (parsedEnvelope.Ok)
             {
                 return DeserializeSuccessResponse(
                     executableRequest,
                     context,
                     diagnostics,
                     response,
-                    envelope);
+                    parsedEnvelope);
             }
 
             if (await TryDelayRetryAfterAsync(
                     diagnostics,
                     attempt,
                     response,
-                    envelope,
+                    parsedEnvelope,
                     cancellationToken).ConfigureAwait(false))
             {
                 continue;
@@ -100,7 +102,7 @@ internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
                 context,
                 diagnostics,
                 response,
-                envelope);
+                parsedEnvelope);
         }
     }
 
@@ -181,7 +183,7 @@ internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
         TelegramTransportEnvelope envelope)
         where TResponse : ITelegramResponse
     {
-        if (string.IsNullOrWhiteSpace(envelope.ResultJson))
+        if (!envelope.HasResult)
         {
             var exception = new TelegramDecodeException(
                 $"Telegram response for method '{context.MethodName}' did not contain a result payload.",
@@ -194,7 +196,7 @@ internal sealed partial class TelegramRequestExecutor : ITelegramRequestExecutor
 
         try
         {
-            return executableRequest.DeserializeResponse(_serializerOptions, envelope.ResultJson);
+            return executableRequest.DeserializeResponse(_serializerOptions, envelope.Result);
         }
         catch (TelegramRequestException)
         {
