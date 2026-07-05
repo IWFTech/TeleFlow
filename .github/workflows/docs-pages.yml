@@ -1,6 +1,9 @@
 name: Docs Pages
 
 on:
+  issues:
+    types:
+      - opened
   pull_request:
     branches:
       - main
@@ -15,10 +18,13 @@ on:
       - ".github/workflows/docs-pages.yml"
       - "docs/**"
       - "mkdocs.yml"
+  schedule:
+    - cron: "17 0 * * *"
   workflow_dispatch:
 
 permissions:
   contents: read
+  issues: read
 
 concurrency:
   group: pages-${{ github.ref }}
@@ -43,6 +49,12 @@ jobs:
 
       - name: Install docs dependencies
         run: python -m pip install -r eng/docs-requirements.txt
+
+      - name: Update last issue badge endpoint
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./eng/update-last-issue-badge.ps1
 
       - name: Build docs
         run: mkdocs build --strict --site-dir site

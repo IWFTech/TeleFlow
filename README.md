@@ -9,6 +9,7 @@
 [![CI](https://github.com/IWFTech/TeleFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/IWFTech/TeleFlow/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/IWFTech/TeleFlow/actions/workflows/codeql.yml/badge.svg)](https://github.com/IWFTech/TeleFlow/actions/workflows/codeql.yml)
 ![GitHub last commit](https://img.shields.io/github/last-commit/IWFTech/TeleFlow)
+[![GitHub last issue](https://img.shields.io/endpoint?url=https%3A%2F%2Fiwftech.github.io%2FTeleFlow%2Fbadges%2Flast-issue.json)](https://github.com/IWFTech/TeleFlow/issues?q=is%3Aissue+sort%3Acreated-desc)
 [![Downloads](https://img.shields.io/nuget/dt/IWF.TeleFlow.Telegram.Schema?label=downloads)](https://www.nuget.org/packages/IWF.TeleFlow.Telegram.Schema/)
 
 
