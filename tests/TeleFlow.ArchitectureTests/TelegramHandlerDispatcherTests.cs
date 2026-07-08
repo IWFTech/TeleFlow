@@ -693,6 +693,54 @@ public sealed class TelegramHandlerDispatcherTests
     }
 
     [Fact]
+    public async Task CommandAttribute_OptionalPrefix_DoesNotMatchPrefixLessTextWithArguments()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.AddTelegramHandler<ShortOptionalPrefixCommandHandler>();
+                services.AddTelegramHandler<AnyMessageHandler>();
+            });
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("Я рассказываю обычную фразу"));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("я"));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/я рассказываю обычную фразу"));
+
+        Assert.Equal(
+            [
+                "message:Я рассказываю обычную фразу",
+                "short-optional-prefix-command:я",
+                "short-optional-prefix-command:/я рассказываю обычную фразу"
+            ],
+            probe.Events);
+    }
+
+    [Fact]
+    public async Task CommandAttribute_NoPrefix_DoesNotMatchPrefixLessTextWithArguments()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.AddTelegramHandler<ShortNoPrefixCommandHandler>();
+                services.AddTelegramHandler<AnyMessageHandler>();
+            });
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("Я рассказываю обычную фразу"));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("я"));
+
+        Assert.Equal(
+            [
+                "message:Я рассказываю обычную фразу",
+                "short-no-prefix-command:я"
+            ],
+            probe.Events);
+    }
+
+    [Fact]
     public async Task TextTemplate_BindsRouteValue()
     {
         using var serviceProvider = CreateServiceProvider(
@@ -799,6 +847,31 @@ public sealed class TelegramHandlerDispatcherTests
     }
 
     [Fact]
+    public async Task CommandTemplate_OptionalPrefix_DoesNotMatchPrefixLessTextWhenTemplateHasNoRouteValues()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.AddTelegramHandler<ShortOptionalPrefixCommandTemplateHandler>();
+                services.AddTelegramHandler<AnyMessageHandler>();
+            });
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("Я рассказываю обычную фразу"));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("я"));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/я рассказываю обычную фразу"));
+
+        Assert.Equal(
+            [
+                "message:Я рассказываю обычную фразу",
+                "short-optional-prefix-command-template:я",
+                "message:/я рассказываю обычную фразу"
+            ],
+            probe.Events);
+    }
+
+    [Fact]
     public async Task CommandTemplate_NoPrefix_MatchesOnlyPrefixLessCommands()
     {
         using var serviceProvider = CreateServiceProvider(
@@ -814,6 +887,29 @@ public sealed class TelegramHandlerDispatcherTests
         await DispatchAsync(serviceProvider, CreateMessageUpdate("/ban 43"));
 
         Assert.Equal(["no-prefix-command-template:42", "message:/ban 43"], probe.Events);
+    }
+
+    [Fact]
+    public async Task CommandTemplate_NoPrefix_DoesNotMatchPrefixLessTextWhenTemplateHasNoRouteValues()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.AddTelegramHandler<ShortNoPrefixCommandTemplateHandler>();
+                services.AddTelegramHandler<AnyMessageHandler>();
+            });
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("Я рассказываю обычную фразу"));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("я"));
+
+        Assert.Equal(
+            [
+                "message:Я рассказываю обычную фразу",
+                "short-no-prefix-command-template:я"
+            ],
+            probe.Events);
     }
 
     [Fact]
@@ -3634,6 +3730,26 @@ public sealed class TelegramHandlerDispatcherTests
         }
     }
 
+    public sealed class ShortOptionalPrefixCommandHandler
+    {
+        [Command("я", PrefixMode = CommandPrefixMode.Optional)]
+        public Task Handle(MessageContext context, HandlerProbe probe)
+        {
+            probe.Events.Add($"short-optional-prefix-command:{context.TelegramMessage.Text}");
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class ShortNoPrefixCommandHandler
+    {
+        [Command("я", PrefixMode = CommandPrefixMode.NoPrefix)]
+        public Task Handle(MessageContext context, HandlerProbe probe)
+        {
+            probe.Events.Add($"short-no-prefix-command:{context.TelegramMessage.Text}");
+            return Task.CompletedTask;
+        }
+    }
+
     public sealed class TextTemplateRouteHandler
     {
         [TextTemplate("order {orderId:long}")]
@@ -3684,12 +3800,32 @@ public sealed class TelegramHandlerDispatcherTests
         }
     }
 
+    public sealed class ShortOptionalPrefixCommandTemplateHandler
+    {
+        [CommandTemplate("я", PrefixMode = CommandPrefixMode.Optional)]
+        public Task Handle(MessageContext context, HandlerProbe probe)
+        {
+            probe.Events.Add($"short-optional-prefix-command-template:{context.TelegramMessage.Text}");
+            return Task.CompletedTask;
+        }
+    }
+
     public sealed class NoPrefixCommandTemplateRouteHandler
     {
         [CommandTemplate("ban {userId:int}", PrefixMode = CommandPrefixMode.NoPrefix)]
         public Task Handle(MessageContext context, int userId, HandlerProbe probe)
         {
             probe.Events.Add($"no-prefix-command-template:{userId}");
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class ShortNoPrefixCommandTemplateHandler
+    {
+        [CommandTemplate("я", PrefixMode = CommandPrefixMode.NoPrefix)]
+        public Task Handle(MessageContext context, HandlerProbe probe)
+        {
+            probe.Events.Add($"short-no-prefix-command-template:{context.TelegramMessage.Text}");
             return Task.CompletedTask;
         }
     }

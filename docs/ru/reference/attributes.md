@@ -51,6 +51,15 @@ public Task Ticket(MessageContext ctx, long id, CancellationToken ct) { ... }
 | `Optional` | Принимает настроенный prefix или текст без prefix. |
 | `NoPrefix` | Принимает только текст без prefix. Не комбинируй с `Prefixes`. |
 
+Для prefix-less exact `[Command]`, а также для `[CommandTemplate]` без
+placeholders, весь текст должен совпасть с именем команды. Так короткая команда
+вроде `[Command("я")]` или `[CommandTemplate("я")]` не будет случайно матчить
+обычную фразу `Я что-то рассказываю`. Если у prefix-less command-like текста
+есть аргументы, используй `[CommandTemplate]` или `[CommandRegex]`, но оставляй
+такие routes для слов, которые выглядят как команды. Prefix-less template на
+обычном слове естественного языка плюс string-аргумент намеренно будет матчить
+обычные фразы, начинающиеся с этого слова.
+
 `[Text]` поддерживает явный match mode:
 
 ```csharp

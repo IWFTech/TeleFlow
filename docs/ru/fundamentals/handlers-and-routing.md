@@ -51,6 +51,16 @@ public Task HelpText(MessageContext ctx, CancellationToken ct)
 }
 ```
 
+Для prefix-less exact `[Command]`, а также для `[CommandTemplate]` без
+placeholders, весь текст должен совпасть с именем команды. Короткая команда
+вроде `[Command("я", PrefixMode = CommandPrefixMode.Optional)]` сматчит `я` и
+`/я детали`, но не сматчит обычную фразу `Я что-то рассказываю`.
+
+Для prefix-less command-like input с аргументами используй `[CommandTemplate]`
+или `[CommandRegex]`. Для обычных слов естественного языка лучше требовать
+prefix: `[CommandTemplate("я {text}", PrefixMode = CommandPrefixMode.Optional)]`
+по смыслу должен матчить `Я что-то рассказываю`.
+
 ## Text handler
 
 ```csharp
