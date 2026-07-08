@@ -15,12 +15,12 @@ public sealed class CallbackQueryActions
 
     public Task<bool> AnswerAsync(CancellationToken cancellationToken)
     {
-        return AnswerAsync(text: null, showAlert: null, cancellationToken);
+        return AnswerCoreAsync(text: null, showAlert: null, cancellationToken);
     }
 
     public Task<bool> AnswerAsync(string? text, CancellationToken cancellationToken)
     {
-        return AnswerAsync(text, showAlert: null, cancellationToken);
+        return AnswerCoreAsync(text, showAlert: null, cancellationToken);
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage(
@@ -29,13 +29,21 @@ public sealed class CallbackQueryActions
         Justification = "Callback action methods intentionally remain instance methods for a consistent fluent context API.")]
     public Task<bool> AnswerAsync(string? text, bool showAlert, CancellationToken cancellationToken)
     {
-        return AnswerAsync(text, showAlert: showAlert, cancellationToken);
+        return AnswerCoreAsync(text, showAlert, cancellationToken);
     }
 
-    public async Task<bool> AnswerAsync(
+    public Task<bool> AnswerAsync(
         string? text = null,
         bool? showAlert = null,
         CancellationToken cancellationToken = default)
+    {
+        return AnswerCoreAsync(text, showAlert, cancellationToken);
+    }
+
+    private async Task<bool> AnswerCoreAsync(
+        string? text,
+        bool? showAlert,
+        CancellationToken cancellationToken)
     {
         var result = await _context.Bot.AnswerCallbackQueryAsync(
             _context.TelegramCallbackQuery.Id,

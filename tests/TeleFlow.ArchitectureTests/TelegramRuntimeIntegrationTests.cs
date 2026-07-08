@@ -2243,6 +2243,65 @@ public sealed class TelegramRuntimeIntegrationTests
     }
 
     [Fact]
+    public async Task CallbackQueryActions_AnswerAsync_DefaultOverload_SendsCallbackAnswerOnce()
+    {
+        var fakeClient = CreateCallbackAnswerClient();
+        using var serviceProvider = CreateTelegramServiceProvider(clientOverride: fakeClient);
+        var callbackContext = CreateCallbackQueryUpdateContext(serviceProvider).GetCallbackQueryContext();
+
+        var result = await callbackContext.Callback.AnswerAsync(CancellationToken.None);
+
+        Assert.True(result);
+        Assert.True(callbackContext.IsCallbackQueryAnswered);
+        AssertAnswerCallbackQuery(fakeClient, expectedText: null, expectedShowAlert: null);
+    }
+
+    [Fact]
+    public async Task CallbackQueryActions_AnswerAsync_TextOverload_SendsCallbackAnswerOnce()
+    {
+        var fakeClient = CreateCallbackAnswerClient();
+        using var serviceProvider = CreateTelegramServiceProvider(clientOverride: fakeClient);
+        var callbackContext = CreateCallbackQueryUpdateContext(serviceProvider).GetCallbackQueryContext();
+
+        var result = await callbackContext.Callback.AnswerAsync("done", CancellationToken.None);
+
+        Assert.True(result);
+        Assert.True(callbackContext.IsCallbackQueryAnswered);
+        AssertAnswerCallbackQuery(fakeClient, expectedText: "done", expectedShowAlert: null);
+    }
+
+    [Fact]
+    public async Task CallbackQueryActions_AnswerAsync_NonNullableShowAlertOverload_SendsCallbackAnswerOnce()
+    {
+        var fakeClient = CreateCallbackAnswerClient();
+        using var serviceProvider = CreateTelegramServiceProvider(clientOverride: fakeClient);
+        var callbackContext = CreateCallbackQueryUpdateContext(serviceProvider).GetCallbackQueryContext();
+
+        var result = await callbackContext.Callback.AnswerAsync("alert", showAlert: true, CancellationToken.None);
+
+        Assert.True(result);
+        Assert.True(callbackContext.IsCallbackQueryAnswered);
+        AssertAnswerCallbackQuery(fakeClient, expectedText: "alert", expectedShowAlert: true);
+    }
+
+    [Fact]
+    public async Task CallbackQueryActions_AnswerAsync_NullableShowAlertOverload_SendsCallbackAnswerOnce()
+    {
+        var fakeClient = CreateCallbackAnswerClient();
+        using var serviceProvider = CreateTelegramServiceProvider(clientOverride: fakeClient);
+        var callbackContext = CreateCallbackQueryUpdateContext(serviceProvider).GetCallbackQueryContext();
+
+        var result = await callbackContext.Callback.AnswerAsync(
+            text: "notification",
+            showAlert: (bool?)false,
+            cancellationToken: CancellationToken.None);
+
+        Assert.True(result);
+        Assert.True(callbackContext.IsCallbackQueryAnswered);
+        AssertAnswerCallbackQuery(fakeClient, expectedText: "notification", expectedShowAlert: false);
+    }
+
+    [Fact]
     public async Task ChatActions_ActionAsync_UsesUpdateCancellationWhenTokenIsDefault()
     {
         using var updateCancellation = new CancellationTokenSource();
@@ -3288,6 +3347,28 @@ public sealed class TelegramRuntimeIntegrationTests
         }
 
         return services.BuildServiceProvider();
+    }
+
+    private static RecordingTelegramClient CreateCallbackAnswerClient()
+    {
+        return new RecordingTelegramClient
+        {
+            Handler = method => method is AnswerCallbackQuery
+                ? true
+                : throw new InvalidOperationException("Unexpected method.")
+        };
+    }
+
+    private static void AssertAnswerCallbackQuery(
+        RecordingTelegramClient client,
+        string? expectedText,
+        bool? expectedShowAlert)
+    {
+        var answer = Assert.IsType<AnswerCallbackQuery>(Assert.Single(client.Methods));
+
+        Assert.Equal("cb-1", answer.CallbackQueryId);
+        Assert.Equal(expectedText, answer.Text);
+        Assert.Equal(expectedShowAlert, answer.ShowAlert);
     }
 
     private static void AssertRequestLogsDoNotContainSensitiveData(RecordingLoggerFactory loggerFactory)
