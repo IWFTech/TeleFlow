@@ -3353,9 +3353,11 @@ public sealed class TelegramRuntimeIntegrationTests
     {
         return new RecordingTelegramClient
         {
-            Handler = method => method is AnswerCallbackQuery
-                ? true
-                : throw new InvalidOperationException("Unexpected method.")
+            Handler = method => method switch
+            {
+                AnswerCallbackQuery => true,
+                _ => throw new InvalidOperationException("Unexpected method.")
+            }
         };
     }
 
