@@ -50,6 +50,16 @@ public Task HelpText(MessageContext ctx, CancellationToken ct)
 }
 ```
 
+Prefix-less exact `[Command]` routes, and `[CommandTemplate]` routes without
+placeholders, require the whole text to equal the command name. A short command
+such as `[Command("i", PrefixMode = CommandPrefixMode.Optional)]` will match `i`
+and `/i details`, but not the normal sentence `I need help`.
+
+Use `[CommandTemplate]` or `[CommandRegex]` for prefix-less command-like input
+with arguments. For common natural language words, prefer a required prefix:
+`[CommandTemplate("i {text}", PrefixMode = CommandPrefixMode.Optional)]` is
+supposed to match `I need help`.
+
 ## Text Handler
 
 ```csharp

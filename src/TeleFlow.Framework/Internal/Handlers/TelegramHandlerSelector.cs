@@ -331,11 +331,11 @@ internal sealed partial class TelegramHandlerSelector
             TelegramRouteKind.TextExact => MatchesTextFilters(message, route),
             TelegramRouteKind.TextTemplate => TryMatchTextPattern(message.Text, route, isTemplate: true, out routeValues),
             TelegramRouteKind.TextRegex => TryMatchTextPattern(message.Text, route, isTemplate: false, out routeValues),
-            TelegramRouteKind.CommandExact => TryGetCommandBody(message.Text, route, out var body) &&
-                                               TryMatchExactCommand(body, route),
-            TelegramRouteKind.CommandTemplate => TryGetCommandBody(message.Text, route, out var body) &&
+            TelegramRouteKind.CommandExact => TryGetCommandBody(message.Text, route, out var body, out var isPrefixLess) &&
+                                               TryMatchExactCommand(body, route, isPrefixLess),
+            TelegramRouteKind.CommandTemplate => TryGetCommandBody(message.Text, route, out var body, out _) &&
                                                  TryMatchCommandPattern(body, route, isTemplate: true, out routeValues),
-            TelegramRouteKind.CommandRegex => TryGetCommandBody(message.Text, route, out var body) &&
+            TelegramRouteKind.CommandRegex => TryGetCommandBody(message.Text, route, out var body, out _) &&
                                               TryMatchCommandPattern(body, route, isTemplate: false, out routeValues),
             _ => false
         };
@@ -404,23 +404,38 @@ internal sealed partial class TelegramHandlerSelector
     private static bool TryGetCommandBody(
         string? text,
         TelegramRouteDescriptor route,
-        out string commandBody)
+        out string commandBody,
+        out bool isPrefixLess)
     {
         commandBody = string.Empty;
+        isPrefixLess = false;
 
         if (string.IsNullOrWhiteSpace(text))
         {
             return false;
         }
 
-        return route.CommandPolicy.PrefixMode switch
+        switch (route.CommandPolicy.PrefixMode)
         {
-            CommandPrefixMode.Required => TryGetPrefixedCommandBody(text, route, out commandBody),
-            CommandPrefixMode.Optional => TryGetPrefixedCommandBody(text, route, out commandBody) ||
-                                          TryGetPrefixLessCommandBody(text, out commandBody),
-            CommandPrefixMode.NoPrefix => TryGetPrefixLessCommandBody(text, out commandBody),
-            _ => false
-        };
+            case CommandPrefixMode.Required:
+                return TryGetPrefixedCommandBody(text, route, out commandBody);
+
+            case CommandPrefixMode.Optional:
+                if (TryGetPrefixedCommandBody(text, route, out commandBody))
+                {
+                    return true;
+                }
+
+                isPrefixLess = true;
+                return TryGetPrefixLessCommandBody(text, out commandBody);
+
+            case CommandPrefixMode.NoPrefix:
+                isPrefixLess = true;
+                return TryGetPrefixLessCommandBody(text, out commandBody);
+
+            default:
+                return false;
+        }
     }
 
     private static bool TryGetPrefixedCommandBody(
@@ -484,11 +499,20 @@ internal sealed partial class TelegramHandlerSelector
 
     private static bool TryMatchExactCommand(
         string commandBody,
-        TelegramRouteDescriptor route)
+        TelegramRouteDescriptor route,
+        bool isPrefixLess)
     {
         if (string.IsNullOrWhiteSpace(route.Pattern))
         {
             return false;
+        }
+
+        if (isPrefixLess)
+        {
+            return string.Equals(
+                commandBody.Trim(),
+                route.Pattern,
+                route.CommandPolicy.IgnoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
         }
 
         var tokenEnd = commandBody.IndexOfAny([' ', '\t', '\r', '\n']);

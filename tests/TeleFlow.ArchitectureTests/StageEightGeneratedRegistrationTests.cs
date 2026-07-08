@@ -42,6 +42,46 @@ public sealed class StageEightGeneratedRegistrationTests
     }
 
     [Fact]
+    public async Task GeneratedRegistrar_OptionalPrefixCommand_DoesNotMatchPrefixLessTextWithArguments()
+    {
+        using var serviceProvider = CreateServiceProvider();
+        var probe = serviceProvider.GetRequiredService<GeneratedHandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("Я рассказываю обычную фразу"));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("я"));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/я рассказываю обычную фразу"));
+
+        Assert.Equal(
+            [
+                "fallback:Я рассказываю обычную фразу",
+                "generated-short-command:я",
+                "generated-short-command:/я рассказываю обычную фразу"
+            ],
+            probe.Events);
+    }
+
+    [Fact]
+    public async Task GeneratedRegistrar_OptionalPrefixCommandTemplateWithoutValues_DoesNotMatchPrefixLessTextWithArguments()
+    {
+        using var serviceProvider = CreateServiceProvider();
+        var probe = serviceProvider.GetRequiredService<GeneratedHandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("Я рассказываю обычную фразу"));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("я-темплейт"));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/я-темплейт"));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/я-темплейт рассказываю обычную фразу"));
+
+        Assert.Equal(
+            [
+                "fallback:Я рассказываю обычную фразу",
+                "generated-short-template:я-темплейт",
+                "generated-short-template:/я-темплейт",
+                "fallback:/я-темплейт рассказываю обычную фразу"
+            ],
+            probe.Events);
+    }
+
+    [Fact]
     public async Task GeneratedRegistrar_DispatchesGeneratedErrorHandlers()
     {
         using var serviceProvider = CreateServiceProvider();
@@ -605,6 +645,58 @@ internal sealed class StageEightGeneratedHandlersRegistrar : ITelegramGeneratedH
                 new(typeof(GeneratedHandlerProbe), TelegramGeneratedHandlerParameterKind.Service, "probe")
             ],
             InvokeStateStart));
+
+        registry.RegisterHandler(new TelegramGeneratedHandlerDescriptor(
+            typeof(GeneratedShortOptionalPrefixCommandHandler),
+            nameof(GeneratedShortOptionalPrefixCommandHandler.Handle),
+            TelegramGeneratedHandlerKind.Command,
+            TelegramGeneratedRouteKind.CommandExact,
+            routePattern: "я",
+            commandPrefixes: ["/"],
+            allowSpaceAfterPrefix: false,
+            ignoreCase: true,
+            registrationOrder: 50,
+            moduleName: null,
+            command: "я",
+            callbackPayloadType: null,
+            textFilters: [],
+            filters: [],
+            chatMemberTransitions: [],
+            roleRequirements: [],
+            states: [],
+            parameters:
+            [
+                new(typeof(MessageContext), TelegramGeneratedHandlerParameterKind.Context, "context"),
+                new(typeof(GeneratedHandlerProbe), TelegramGeneratedHandlerParameterKind.Service, "probe")
+            ],
+            InvokeShortOptionalPrefixCommand,
+            prefixMode: CommandPrefixMode.Optional));
+
+        registry.RegisterHandler(new TelegramGeneratedHandlerDescriptor(
+            typeof(GeneratedShortOptionalPrefixCommandTemplateHandler),
+            nameof(GeneratedShortOptionalPrefixCommandTemplateHandler.Handle),
+            TelegramGeneratedHandlerKind.Command,
+            TelegramGeneratedRouteKind.CommandTemplate,
+            routePattern: "я-темплейт",
+            commandPrefixes: ["/"],
+            allowSpaceAfterPrefix: false,
+            ignoreCase: true,
+            registrationOrder: 51,
+            moduleName: null,
+            command: null,
+            callbackPayloadType: null,
+            textFilters: [],
+            filters: [],
+            chatMemberTransitions: [],
+            roleRequirements: [],
+            states: [],
+            parameters:
+            [
+                new(typeof(MessageContext), TelegramGeneratedHandlerParameterKind.Context, "context"),
+                new(typeof(GeneratedHandlerProbe), TelegramGeneratedHandlerParameterKind.Service, "probe")
+            ],
+            InvokeShortOptionalPrefixCommandTemplate,
+            prefixMode: CommandPrefixMode.Optional));
 
         registry.RegisterHandler(new TelegramGeneratedHandlerDescriptor(
             typeof(GeneratedFallbackMessageHandler),
@@ -1193,6 +1285,26 @@ internal sealed class StageEightGeneratedHandlersRegistrar : ITelegramGeneratedH
         await handler.Handle((MessageContext)arguments[0]!, (GeneratedHandlerProbe)arguments[1]!);
     }
 
+    private static async ValueTask InvokeShortOptionalPrefixCommand(
+        IServiceProvider services,
+        object?[] arguments,
+        CancellationToken cancellationToken)
+    {
+        var handler = (GeneratedShortOptionalPrefixCommandHandler)services.GetRequiredService(
+            typeof(GeneratedShortOptionalPrefixCommandHandler));
+        await handler.Handle((MessageContext)arguments[0]!, (GeneratedHandlerProbe)arguments[1]!);
+    }
+
+    private static async ValueTask InvokeShortOptionalPrefixCommandTemplate(
+        IServiceProvider services,
+        object?[] arguments,
+        CancellationToken cancellationToken)
+    {
+        var handler = (GeneratedShortOptionalPrefixCommandTemplateHandler)services.GetRequiredService(
+            typeof(GeneratedShortOptionalPrefixCommandTemplateHandler));
+        await handler.Handle((MessageContext)arguments[0]!, (GeneratedHandlerProbe)arguments[1]!);
+    }
+
     private static async ValueTask InvokeFallbackMessage(
         IServiceProvider services,
         object?[] arguments,
@@ -1562,6 +1674,24 @@ public sealed class GeneratedStateStartHandler
     {
         await context.State.SetAsync("awaiting");
         probe.Events.Add("state:set");
+    }
+}
+
+public sealed class GeneratedShortOptionalPrefixCommandHandler
+{
+    public Task Handle(MessageContext context, GeneratedHandlerProbe probe)
+    {
+        probe.Events.Add($"generated-short-command:{context.TelegramMessage.Text}");
+        return Task.CompletedTask;
+    }
+}
+
+public sealed class GeneratedShortOptionalPrefixCommandTemplateHandler
+{
+    public Task Handle(MessageContext context, GeneratedHandlerProbe probe)
+    {
+        probe.Events.Add($"generated-short-template:{context.TelegramMessage.Text}");
+        return Task.CompletedTask;
     }
 }
 

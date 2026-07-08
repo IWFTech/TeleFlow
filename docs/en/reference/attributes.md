@@ -51,6 +51,15 @@ Available `CommandPrefixMode` values are:
 | `Optional` | Accepts a configured prefix or no prefix. |
 | `NoPrefix` | Accepts only prefix-less text. Do not combine it with `Prefixes`. |
 
+For prefix-less exact `[Command]` routes, and for `[CommandTemplate]` routes
+without placeholders, the whole text must equal the command name. This prevents
+short commands such as `[Command("i")]` or `[CommandTemplate("i")]` from matching
+a normal sentence like `I need help`. Use `[CommandTemplate]` or
+`[CommandRegex]` when prefix-less command-like text has arguments, but keep
+those routes reserved for command-shaped words. A prefix-less template based on
+a common natural language word plus a string argument will intentionally match
+normal sentences that start with that word.
+
 `[Text]` supports explicit match modes:
 
 ```csharp
