@@ -31,7 +31,7 @@ public sealed class UpdateExceptionMiddleware : IUpdateMiddleware
         {
             await next(context).ConfigureAwait(false);
         }
-        catch (Exception exception)
+        catch (Exception exception) when (!IsUpdateCancellation(exception, context.CancellationToken))
         {
             if (_logger is not null)
             {
@@ -40,5 +40,10 @@ public sealed class UpdateExceptionMiddleware : IUpdateMiddleware
 
             throw;
         }
+    }
+
+    private static bool IsUpdateCancellation(Exception exception, CancellationToken cancellationToken)
+    {
+        return exception is OperationCanceledException && cancellationToken.IsCancellationRequested;
     }
 }

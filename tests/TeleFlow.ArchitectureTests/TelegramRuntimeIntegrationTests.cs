@@ -1911,7 +1911,7 @@ public sealed class TelegramRuntimeIntegrationTests
                      entry.Message.Contains("Telegram long polling connected", StringComparison.Ordinal));
         Assert.Contains(
             loggerFactory.Entries,
-            entry => entry.Level == LogLevel.Debug &&
+            entry => entry.Level == LogLevel.Information &&
                      entry.EventId.Id == 3 &&
                      entry.Message.Contains("Telegram update received", StringComparison.Ordinal) &&
                      entry.Message.Contains("update_id=1", StringComparison.Ordinal) &&
@@ -1919,15 +1919,42 @@ public sealed class TelegramRuntimeIntegrationTests
                      entry.Message.Contains("batch_index=1/1", StringComparison.Ordinal));
         Assert.Contains(
             loggerFactory.Entries,
-            entry => entry.Level == LogLevel.Debug &&
+            entry => entry.Level == LogLevel.Information &&
                      entry.EventId.Id == 5 &&
                      entry.Message.Contains("Telegram update processed", StringComparison.Ordinal) &&
-                     entry.Message.Contains("total_ms=", StringComparison.Ordinal));
+                     !entry.Message.Contains("total_ms=", StringComparison.Ordinal));
         Assert.Contains(
             loggerFactory.Entries,
             entry => entry.Level == LogLevel.Information &&
                      entry.EventId.Id == 6 &&
                      entry.Message.Contains("Telegram long polling stopped", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task LongPolling_CancellationDuringUpdateProcessing_DoesNotLogFailure()
+    {
+        var loggerFactory = new RecordingLoggerFactory();
+        var telegramClient = new SequencedTelegramClient(new List<Update> { CreateMessageUpdate(1) });
+        using var cancellation = new CancellationTokenSource();
+
+        var application = CreateTelegramApplication(
+            services =>
+            {
+                services.RemoveAll<ILoggerFactory>();
+                services.AddSingleton<ILoggerFactory>(loggerFactory);
+                services.AddSingleton<ITelegramClient>(telegramClient);
+                services.AddSingleton<IUpdateDispatcher>(new CancellationThrowingDispatcher(cancellation));
+            },
+            services => services.AddLongPolling(),
+            cancellation);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => application.RunAsync(cancellation.Token));
+
+        Assert.DoesNotContain(
+            loggerFactory.Entries,
+            entry => entry.Category == "TeleFlow.Telegram.Internal.TelegramLongPollingUpdateSource" &&
+                     entry.Level == LogLevel.Error &&
+                     entry.EventId.Id == 4);
     }
 
     [Fact]
@@ -4317,6 +4344,15 @@ public sealed class TelegramRuntimeIntegrationTests
         public Task DispatchAsync(UpdateContext context, CancellationToken cancellationToken = default)
         {
             return Task.FromException(exception);
+        }
+    }
+
+    private sealed class CancellationThrowingDispatcher(CancellationTokenSource cancellation) : IUpdateDispatcher
+    {
+        public Task DispatchAsync(UpdateContext context, CancellationToken cancellationToken = default)
+        {
+            cancellation.Cancel();
+            return Task.FromCanceled(cancellation.Token);
         }
     }
 
