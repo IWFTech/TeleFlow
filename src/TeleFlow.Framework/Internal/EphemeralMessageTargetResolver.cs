@@ -1,5 +1,5 @@
-using TeleFlow.Telegram.Schema.Constants;
 using TeleFlow.Telegram.Schema.Abstractions;
+using TeleFlow.Telegram.Schema.Constants;
 using TeleFlow.Telegram.Schema.Types;
 
 namespace TeleFlow.Telegram.Internal;
