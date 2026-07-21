@@ -67,6 +67,10 @@ internal sealed class TelegramRequestSender
     private Uri BuildMethodUri(string methodName)
     {
         var baseUrl = _options.BaseUrl.TrimEnd('/');
-        return new Uri($"{baseUrl}/bot{_options.Token}/{methodName}", UriKind.Absolute);
+        var environmentPath = _options.Environment == TelegramBotApiEnvironment.Test
+            ? "/test"
+            : string.Empty;
+
+        return new Uri($"{baseUrl}/bot{_options.Token}{environmentPath}/{methodName}", UriKind.Absolute);
     }
 }

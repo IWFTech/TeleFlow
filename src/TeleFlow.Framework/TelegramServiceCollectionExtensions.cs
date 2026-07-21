@@ -42,6 +42,7 @@ public static class TelegramServiceCollectionExtensions
             clientOptions.Token = options.Token;
             clientOptions.BotUsername = options.BotUsername;
             clientOptions.BaseUrl = options.BaseUrl;
+            clientOptions.Environment = options.Environment;
             clientOptions.Defaults = options.Defaults;
             clientOptions.RetryAfter = options.RetryAfter;
         });

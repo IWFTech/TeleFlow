@@ -54,6 +54,38 @@ public Task Photo(MessageContext ctx, CancellationToken ct)
 }
 ```
 
+## Telegram test environment
+
+Telegram Bot API test environment отделён от production. Создай отдельный test Telegram account и bot, затем используй token этого test bot. Production token сюда не подставляй.
+
+Для framework applications:
+
+```csharp
+builder.Services.AddTelegramBot(options =>
+{
+    options.Token = testBotToken;
+    options.Environment = TelegramBotApiEnvironment.Test;
+});
+```
+
+Для client-only applications:
+
+```csharp
+services.AddTelegramClient(options =>
+{
+    options.Token = testBotToken;
+    options.Environment = TelegramBotApiEnvironment.Test;
+});
+```
+
+Client отправляет через Telegram test endpoint все Bot API requests: generated methods, long polling, webhook setup и payment API calls. Production остаётся default.
+
+`BaseUrl` остаётся корнем API. Не добавляй в него `/bot`, token или `/test`. Например, с default root TeleFlow построит `https://api.telegram.org/bot<TOKEN>/test/getMe`.
+
+Настройка только выбирает Telegram endpoint. Она не эмулирует payments и не добавляет framework routes для payment updates. В частности, `TelegramAllowedUpdates.Auto` пока не выводит `pre_checkout_query`; настрой этот update явно, если используешь raw payment-update path.
+
+Telegram предупреждает, что flood limits в test environment не ослаблены и могут быть строже production. Не отключай реальные retry и throttling rules только ради теста.
+
 ## Дефолты
 
 `TelegramBotDefaults` задаёт common request defaults:

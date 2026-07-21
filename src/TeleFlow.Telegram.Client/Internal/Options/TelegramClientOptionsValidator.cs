@@ -21,6 +21,12 @@ internal static class TelegramClientOptionsValidator
             throw new InvalidOperationException("Telegram base URL must be an absolute URI.");
         }
 
+        if (!Enum.IsDefined(options.Environment))
+        {
+            throw new InvalidOperationException(
+                $"Telegram Bot API environment '{options.Environment}' is not supported.");
+        }
+
         if (!TelegramBotUsernameNormalizer.TryNormalize(options.BotUsername, out _, out var botUsernameError))
         {
             throw new InvalidOperationException(botUsernameError);

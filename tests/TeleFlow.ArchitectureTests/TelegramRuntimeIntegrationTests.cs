@@ -456,6 +456,115 @@ public sealed class TelegramRuntimeIntegrationTests
     }
 
     [Fact]
+    public async Task TelegramClient_SendAsync_UsesTestEnvironmentEndpoint()
+    {
+        var handler = new RecordingHttpMessageHandler(
+            CreateJsonResponse("""{"ok":true,"result":{"id":42,"is_bot":true,"first_name":"TeleFlow Test Bot"}}"""));
+
+        var services = new ServiceCollection();
+        services.AddTelegramClient(options =>
+        {
+            options.Token = "test-token";
+            options.Environment = TelegramBotApiEnvironment.Test;
+        });
+        services.AddTelegramHttpTransport(_ => new HttpClient(handler));
+
+        using var serviceProvider = services.BuildServiceProvider();
+        var client = serviceProvider.GetRequiredService<ITelegramClient>();
+
+        _ = await client.SendAsync(new GetMe());
+
+        Assert.Equal("https://api.telegram.org/bottest-token/test/getMe", handler.Requests.Single().RequestUri);
+    }
+
+    [Fact]
+    public async Task TelegramClient_SendAsync_UsesTestEnvironmentEndpointWithCustomBaseUrl()
+    {
+        var handler = new RecordingHttpMessageHandler(
+            CreateJsonResponse("""{"ok":true,"result":{"id":42,"is_bot":true,"first_name":"TeleFlow Test Bot"}}"""));
+
+        using var serviceProvider = CreateTelegramServiceProvider(
+            handler,
+            configureBot: options =>
+            {
+                options.BaseUrl = "https://telegram-proxy.example/bot-api/";
+                options.Environment = TelegramBotApiEnvironment.Test;
+            });
+        var client = serviceProvider.GetRequiredService<ITelegramClient>();
+
+        _ = await client.SendAsync(new GetMe());
+
+        Assert.Equal(
+            "https://telegram-proxy.example/bot-api/bottest-token/test/getMe",
+            handler.Requests.Single().RequestUri);
+    }
+
+    [Fact]
+    public async Task TelegramClient_SendAsync_UsesProductionEndpointWithCustomBaseUrl()
+    {
+        var handler = new RecordingHttpMessageHandler(
+            CreateJsonResponse("""{"ok":true,"result":{"id":42,"is_bot":true,"first_name":"TeleFlow Bot"}}"""));
+
+        using var serviceProvider = CreateTelegramServiceProvider(
+            handler,
+            configureBot: options => options.BaseUrl = "https://telegram-proxy.example/bot-api/");
+        var client = serviceProvider.GetRequiredService<ITelegramClient>();
+
+        _ = await client.SendAsync(new GetMe());
+
+        Assert.Equal(
+            "https://telegram-proxy.example/bot-api/bottest-token/getMe",
+            handler.Requests.Single().RequestUri);
+    }
+
+    [Fact]
+    public void AddTelegramBot_ForwardsTestEnvironmentToClientOptions()
+    {
+        var services = new ServiceCollection();
+        services.AddTelegramBot(options =>
+        {
+            options.Token = "test-token";
+            options.Environment = TelegramBotApiEnvironment.Test;
+        });
+
+        using var serviceProvider = services.BuildServiceProvider();
+
+        Assert.Equal(
+            TelegramBotApiEnvironment.Test,
+            serviceProvider.GetRequiredService<TelegramClientOptions>().Environment);
+    }
+
+    [Fact]
+    public void TelegramClientOptions_RejectsUnsupportedEnvironment()
+    {
+        var services = new ServiceCollection();
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            services.AddTelegramClient(options =>
+            {
+                options.Token = "test-token";
+                options.Environment = (TelegramBotApiEnvironment)42;
+            }));
+
+        Assert.Contains("environment", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void TelegramBotOptions_RejectsUnsupportedEnvironment()
+    {
+        var services = new ServiceCollection();
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            services.AddTelegramBot(options =>
+            {
+                options.Token = "test-token";
+                options.Environment = (TelegramBotApiEnvironment)42;
+            }));
+
+        Assert.Contains("environment", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task TelegramClient_SendAsync_DeserializesResultFromUtf8TransportBody()
     {
         var services = new ServiceCollection();
