@@ -102,6 +102,14 @@ builder.Services.AddTelegramBot(options =>
 
 Defaults удобны для cross-cutting Telegram request settings. Handler-specific values держи в handler.
 
+## Форматированный текст
+
+Для обычных HTML- или MarkdownV2-сообщений используй безопасные
+[builders форматированного текста](formatted-text.md). Они экранируют обычные
+значения, всегда задают parse mode явно и работают с `AnswerAsync`,
+`ReplyAsync` и callback message edits. Для сложных request shapes используй
+явные `MessageEntity` или Bot API Rich Messages напрямую.
+
 ## Retry-After policy
 
 Telegram может вернуть `429 Too Many Requests` с `response_parameters.retry_after` или HTTP header `Retry-After`. TeleFlow обрабатывает это через явную bounded policy:

@@ -1,3 +1,4 @@
+using TeleFlow.Telegram.Formatting;
 using TeleFlow.Telegram.Internal;
 using TeleFlow.Telegram.Schema.Abstractions;
 using TeleFlow.Telegram.Schema.Types;
@@ -18,6 +19,17 @@ public sealed partial class MessageActions
         return SendTextAsync(text, replyMarkup: null, replyToCurrentMessage: false, cancellationToken);
     }
 
+    /// <summary>
+    /// Sends formatted text to the current chat without replying to the current message.
+    /// The formatted value carries its explicit Telegram parse mode and does not use the client's parse-mode default.
+    /// </summary>
+    public Task<Message> AnswerAsync(
+        TelegramFormattedText text,
+        CancellationToken cancellationToken = default)
+    {
+        return SendFormattedTextAsync(text, replyMarkup: null, replyToCurrentMessage: false, cancellationToken);
+    }
+
     public Task<Message> AnswerAsync(
         string text,
         InlineKeyboardMarkup inlineKeyboard,
@@ -27,6 +39,22 @@ public sealed partial class MessageActions
         return AnswerAsync(
             text,
             ReplyMarkup.From(inlineKeyboard),
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Sends formatted text with an inline keyboard to the current chat without replying to the current message.
+    /// </summary>
+    public Task<Message> AnswerAsync(
+        TelegramFormattedText text,
+        InlineKeyboardMarkup inlineKeyboard,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(inlineKeyboard);
+        return SendFormattedTextAsync(
+            text,
+            ReplyMarkup.From(inlineKeyboard),
+            replyToCurrentMessage: false,
             cancellationToken);
     }
 
@@ -80,6 +108,17 @@ public sealed partial class MessageActions
         return SendTextAsync(text, replyMarkup: null, replyToCurrentMessage: true, cancellationToken);
     }
 
+    /// <summary>
+    /// Sends formatted text as a reply to the current message.
+    /// The formatted value carries its explicit Telegram parse mode and does not use the client's parse-mode default.
+    /// </summary>
+    public Task<Message> ReplyAsync(
+        TelegramFormattedText text,
+        CancellationToken cancellationToken = default)
+    {
+        return SendFormattedTextAsync(text, replyMarkup: null, replyToCurrentMessage: true, cancellationToken);
+    }
+
     public Task<Message> ReplyAsync(
         string text,
         InlineKeyboardMarkup inlineKeyboard,
@@ -89,6 +128,22 @@ public sealed partial class MessageActions
         return ReplyAsync(
             text,
             ReplyMarkup.From(inlineKeyboard),
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Sends formatted text with an inline keyboard as a reply to the current message.
+    /// </summary>
+    public Task<Message> ReplyAsync(
+        TelegramFormattedText text,
+        InlineKeyboardMarkup inlineKeyboard,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(inlineKeyboard);
+        return SendFormattedTextAsync(
+            text,
+            ReplyMarkup.From(inlineKeyboard),
+            replyToCurrentMessage: true,
             cancellationToken);
     }
 
@@ -189,7 +244,8 @@ public sealed partial class MessageActions
         string text,
         ReplyMarkup? replyMarkup,
         bool replyToCurrentMessage,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        TelegramParseMode? parseMode = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(text);
         var reply = CreateReplyConfiguration(replyToCurrentMessage);
@@ -200,7 +256,24 @@ public sealed partial class MessageActions
             receiverUserId: reply.ReceiverUserId,
             replyParameters: reply.ReplyParameters,
             replyMarkup: replyMarkup,
+            parseMode: parseMode,
             cancellationToken: ResolveCancellationToken(cancellationToken));
+    }
+
+    private Task<Message> SendFormattedTextAsync(
+        TelegramFormattedText text,
+        ReplyMarkup? replyMarkup,
+        bool replyToCurrentMessage,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        return SendTextAsync(
+            text.Text,
+            replyMarkup,
+            replyToCurrentMessage,
+            cancellationToken,
+            text.ParseMode);
     }
 
     public Task<bool> DeleteAsync(CancellationToken cancellationToken = default)
