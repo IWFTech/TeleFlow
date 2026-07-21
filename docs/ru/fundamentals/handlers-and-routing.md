@@ -29,6 +29,12 @@ public Task Start(MessageContext ctx, CancellationToken ct)
 }
 ```
 
+Для slash command в group `/start@my_bot` матчится только на указанного бота.
+Если `BotUsername` не настроен, TeleFlow один раз разрешает identity до запуска
+обычного long-polling или webhook transport. Полные правила mention,
+пересекающихся prefixes и приоритетов описаны в
+[контракте роутинга](../reference/routing-contract.md).
+
 Если один route должен принимать и Telegram command, и текст без prefix,
 используй `CommandPrefixMode.Optional`:
 
