@@ -10,6 +10,7 @@ builder.Services.AddTelegramBot(options =>
     options.Token = token;
     options.BotUsername = "my_bot";
     options.BaseUrl = "https://api.telegram.org";
+    options.Environment = TelegramBotApiEnvironment.Production;
     options.Defaults.ParseMode = TelegramParseMode.Html;
     options.RetryAfter = TelegramRetryAfterPolicy.Default;
     options.RoleFilter.CacheEnabled = true;
@@ -27,11 +28,14 @@ services.AddTelegramClient(options =>
     options.Token = token;
     options.BotUsername = "my_bot";
     options.BaseUrl = "https://api.telegram.org";
+    options.Environment = TelegramBotApiEnvironment.Production;
     options.RetryAfter = TelegramRetryAfterPolicy.Default;
 });
 ```
 
 Use this for client-only applications.
+
+`BaseUrl` is the API root. TeleFlow appends the bot token, test-environment segment when selected, and method name. Set `Environment` to `TelegramBotApiEnvironment.Test` only with a dedicated Telegram test account and test bot token.
 
 `RetryAfter` controls bounded automatic handling of Telegram `429` responses. The default policy retries one short retry-after response and throws `TelegramRetryAfterException` when the configured bounds are exceeded.
 
