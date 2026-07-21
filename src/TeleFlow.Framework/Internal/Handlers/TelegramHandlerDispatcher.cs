@@ -24,18 +24,20 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
         IEnumerable<TelegramHandlerDescriptor> descriptors,
         IEnumerable<TelegramErrorHandlerDescriptor> errorHandlers,
         IEnumerable<TelegramAutoAnswerCallbackOptions> autoAnswerCallbackOptions,
+        TelegramBotIdentity botIdentity,
         TimeProvider timeProvider,
         ILoggerFactory loggerFactory)
     {
         ArgumentNullException.ThrowIfNull(descriptors);
         ArgumentNullException.ThrowIfNull(errorHandlers);
         ArgumentNullException.ThrowIfNull(autoAnswerCallbackOptions);
+        ArgumentNullException.ThrowIfNull(botIdentity);
         ArgumentNullException.ThrowIfNull(timeProvider);
         ArgumentNullException.ThrowIfNull(loggerFactory);
 
         var table = new TelegramHandlerTable(descriptors);
 
-        _selector = new TelegramHandlerSelector(table, loggerFactory);
+        _selector = new TelegramHandlerSelector(table, botIdentity, loggerFactory);
         _errorHandlerIndex = new TelegramErrorHandlerIndex(errorHandlers);
         _timeProvider = timeProvider;
         _globalAutoAnswerCallback = CreateGlobalAutoAnswerDescriptor(autoAnswerCallbackOptions.LastOrDefault());

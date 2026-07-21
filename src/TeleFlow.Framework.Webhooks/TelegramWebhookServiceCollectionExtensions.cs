@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using TeleFlow.Framework.Updates;
+using TeleFlow.Telegram.Internal;
 using TeleFlow.Telegram.Webhooks.Internal;
 
 namespace TeleFlow.Telegram.Webhooks;
@@ -23,6 +25,7 @@ public static class TelegramWebhookServiceCollectionExtensions
         services.AddSingleton(options);
         services.TryAddSingleton<IUpdateProcessor, DefaultUpdateProcessor>();
         services.AddSingleton<IUpdateSource, TelegramWebhookUpdateSource>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, TelegramBotIdentityStartupService>());
 
         return services;
     }

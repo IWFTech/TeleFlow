@@ -49,6 +49,7 @@ public static class TelegramServiceCollectionExtensions
 
         services.AddSingleton(options);
         services.AddSingleton(stateKeyOptions);
+        services.AddSingleton<TelegramBotIdentity>();
         services.AddUpdateContextAccessor();
         services.TryAddSingleton(options.RoleFilter);
         services.AddSingleton<TelegramContextFactory>();
