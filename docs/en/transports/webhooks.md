@@ -35,6 +35,10 @@ await app.RunAsync();
 
 `MapTelegramWebhook()` uses the configured `TelegramWebhookOptions.Path` and forwards incoming Telegram updates to the TeleFlow update processor.
 
+The endpoint returns `200 OK` only after the update processor completes
+normally. The full handling and failure contract is documented in
+[update failure and delivery contract](../reference/update-failure-contract.md).
+
 ## When To Use Webhooks
 
 Use webhooks when:

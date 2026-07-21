@@ -45,6 +45,17 @@ options.AllowedUpdates = TelegramAllowedUpdates.Only(
 
 Long polling retries transient `getUpdates` failures with configurable backoff. If the Telegram client surfaces `TelegramRetryAfterException`, polling waits for the Telegram-provided retry delay instead of using the generic backoff delay. Handler failures are not swallowed. The offset advances only after successful update processing.
 
+The exact acknowledgement outcome for handled route failures, middleware
+failures, cancellation, and automatic callback answers is defined by the
+[update failure and delivery contract](../reference/update-failure-contract.md).
+
+At `Information`, framework long polling writes one event when an update is
+received, one when a Telegram handler is matched or no handler matches, and one
+after the update is acknowledged. This gives production logs a complete update
+path without enabling `Debug`. `Debug` adds candidate-rejection diagnostics and
+route and handler timing. The `Information` path does not start timing scopes
+or calculate elapsed durations.
+
 ## When To Use Long Polling
 
 Use long polling when:

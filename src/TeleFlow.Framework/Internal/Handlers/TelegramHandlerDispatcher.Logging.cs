@@ -20,25 +20,25 @@ internal sealed partial class TelegramHandlerDispatcher
         public const int HandlerMatched = 2;
 
         /// <summary>
-        /// A selected Telegram handler failed.
+        /// A selected Telegram route execution failed.
         /// </summary>
-        public const int HandlerFailed = 3;
+        public const int RouteExecutionFailed = 3;
 
         /// <summary>
-        /// A selected Telegram handler completed successfully.
+        /// A selected Telegram route execution completed successfully.
         /// </summary>
-        public const int HandlerCompleted = 4;
+        public const int RouteExecutionCompleted = 4;
 
         /// <summary>
-        /// A Telegram error handler completed after a selected handler failed.
+        /// A Telegram error handler completed after a selected route execution failed.
         /// </summary>
         public const int ErrorHandlerCompleted = 5;
     }
 
     /// <summary>
-    /// Captures log fields shared by handler failure logs and error-handler completion logs.
+    /// Captures log fields shared by route-execution failure logs and error-handler completion logs.
     /// </summary>
-    private readonly record struct HandlerFailureLogContext(
+    private readonly record struct RouteExecutionFailureLogContext(
         long UpdateId,
         string UpdateType,
         string Handler,
@@ -48,18 +48,18 @@ internal sealed partial class TelegramHandlerDispatcher
         string ExceptionType);
 
     /// <summary>
-    /// Logs a handler failure with optional timing details collected only for debug diagnostics.
+    /// Logs a route-execution failure with optional timing details collected only for debug diagnostics.
     /// </summary>
-    private void LogHandlerFailure(
+    private void LogRouteExecutionFailure(
         Exception exception,
-        HandlerFailureLogContext context,
+        RouteExecutionFailureLogContext context,
         bool includeTiming,
         long handlerStarted,
         TelegramHandlerRequestTimingScope? requestTimingScope)
     {
         if (!includeTiming)
         {
-            LogHandlerFailed(
+            LogRouteExecutionFailed(
                 _logger,
                 exception,
                 context.UpdateId,
@@ -77,7 +77,7 @@ internal sealed partial class TelegramHandlerDispatcher
         var handlerElapsed = _timeProvider.GetElapsedTime(handlerStarted);
         var timing = requestTimingScope.CreateSummary(_timeProvider, handlerElapsed);
 
-        LogHandlerFailedWithTiming(
+        LogRouteExecutionFailedWithTiming(
             _logger,
             exception,
             context.UpdateId,
@@ -98,9 +98,18 @@ internal sealed partial class TelegramHandlerDispatcher
     /// </summary>
     [LoggerMessage(
         EventId = LogEventIds.NoHandlerMatched,
+        Level = LogLevel.Information,
+        Message = "No Telegram handler matched. update_id={UpdateId}, type={UpdateType}.")]
+    private static partial void LogNoHandlerMatched(
+        ILogger logger,
+        long updateId,
+        string updateType);
+
+    [LoggerMessage(
+        EventId = LogEventIds.NoHandlerMatched,
         Level = LogLevel.Debug,
         Message = "No Telegram handler matched. update_id={UpdateId}, type={UpdateType}, match_ms={MatchElapsedMilliseconds:F2}.")]
-    private static partial void LogNoHandlerMatched(
+    private static partial void LogNoHandlerMatchedWithTiming(
         ILogger logger,
         long updateId,
         string updateType,
@@ -111,9 +120,22 @@ internal sealed partial class TelegramHandlerDispatcher
     /// </summary>
     [LoggerMessage(
         EventId = LogEventIds.HandlerMatched,
+        Level = LogLevel.Information,
+        Message = "Telegram handler matched. update_id={UpdateId}, type={UpdateType}, handler={Handler}, route={Route}, module={ModuleName}, scene={SceneName}.")]
+    private static partial void LogHandlerMatched(
+        ILogger logger,
+        long updateId,
+        string updateType,
+        string handler,
+        string route,
+        string moduleName,
+        string sceneName);
+
+    [LoggerMessage(
+        EventId = LogEventIds.HandlerMatched,
         Level = LogLevel.Debug,
         Message = "Telegram handler matched. update_id={UpdateId}, type={UpdateType}, handler={Handler}, route={Route}, module={ModuleName}, scene={SceneName}, match_ms={MatchElapsedMilliseconds:F2}.")]
-    private static partial void LogHandlerMatched(
+    private static partial void LogHandlerMatchedWithTiming(
         ILogger logger,
         long updateId,
         string updateType,
@@ -124,13 +146,13 @@ internal sealed partial class TelegramHandlerDispatcher
         double matchElapsedMilliseconds);
 
     /// <summary>
-    /// Logs a Telegram handler failure without debug-only timing fields.
+    /// Logs a Telegram route-execution failure without debug-only timing fields.
     /// </summary>
     [LoggerMessage(
-        EventId = LogEventIds.HandlerFailed,
+        EventId = LogEventIds.RouteExecutionFailed,
         Level = LogLevel.Error,
-        Message = "Telegram handler failed. update_id={UpdateId}, type={UpdateType}, handler={Handler}, route={Route}, module={ModuleName}, scene={SceneName}, exception_type={ExceptionType}.")]
-    private static partial void LogHandlerFailed(
+        Message = "Telegram route execution failed. update_id={UpdateId}, type={UpdateType}, handler={Handler}, route={Route}, module={ModuleName}, scene={SceneName}, exception_type={ExceptionType}.")]
+    private static partial void LogRouteExecutionFailed(
         ILogger logger,
         Exception exception,
         long updateId,
@@ -142,13 +164,13 @@ internal sealed partial class TelegramHandlerDispatcher
         string exceptionType);
 
     /// <summary>
-    /// Logs a Telegram handler failure with debug-only timing fields.
+    /// Logs a Telegram route-execution failure with debug-only timing fields.
     /// </summary>
     [LoggerMessage(
-        EventId = LogEventIds.HandlerFailed,
+        EventId = LogEventIds.RouteExecutionFailed,
         Level = LogLevel.Error,
-        Message = "Telegram handler failed. update_id={UpdateId}, type={UpdateType}, handler={Handler}, route={Route}, module={ModuleName}, scene={SceneName}, exception_type={ExceptionType}, handler_ms={HandlerElapsedMilliseconds:F2}, telegram_request_count={TelegramRequestCount}, telegram_request_ms={TelegramRequestElapsedMilliseconds:F2}, handler_logic_ms={HandlerLogicElapsedMilliseconds:F2}.")]
-    private static partial void LogHandlerFailedWithTiming(
+        Message = "Telegram route execution failed. update_id={UpdateId}, type={UpdateType}, handler={Handler}, route={Route}, module={ModuleName}, scene={SceneName}, exception_type={ExceptionType}, handler_ms={HandlerElapsedMilliseconds:F2}, telegram_request_count={TelegramRequestCount}, telegram_request_ms={TelegramRequestElapsedMilliseconds:F2}, handler_logic_ms={HandlerLogicElapsedMilliseconds:F2}.")]
+    private static partial void LogRouteExecutionFailedWithTiming(
         ILogger logger,
         Exception exception,
         long updateId,
@@ -164,13 +186,13 @@ internal sealed partial class TelegramHandlerDispatcher
         double handlerLogicElapsedMilliseconds);
 
     /// <summary>
-    /// Logs a successfully completed Telegram handler with debug timing fields.
+    /// Logs a successfully completed Telegram route execution with debug timing fields.
     /// </summary>
     [LoggerMessage(
-        EventId = LogEventIds.HandlerCompleted,
+        EventId = LogEventIds.RouteExecutionCompleted,
         Level = LogLevel.Debug,
-        Message = "Telegram handler completed. update_id={UpdateId}, type={UpdateType}, handler={Handler}, route={Route}, handler_ms={HandlerElapsedMilliseconds:F2}, telegram_request_count={TelegramRequestCount}, telegram_request_ms={TelegramRequestElapsedMilliseconds:F2}, handler_logic_ms={HandlerLogicElapsedMilliseconds:F2}.")]
-    private static partial void LogHandlerCompleted(
+        Message = "Telegram route execution completed. update_id={UpdateId}, type={UpdateType}, handler={Handler}, route={Route}, handler_ms={HandlerElapsedMilliseconds:F2}, telegram_request_count={TelegramRequestCount}, telegram_request_ms={TelegramRequestElapsedMilliseconds:F2}, handler_logic_ms={HandlerLogicElapsedMilliseconds:F2}.")]
+    private static partial void LogRouteExecutionCompleted(
         ILogger logger,
         long updateId,
         string updateType,

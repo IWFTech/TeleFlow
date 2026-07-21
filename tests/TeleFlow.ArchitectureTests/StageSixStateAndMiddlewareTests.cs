@@ -884,6 +884,25 @@ public sealed class StageSixStateAndMiddlewareTests
     }
 
     [Fact]
+    public async Task UpdateExceptionMiddleware_DoesNotLogExpectedCancellation()
+    {
+        using var serviceProvider = new ServiceCollection().BuildServiceProvider();
+        using var cancellation = new CancellationTokenSource();
+        var context = new UpdateContext(
+            serviceProvider,
+            new TestUpdatePayload("cancellation"),
+            cancellation.Token);
+        var logger = new RecordingLogger<UpdateExceptionMiddleware>();
+        var middleware = new UpdateExceptionMiddleware(logger);
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            middleware.InvokeAsync(context, _ => Task.FromCanceled(cancellation.Token)));
+
+        Assert.Empty(logger.Entries);
+    }
+
+    [Fact]
     public async Task UpdateLoggingMiddleware_LogsAndDoesNotChangeExecutionResult()
     {
         using var serviceProvider = new ServiceCollection().BuildServiceProvider();

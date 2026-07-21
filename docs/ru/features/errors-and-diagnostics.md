@@ -54,6 +54,14 @@ Error handlers могут получать context, exception, cancellation toke
 
 Если ни один compatible error handler не вернул `Handled`, исходное exception выбрасывается дальше.
 
+## Исход Доставки
+
+Возврат `Handled` - это также решение о доставке: framework update завершается
+нормально, поэтому long polling продвигает offset, а webhook возвращает
+`200 OK`. Unhandled route или middleware failure остаётся видимым и не
+подтверждается. Перед broad error handler прочитай полный
+[контракт ошибок и подтверждения update](../reference/update-failure-contract.md).
+
 ## Не скрывай unknown errors
 
 Не превращай каждое exception в user-facing message. В production systems стоит обрабатывать known application errors, а unknown failures оставлять observable через logs и hosting infrastructure.

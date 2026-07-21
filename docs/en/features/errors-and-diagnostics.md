@@ -54,6 +54,14 @@ Error handler selection is deterministic:
 
 If no compatible error handler returns `Handled`, the original exception is rethrown.
 
+## Delivery Outcome
+
+Returning `Handled` is also a delivery decision: the framework update completes
+normally, so long polling advances its offset and a webhook returns `200 OK`.
+An unhandled route or middleware failure remains visible and is not
+acknowledged. See the full [update failure and delivery contract](../reference/update-failure-contract.md)
+before adding a broad error handler.
+
 ## Let Unknown Errors Fail
 
 Do not turn every exception into a user-facing message. For production systems, handle known application errors and let unknown failures remain observable through logs and hosting infrastructure.

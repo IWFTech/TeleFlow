@@ -74,38 +74,71 @@ internal sealed partial class TelegramLongPollingUpdateSource : IUpdateSource
                 }
 
                 var update = item.Update;
-                var updateType = TelegramUpdateLogFormatter.GetUpdateType(update);
-                var processingStarted = _timeProvider.GetTimestamp();
+                var informationEnabled = _logger.IsEnabled(LogLevel.Information);
+                var errorEnabled = _logger.IsEnabled(LogLevel.Error);
+                var debugEnabled = _logger.IsEnabled(LogLevel.Debug);
+                string? updateType = null;
+                string GetUpdateType() => updateType ??= TelegramUpdateLogFormatter.GetUpdateType(update);
+                var processingStarted = debugEnabled ? _timeProvider.GetTimestamp() : 0;
 
-                LogUpdateReceived(
-                    _logger,
-                    update.UpdateId,
-                    updateType,
-                    item.BatchIndex,
-                    item.BatchCount);
+                if (informationEnabled)
+                {
+                    LogUpdateReceived(
+                        _logger,
+                        update.UpdateId,
+                        GetUpdateType(),
+                        item.BatchIndex,
+                        item.BatchCount);
+                }
 
                 try
                 {
                     await updateHandler(new TelegramUpdatePayload(update), cancellationToken).ConfigureAwait(false);
                 }
-                catch (Exception exception)
+                catch (Exception exception) when (!IsUpdateCancellation(exception, cancellationToken))
                 {
-                    LogUpdateProcessingFailed(
-                        _logger,
-                        exception,
-                        update.UpdateId,
-                        updateType,
-                        GetElapsedMilliseconds(processingStarted));
+                    if (errorEnabled)
+                    {
+                        if (debugEnabled)
+                        {
+                            LogUpdateProcessingFailedWithTiming(
+                                _logger,
+                                exception,
+                                update.UpdateId,
+                                GetUpdateType(),
+                                GetElapsedMilliseconds(processingStarted));
+                        }
+                        else
+                        {
+                            LogUpdateProcessingFailed(
+                                _logger,
+                                exception,
+                                update.UpdateId,
+                                GetUpdateType());
+                        }
+                    }
+
                     throw;
                 }
 
                 await item.AcknowledgeAsync(CancellationToken.None).ConfigureAwait(false);
 
-                LogUpdateProcessed(
-                    _logger,
-                    update.UpdateId,
-                    updateType,
-                    GetElapsedMilliseconds(processingStarted));
+                if (informationEnabled)
+                {
+                    LogUpdateProcessed(
+                        _logger,
+                        update.UpdateId,
+                        GetUpdateType());
+                }
+
+                if (debugEnabled)
+                {
+                    LogUpdateProcessedWithTiming(
+                        _logger,
+                        update.UpdateId,
+                        GetUpdateType(),
+                        GetElapsedMilliseconds(processingStarted));
+                }
             }
         }
         finally
@@ -140,6 +173,11 @@ internal sealed partial class TelegramLongPollingUpdateSource : IUpdateSource
         return _timeProvider.GetElapsedTime(startingTimestamp).TotalMilliseconds;
     }
 
+    private static bool IsUpdateCancellation(Exception exception, CancellationToken cancellationToken)
+    {
+        return exception is OperationCanceledException && cancellationToken.IsCancellationRequested;
+    }
+
     [LoggerMessage(
         EventId = 1,
         Level = LogLevel.Information,
@@ -158,7 +196,7 @@ internal sealed partial class TelegramLongPollingUpdateSource : IUpdateSource
 
     [LoggerMessage(
         EventId = 3,
-        Level = LogLevel.Debug,
+        Level = LogLevel.Information,
         Message = "Telegram update received. update_id={UpdateId}, type={UpdateType}, batch_index={BatchIndex}/{BatchCount}.")]
     private static partial void LogUpdateReceived(
         ILogger logger,
@@ -170,8 +208,18 @@ internal sealed partial class TelegramLongPollingUpdateSource : IUpdateSource
     [LoggerMessage(
         EventId = 4,
         Level = LogLevel.Error,
-        Message = "Telegram update processing failed. update_id={UpdateId}, type={UpdateType}, total_ms={TotalElapsedMilliseconds:F2}.")]
+        Message = "Telegram update processing failed. update_id={UpdateId}, type={UpdateType}.")]
     private static partial void LogUpdateProcessingFailed(
+        ILogger logger,
+        Exception exception,
+        long updateId,
+        string updateType);
+
+    [LoggerMessage(
+        EventId = 4,
+        Level = LogLevel.Error,
+        Message = "Telegram update processing failed. update_id={UpdateId}, type={UpdateType}, total_ms={TotalElapsedMilliseconds:F2}.")]
+    private static partial void LogUpdateProcessingFailedWithTiming(
         ILogger logger,
         Exception exception,
         long updateId,
@@ -180,9 +228,18 @@ internal sealed partial class TelegramLongPollingUpdateSource : IUpdateSource
 
     [LoggerMessage(
         EventId = 5,
+        Level = LogLevel.Information,
+        Message = "Telegram update processed. update_id={UpdateId}, type={UpdateType}.")]
+    private static partial void LogUpdateProcessed(
+        ILogger logger,
+        long updateId,
+        string updateType);
+
+    [LoggerMessage(
+        EventId = 5,
         Level = LogLevel.Debug,
         Message = "Telegram update processed. update_id={UpdateId}, type={UpdateType}, total_ms={TotalElapsedMilliseconds:F2}.")]
-    private static partial void LogUpdateProcessed(
+    private static partial void LogUpdateProcessedWithTiming(
         ILogger logger,
         long updateId,
         string updateType,

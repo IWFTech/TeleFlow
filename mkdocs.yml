@@ -110,6 +110,7 @@ nav:
           - Attributes: en/reference/attributes.md
           - Options and extension points: en/reference/options-and-extension-points.md
           - Routing contract: en/reference/routing-contract.md
+          - Update failure contract: en/reference/update-failure-contract.md
           - Troubleshooting: en/reference/troubleshooting.md
       - Roadmap: en/roadmap.md
       - Benchmark: en/benchmark-1.0.0-alpha.2.md
@@ -155,6 +156,7 @@ nav:
           - Attributes: ru/reference/attributes.md
           - Options and extension points: ru/reference/options-and-extension-points.md
           - Контракт роутинга: ru/reference/routing-contract.md
+          - Контракт ошибок и подтверждения update: ru/reference/update-failure-contract.md
           - Troubleshooting: ru/reference/troubleshooting.md
       - Roadmap: ru/roadmap.md
       - Benchmark: ru/benchmark-1.0.0-alpha.2.md
