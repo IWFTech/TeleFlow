@@ -1,7 +1,7 @@
+using TeleFlow.Telegram.Formatting;
 using TeleFlow.Telegram.Internal;
 using TeleFlow.Telegram.Schema.Abstractions;
 using TeleFlow.Telegram.Schema.Types;
-using TeleFlow.Telegram.Formatting;
 
 namespace TeleFlow.Telegram;
 
