@@ -73,7 +73,7 @@ jobs:
 
       - name: Setup .NET
         if: ${{ needs.changes.outputs.code == 'true' }}
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
@@ -142,7 +142,7 @@ jobs:
       - name: Setup minimum .NET SDK feature band
         if: ${{ needs.changes.outputs.code == 'true' }}
         id: setup-minimum-sdk
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.1xx
           dotnet-quality: ga
