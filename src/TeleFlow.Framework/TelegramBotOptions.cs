@@ -12,6 +12,11 @@ public sealed class TelegramBotOptions
         Justification = "Options use a string BaseUrl to preserve simple configuration binding from JSON, environment variables, and user secrets.")]
     public string BaseUrl { get; set; } = "https://api.telegram.org";
 
+    /// <summary>
+    /// Gets or sets the Telegram Bot API environment forwarded to the underlying client.
+    /// </summary>
+    public TelegramBotApiEnvironment Environment { get; set; } = TelegramBotApiEnvironment.Production;
+
     public TelegramBotDefaults Defaults { get; set; } = new();
 
     public TelegramRoleFilterOptions RoleFilter { get; set; } = new();

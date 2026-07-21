@@ -11,6 +11,12 @@ internal static class TelegramBotOptionsValidator
             throw new InvalidOperationException("Telegram role filter options must be configured.");
         }
 
+        if (!Enum.IsDefined(options.Environment))
+        {
+            throw new InvalidOperationException(
+                $"Telegram Bot API environment '{options.Environment}' is not supported.");
+        }
+
         if (options.RoleFilter.CacheTtl <= TimeSpan.Zero)
         {
             throw new InvalidOperationException("Telegram role filter cache TTL must be greater than zero.");
