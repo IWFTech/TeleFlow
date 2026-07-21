@@ -1794,6 +1794,62 @@ public sealed class TelegramRuntimeIntegrationTests
     }
 
     [Fact]
+    public async Task LongPolling_ResolvesBotIdentityBeforePollingWhenUsernameIsNotConfigured()
+    {
+        var telegramClient = new SequencedTelegramClient(
+            new User
+            {
+                Id = 42,
+                IsBot = true,
+                FirstName = "TeleFlow Bot",
+                Username = "teleflow_test_bot"
+            },
+            new List<Update> { CreateMessageUpdate(1) });
+        var dispatcher = new RecordingDispatcher(cancelAfter: 1);
+        using var cancellation = new CancellationTokenSource();
+
+        var application = CreateTelegramApplication(
+            services =>
+            {
+                services.AddSingleton<ITelegramClient>(telegramClient);
+                services.AddSingleton<IUpdateDispatcher>(dispatcher);
+            },
+            services => services.AddLongPolling(),
+            cancellation,
+            configureDefaultBotUsername: false);
+
+        await application.RunAsync(cancellation.Token);
+
+        Assert.Collection(
+            telegramClient.Methods,
+            method => Assert.IsType<GetMe>(method),
+            method => Assert.IsType<GetUpdates>(method));
+    }
+
+    [Fact]
+    public async Task LongPolling_UsesConfiguredBotIdentityWithoutGetMe()
+    {
+        var telegramClient = new SequencedTelegramClient(
+            new List<Update> { CreateMessageUpdate(1) });
+        var dispatcher = new RecordingDispatcher(cancelAfter: 1);
+        using var cancellation = new CancellationTokenSource();
+
+        var application = CreateTelegramApplication(
+            services =>
+            {
+                services.AddSingleton<ITelegramClient>(telegramClient);
+                services.AddSingleton<IUpdateDispatcher>(dispatcher);
+            },
+            services => services.AddLongPolling(),
+            cancellation,
+            options => options.BotUsername = "teleflow_test_bot");
+
+        await application.RunAsync(cancellation.Token);
+
+        Assert.Collection(telegramClient.Methods, method => Assert.IsType<GetUpdates>(method));
+    }
+
+    [Fact]
     public async Task LongPolling_AdvancesOffsetAfterHandledTelegramError()
     {
         var handler = new RecordingHttpMessageHandler(
@@ -4012,12 +4068,19 @@ public sealed class TelegramRuntimeIntegrationTests
         Action<IServiceCollection> configureServices,
         Action<IServiceCollection> configureTelegram,
         CancellationTokenSource? cancellation = null,
-        Action<TelegramBotOptions>? configureBot = null)
+        Action<TelegramBotOptions>? configureBot = null,
+        bool configureDefaultBotUsername = true)
     {
         var builder = TeleFlowApplication.CreateBuilder();
         builder.Services.AddTelegramBot(options =>
         {
             options.Token = "test-token";
+
+            if (configureDefaultBotUsername)
+            {
+                options.BotUsername = "test_bot";
+            }
+
             configureBot?.Invoke(options);
         });
         configureTelegram(builder.Services);
@@ -4507,12 +4570,16 @@ public sealed class TelegramRuntimeIntegrationTests
         public TelegramDeepLinks DeepLinks { get; } =
             new("test_bot", new Base64UrlJsonDeepLinkPayloadSerializer());
 
+        public List<object> Methods { get; } = [];
+
         public List<GetUpdates> GetUpdatesRequests { get; } = [];
 
         public Task<TResult> SendAsync<TResult>(
             ITelegramApiMethod<TResult> method,
             CancellationToken cancellationToken = default)
         {
+            Methods.Add(method);
+
             if (method is GetUpdates getUpdates)
             {
                 GetUpdatesRequests.Add(getUpdates);

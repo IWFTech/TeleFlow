@@ -12,6 +12,8 @@ namespace TeleFlow.Telegram.Internal;
 internal sealed partial class TelegramLongPollingUpdateSource : IUpdateSource
 {
     private readonly ITelegramLongPollingClient _pollingClient;
+    private readonly ITelegramClient _bot;
+    private readonly TelegramBotIdentity _botIdentity;
     private readonly TelegramLongPollingOptions _options;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<TelegramLongPollingUpdateSource> _logger;
@@ -19,18 +21,24 @@ internal sealed partial class TelegramLongPollingUpdateSource : IUpdateSource
 
     public TelegramLongPollingUpdateSource(
         ITelegramLongPollingClient pollingClient,
+        ITelegramClient bot,
+        TelegramBotIdentity botIdentity,
         TelegramLongPollingOptions options,
         TimeProvider timeProvider,
         ILoggerFactory loggerFactory,
         IEnumerable<TelegramHandlerDescriptor> handlerDescriptors)
     {
         ArgumentNullException.ThrowIfNull(pollingClient);
+        ArgumentNullException.ThrowIfNull(bot);
+        ArgumentNullException.ThrowIfNull(botIdentity);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(timeProvider);
         ArgumentNullException.ThrowIfNull(loggerFactory);
         ArgumentNullException.ThrowIfNull(handlerDescriptors);
 
         _pollingClient = pollingClient;
+        _bot = bot;
+        _botIdentity = botIdentity;
         _options = options;
         _timeProvider = timeProvider;
         _logger = loggerFactory.CreateLogger<TelegramLongPollingUpdateSource>();
@@ -42,6 +50,8 @@ internal sealed partial class TelegramLongPollingUpdateSource : IUpdateSource
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(updateHandler);
+
+        await _botIdentity.EnsureResolvedAsync(_bot, cancellationToken).ConfigureAwait(false);
 
         var allowedUpdates = TelegramAllowedUpdatesResolver.Resolve(_options.AllowedUpdates, _handlerDescriptors, _logger);
         var rawOptions = CreateRawOptions(allowedUpdates);

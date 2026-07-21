@@ -28,6 +28,12 @@ public Task Start(MessageContext ctx, CancellationToken ct)
 }
 ```
 
+For slash commands in groups, `/start@my_bot` matches only the named bot. When
+`BotUsername` was not configured, TeleFlow resolves bot identity once before a
+standard long-polling or webhook transport starts. See the
+[routing contract](../reference/routing-contract.md) for mention behavior,
+overlapping prefixes, and precedence rules.
+
 Use `CommandPrefixMode.Optional` when the same route should accept both a
 Telegram command and prefix-less command-like text:
 

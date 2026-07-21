@@ -24,16 +24,20 @@ internal sealed partial class TelegramHandlerSelector
     private static readonly ConcurrentDictionary<Type, CallbackPayloadDeserializer> CallbackPayloadDeserializers = new();
 
     private readonly TelegramHandlerTable _table;
+    private readonly TelegramBotIdentity _botIdentity;
     private readonly ILogger<TelegramHandlerSelector> _logger;
 
     public TelegramHandlerSelector(
         TelegramHandlerTable table,
+        TelegramBotIdentity botIdentity,
         ILoggerFactory loggerFactory)
     {
         ArgumentNullException.ThrowIfNull(table);
+        ArgumentNullException.ThrowIfNull(botIdentity);
         ArgumentNullException.ThrowIfNull(loggerFactory);
 
         _table = table;
+        _botIdentity = botIdentity;
         _logger = loggerFactory.CreateLogger<TelegramHandlerSelector>();
     }
 
@@ -318,7 +322,7 @@ internal sealed partial class TelegramHandlerSelector
             TelegramUpdateLogFormatter.FormatRoute(route));
     }
 
-    private static bool TryMatchRoute(
+    private bool TryMatchRoute(
         Message message,
         TelegramRouteDescriptor route,
         out IReadOnlyDictionary<string, object?> routeValues)
@@ -401,7 +405,7 @@ internal sealed partial class TelegramHandlerSelector
         return serializer.Deserialize<TPayload>(data);
     }
 
-    private static bool TryGetCommandBody(
+    private bool TryGetCommandBody(
         string? text,
         TelegramRouteDescriptor route,
         out string commandBody,
@@ -438,7 +442,7 @@ internal sealed partial class TelegramHandlerSelector
         }
     }
 
-    private static bool TryGetPrefixedCommandBody(
+    private bool TryGetPrefixedCommandBody(
         string text,
         TelegramRouteDescriptor route,
         out string commandBody)
@@ -461,7 +465,10 @@ internal sealed partial class TelegramHandlerSelector
 
             if (prefix == "/")
             {
-                commandBody = TrimSlashCommandBotMention(commandBody);
+                if (!TryTrimSlashCommandBotMention(commandBody, out commandBody))
+                {
+                    return false;
+                }
             }
 
             return !string.IsNullOrWhiteSpace(commandBody);
@@ -479,7 +486,9 @@ internal sealed partial class TelegramHandlerSelector
         return !string.IsNullOrWhiteSpace(commandBody);
     }
 
-    private static string TrimSlashCommandBotMention(string commandBody)
+    private bool TryTrimSlashCommandBotMention(
+        string commandBody,
+        out string trimmedCommandBody)
     {
         var tokenEnd = commandBody.IndexOfAny([' ', '\t', '\r', '\n']);
         var token = tokenEnd < 0 ? commandBody : commandBody[..tokenEnd];
@@ -487,14 +496,22 @@ internal sealed partial class TelegramHandlerSelector
 
         if (mentionIndex < 0)
         {
-            return commandBody;
+            trimmedCommandBody = commandBody;
+            return true;
+        }
+
+        if (!_botIdentity.MatchesMention(token.AsSpan()[(mentionIndex + 1)..]))
+        {
+            trimmedCommandBody = string.Empty;
+            return false;
         }
 
         var trimmedToken = token[..mentionIndex];
 
-        return tokenEnd < 0
+        trimmedCommandBody = tokenEnd < 0
             ? trimmedToken
             : trimmedToken + commandBody[tokenEnd..];
+        return true;
     }
 
     private static bool TryMatchExactCommand(

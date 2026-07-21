@@ -384,6 +384,71 @@ public sealed class TelegramHandlerGeneratorTests
     }
 
     [Fact]
+    public async Task Generator_RuntimeCommandRouting_MatchesDirectMentionAndPrefixContracts()
+    {
+        var runId = Guid.NewGuid().ToString("N");
+        GeneratedErrorRuntimeProbe.Clear(runId);
+        var compilation = CreateCompilation(
+            $$"""
+            using System.Threading.Tasks;
+            using TeleFlow.Annotations;
+            using TeleFlow.Telegram;
+
+            namespace GeneratedRouteContracts;
+
+            public sealed class RouteHandlers
+            {
+                [Command("start")]
+                public Task Start(MessageContext context)
+                {
+                    global::TeleFlow.ArchitectureTests.GeneratedErrorRuntimeProbe.Record(
+                        "{{runId}}",
+                        $"start:{context.TelegramMessage.Text}");
+                    return Task.CompletedTask;
+                }
+
+                [Command("overlap", Prefixes = new[] { "!", "!!" })]
+                public Task Overlap(MessageContext context)
+                {
+                    global::TeleFlow.ArchitectureTests.GeneratedErrorRuntimeProbe.Record(
+                        "{{runId}}",
+                        $"overlap:{context.TelegramMessage.Text}");
+                    return Task.CompletedTask;
+                }
+            }
+            """);
+        var generatedCompilation = RunGenerator(compilation, out var diagnostics);
+        var errors = generatedCompilation.GetDiagnostics()
+            .Concat(diagnostics)
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+
+        Assert.Empty(errors);
+
+        var assembly = EmitAndLoad(generatedCompilation);
+        var services = new ServiceCollection();
+        services.AddTelegramBot(options =>
+        {
+            options.Token = "test-token";
+            options.BotUsername = "teleflow_test_bot";
+        });
+        services.AddTelegramHandlersFromAssembly(assembly);
+        using var serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateOnBuild = true,
+            ValidateScopes = true
+        });
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/start@teleflow_test_bot"), CancellationToken.None);
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/start@other_bot"), CancellationToken.None);
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("!!overlap"), CancellationToken.None);
+
+        Assert.Equal(
+            ["start:/start@teleflow_test_bot", "overlap:!!overlap"],
+            GeneratedErrorRuntimeProbe.GetEvents(runId));
+    }
+
+    [Fact]
     public void Generator_EmitsTemplateRegexRoutesAndSharedInvoker()
     {
         var compilation = CreateCompilation(

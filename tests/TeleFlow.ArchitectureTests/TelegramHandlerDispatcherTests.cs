@@ -22,7 +22,6 @@ public sealed class TelegramHandlerDispatcherTests
     [Theory]
     [InlineData("/start")]
     [InlineData("/start arg")]
-    [InlineData("/start@botname")]
     public async Task CommandHandler_DispatchesForSupportedCommandShapes(string text)
     {
         using var cancellation = new CancellationTokenSource();
@@ -676,6 +675,60 @@ public sealed class TelegramHandlerDispatcherTests
         await DispatchAsync(serviceProvider, CreateMessageUpdate("!start@botname"));
 
         Assert.Empty(probe.Events);
+    }
+
+    [Fact]
+    public async Task SlashCommandMention_MatchesConfiguredCurrentBotOnly()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services => services.AddTelegramHandler<BotMentionCommandHandler>(),
+            options => options.BotUsername = "@teleflow_test_bot");
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/start"));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/start@teleflow_test_bot"));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/start@TELEFLOW_TEST_BOT"));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/start@other_bot"));
+
+        Assert.Equal(
+            [
+                "bot-mention:/start",
+                "bot-mention:/start@teleflow_test_bot",
+                "bot-mention:/start@TELEFLOW_TEST_BOT"
+            ],
+            probe.Events);
+    }
+
+    [Fact]
+    public async Task SlashCommandMention_DoesNotMatchWhenBotIdentityIsUnknown()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services => services.AddTelegramHandler<BotMentionCommandHandler>());
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/start@teleflow_test_bot"));
+
+        Assert.Empty(probe.Events);
+    }
+
+    [Fact]
+    public async Task CommandAttribute_OverlappingPrefixes_UsesLongestPrefixRegardlessOfDeclarationOrder()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.AddTelegramHandler<ShortPrefixFirstCommandHandler>();
+                services.AddTelegramHandler<LongPrefixFirstCommandHandler>();
+            });
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("!!short-first"));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("!!long-first"));
+
+        Assert.Equal(["short-prefix-first", "long-prefix-first"], probe.Events);
     }
 
     [Fact]
@@ -3132,17 +3185,24 @@ public sealed class TelegramHandlerDispatcherTests
         Assert.Equal(["state-value-scene:Ada"], probe.Events);
     }
 
-    private static ServiceCollection CreateBaseServices()
+    private static ServiceCollection CreateBaseServices(
+        Action<TelegramBotOptions>? configureBot = null)
     {
         var services = new ServiceCollection();
-        services.AddTelegramBot(options => options.Token = "test-token");
+        services.AddTelegramBot(options =>
+        {
+            options.Token = "test-token";
+            configureBot?.Invoke(options);
+        });
         services.AddSingleton<HandlerProbe>();
         return services;
     }
 
-    private static ServiceProvider CreateServiceProvider(Action<IServiceCollection> configureServices)
+    private static ServiceProvider CreateServiceProvider(
+        Action<IServiceCollection> configureServices,
+        Action<TelegramBotOptions>? configureBot = null)
     {
-        var services = CreateBaseServices();
+        var services = CreateBaseServices(configureBot);
         configureServices(services);
         return services.BuildServiceProvider(new ServiceProviderOptions
         {
@@ -3716,6 +3776,36 @@ public sealed class TelegramHandlerDispatcherTests
         public Task Handle(MessageContext context, HandlerProbe probe)
         {
             probe.Events.Add($"custom-prefix:{context.TelegramMessage.Text}");
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class BotMentionCommandHandler
+    {
+        [Command("start")]
+        public Task Handle(MessageContext context, HandlerProbe probe)
+        {
+            probe.Events.Add($"bot-mention:{context.TelegramMessage.Text}");
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class ShortPrefixFirstCommandHandler
+    {
+        [Command("short-first", Prefixes = new[] { "!", "!!" })]
+        public Task Handle(MessageContext context, HandlerProbe probe)
+        {
+            probe.Events.Add("short-prefix-first");
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class LongPrefixFirstCommandHandler
+    {
+        [Command("long-first", Prefixes = new[] { "!!", "!" })]
+        public Task Handle(MessageContext context, HandlerProbe probe)
+        {
+            probe.Events.Add("long-prefix-first");
             return Task.CompletedTask;
         }
     }

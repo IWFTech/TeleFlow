@@ -24,7 +24,12 @@ internal sealed class TelegramCommandPolicy
             throw new InvalidOperationException("Telegram command route prefixes must contain at least one non-empty prefix.");
         }
 
-        Prefixes = prefixes.Select(static prefix => prefix.Trim()).Distinct(StringComparer.Ordinal).ToArray();
+        Prefixes = prefixes
+            .Select(static prefix => prefix.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .OrderByDescending(static prefix => prefix.Length)
+            .ThenBy(static prefix => prefix, StringComparer.Ordinal)
+            .ToArray();
         AllowSpaceAfterPrefix = allowSpaceAfterPrefix;
         IgnoreCase = ignoreCase;
         PrefixMode = prefixMode;

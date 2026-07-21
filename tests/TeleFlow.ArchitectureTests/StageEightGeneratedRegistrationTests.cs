@@ -18,7 +18,6 @@ public sealed class StageEightGeneratedRegistrationTests
     [Theory]
     [InlineData("/start")]
     [InlineData("/start arg")]
-    [InlineData("/start@botname")]
     public async Task GeneratedRegistrar_DispatchesCommandHandlers(string text)
     {
         using var serviceProvider = CreateServiceProvider();
@@ -27,6 +26,43 @@ public sealed class StageEightGeneratedRegistrationTests
         await DispatchAsync(serviceProvider, CreateMessageUpdate(text));
 
         Assert.Equal([$"command:{text}"], probe.Events);
+    }
+
+    [Fact]
+    public async Task GeneratedRegistrar_SlashCommandMention_MatchesConfiguredCurrentBotOnly()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            configureBot: options => options.BotUsername = "teleflow_test_bot");
+        var probe = serviceProvider.GetRequiredService<GeneratedHandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/start@teleflow_test_bot"));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/start@other_bot"));
+
+        Assert.Equal(
+            ["command:/start@teleflow_test_bot", "fallback:/start@other_bot"],
+            probe.Events);
+    }
+
+    [Fact]
+    public async Task GeneratedRegistrar_SlashCommandMention_DoesNotMatchWhenBotIdentityIsUnknown()
+    {
+        using var serviceProvider = CreateServiceProvider();
+        var probe = serviceProvider.GetRequiredService<GeneratedHandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/start@teleflow_test_bot"));
+
+        Assert.Equal(["fallback:/start@teleflow_test_bot"], probe.Events);
+    }
+
+    [Fact]
+    public async Task GeneratedRegistrar_OverlappingPrefixes_UsesLongestPrefix()
+    {
+        using var serviceProvider = CreateServiceProvider();
+        var probe = serviceProvider.GetRequiredService<GeneratedHandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("!!generated-overlap"));
+
+        Assert.Equal(["generated-overlapping-prefix"], probe.Events);
     }
 
     [Fact]
@@ -421,10 +457,16 @@ public sealed class StageEightGeneratedRegistrationTests
             probe.Events);
     }
 
-    private static ServiceProvider CreateServiceProvider(Action<IServiceCollection>? configureServices = null)
+    private static ServiceProvider CreateServiceProvider(
+        Action<IServiceCollection>? configureServices = null,
+        Action<TelegramBotOptions>? configureBot = null)
     {
         var services = new ServiceCollection();
-        services.AddTelegramBot(options => options.Token = "test-token");
+        services.AddTelegramBot(options =>
+        {
+            options.Token = "test-token";
+            configureBot?.Invoke(options);
+        });
         services.AddSingleton<GeneratedHandlerProbe>();
         services.AddSingleton<GeneratedAllowMessageFilter>();
         services.AddSingleton<GeneratedRequireTextFilter>();
@@ -697,6 +739,31 @@ internal sealed class StageEightGeneratedHandlersRegistrar : ITelegramGeneratedH
             ],
             InvokeShortOptionalPrefixCommandTemplate,
             prefixMode: CommandPrefixMode.Optional));
+
+        registry.RegisterHandler(new TelegramGeneratedHandlerDescriptor(
+            typeof(GeneratedOverlappingPrefixCommandHandler),
+            nameof(GeneratedOverlappingPrefixCommandHandler.Handle),
+            TelegramGeneratedHandlerKind.Command,
+            TelegramGeneratedRouteKind.CommandExact,
+            routePattern: "generated-overlap",
+            commandPrefixes: ["!", "!!"],
+            allowSpaceAfterPrefix: false,
+            ignoreCase: true,
+            registrationOrder: 52,
+            moduleName: null,
+            command: "generated-overlap",
+            callbackPayloadType: null,
+            textFilters: [],
+            filters: [],
+            chatMemberTransitions: [],
+            roleRequirements: [],
+            states: [],
+            parameters:
+            [
+                new(typeof(MessageContext), TelegramGeneratedHandlerParameterKind.Context, "context"),
+                new(typeof(GeneratedHandlerProbe), TelegramGeneratedHandlerParameterKind.Service, "probe")
+            ],
+            InvokeGeneratedOverlappingPrefixCommand));
 
         registry.RegisterHandler(new TelegramGeneratedHandlerDescriptor(
             typeof(GeneratedFallbackMessageHandler),
@@ -1305,6 +1372,16 @@ internal sealed class StageEightGeneratedHandlersRegistrar : ITelegramGeneratedH
         await handler.Handle((MessageContext)arguments[0]!, (GeneratedHandlerProbe)arguments[1]!);
     }
 
+    private static async ValueTask InvokeGeneratedOverlappingPrefixCommand(
+        IServiceProvider services,
+        object?[] arguments,
+        CancellationToken cancellationToken)
+    {
+        var handler = (GeneratedOverlappingPrefixCommandHandler)services.GetRequiredService(
+            typeof(GeneratedOverlappingPrefixCommandHandler));
+        await handler.Handle((MessageContext)arguments[0]!, (GeneratedHandlerProbe)arguments[1]!);
+    }
+
     private static async ValueTask InvokeFallbackMessage(
         IServiceProvider services,
         object?[] arguments,
@@ -1691,6 +1768,15 @@ public sealed class GeneratedShortOptionalPrefixCommandTemplateHandler
     public Task Handle(MessageContext context, GeneratedHandlerProbe probe)
     {
         probe.Events.Add($"generated-short-template:{context.TelegramMessage.Text}");
+        return Task.CompletedTask;
+    }
+}
+
+public sealed class GeneratedOverlappingPrefixCommandHandler
+{
+    public Task Handle(MessageContext context, GeneratedHandlerProbe probe)
+    {
+        probe.Events.Add("generated-overlapping-prefix");
         return Task.CompletedTask;
     }
 }
