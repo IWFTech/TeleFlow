@@ -141,7 +141,7 @@ public sealed class TelegramHandlerDispatcherTests
             loggerFactory.Entries,
             entry => entry.Level == LogLevel.Debug &&
                      entry.EventId.Id == 4 &&
-                     entry.Message.Contains("Telegram handler completed", StringComparison.Ordinal) &&
+                     entry.Message.Contains("Telegram route execution completed", StringComparison.Ordinal) &&
                      entry.Message.Contains("handler_ms=", StringComparison.Ordinal) &&
                      entry.Message.Contains("telegram_request_count=0", StringComparison.Ordinal) &&
                      entry.Message.Contains("telegram_request_ms=0", StringComparison.Ordinal) &&
@@ -169,11 +169,35 @@ public sealed class TelegramHandlerDispatcherTests
             loggerFactory.Entries,
             entry => entry.Level == LogLevel.Debug &&
                      entry.EventId.Id == 4 &&
-                     entry.Message.Contains("Telegram handler completed", StringComparison.Ordinal) &&
+                     entry.Message.Contains("Telegram route execution completed", StringComparison.Ordinal) &&
                      entry.Message.Contains("handler=OneTelegramRequestMessageHandler.Handle", StringComparison.Ordinal) &&
                      entry.Message.Contains("telegram_request_count=1", StringComparison.Ordinal) &&
                      entry.Message.Contains("telegram_request_ms=", StringComparison.Ordinal) &&
                      entry.Message.Contains("handler_logic_ms=", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Dispatcher_LogsMatchedHandlerAtInformationWithoutTiming()
+    {
+        var loggerFactory = new RecordingLoggerFactory(LogLevel.Information);
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.RemoveAll<ILoggerFactory>();
+                services.AddSingleton<ILoggerFactory>(loggerFactory);
+                services.AddTelegramHandler<StartCommandHandler>();
+            });
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/start"));
+
+        Assert.Contains(
+            loggerFactory.Entries,
+            entry => entry.Level == LogLevel.Information &&
+                     entry.EventId.Id == 2 &&
+                     entry.Message.Contains("Telegram handler matched", StringComparison.Ordinal) &&
+                     entry.Message.Contains("handler=StartCommandHandler.Handle", StringComparison.Ordinal) &&
+                     entry.Message.Contains("route=CommandExact('start')", StringComparison.Ordinal) &&
+                     !entry.Message.Contains("match_ms=", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -200,7 +224,7 @@ public sealed class TelegramHandlerDispatcherTests
             loggerFactory.Entries,
             entry => entry.Level == LogLevel.Debug &&
                      entry.EventId.Id == 4 &&
-                     entry.Message.Contains("Telegram handler completed", StringComparison.Ordinal) &&
+                     entry.Message.Contains("Telegram route execution completed", StringComparison.Ordinal) &&
                      entry.Message.Contains("handler=OneTelegramRequestMessageHandler.Handle", StringComparison.Ordinal) &&
                      entry.Message.Contains("telegram_request_count=1", StringComparison.Ordinal) &&
                      entry.Message.Contains("telegram_request_ms=10", StringComparison.Ordinal) &&
@@ -228,7 +252,7 @@ public sealed class TelegramHandlerDispatcherTests
             loggerFactory.Entries,
             entry => entry.Level == LogLevel.Debug &&
                      entry.EventId.Id == 4 &&
-                     entry.Message.Contains("Telegram handler completed", StringComparison.Ordinal) &&
+                     entry.Message.Contains("Telegram route execution completed", StringComparison.Ordinal) &&
                      entry.Message.Contains("handler=TwoTelegramRequestsCallbackHandler.Handle", StringComparison.Ordinal) &&
                      entry.Message.Contains("telegram_request_count=2", StringComparison.Ordinal) &&
                      entry.Message.Contains("telegram_request_ms=", StringComparison.Ordinal) &&
@@ -258,7 +282,7 @@ public sealed class TelegramHandlerDispatcherTests
         Assert.DoesNotContain(
             loggerFactory.Entries,
             entry => entry.Category.EndsWith("TelegramHandlerDispatcher", StringComparison.Ordinal) &&
-                     entry.Message.Contains("Telegram handler completed", StringComparison.Ordinal));
+                     entry.Message.Contains("Telegram route execution completed", StringComparison.Ordinal));
         Assert.DoesNotContain(
             loggerFactory.Entries,
             entry => entry.Category.EndsWith("TelegramHandlerDispatcher", StringComparison.Ordinal) &&
@@ -289,6 +313,29 @@ public sealed class TelegramHandlerDispatcherTests
     }
 
     [Fact]
+    public async Task Dispatcher_LogsNoMatchedHandlerAtInformationWithoutTiming()
+    {
+        var loggerFactory = new RecordingLoggerFactory(LogLevel.Information);
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.RemoveAll<ILoggerFactory>();
+                services.AddSingleton<ILoggerFactory>(loggerFactory);
+                services.AddTelegramHandler<ExactTextMessageHandler>();
+            });
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("not matched"));
+
+        Assert.Contains(
+            loggerFactory.Entries,
+            entry => entry.Level == LogLevel.Information &&
+                     entry.EventId.Id == 1 &&
+                     entry.Message.Contains("No Telegram handler matched", StringComparison.Ordinal) &&
+                     entry.Message.Contains("type=message", StringComparison.Ordinal) &&
+                     !entry.Message.Contains("match_ms=", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Dispatcher_LogsFailedHandlerAndRethrowsOriginalException()
     {
         var loggerFactory = new RecordingLoggerFactory();
@@ -311,7 +358,7 @@ public sealed class TelegramHandlerDispatcherTests
             entry => entry.Level == LogLevel.Error &&
                      entry.EventId.Id == 3 &&
                      ReferenceEquals(entry.Exception, expected) &&
-                     entry.Message.Contains("Telegram handler failed", StringComparison.Ordinal) &&
+                     entry.Message.Contains("Telegram route execution failed", StringComparison.Ordinal) &&
                      entry.Message.Contains("handler=ThrowingMessageHandler.Handle", StringComparison.Ordinal) &&
                      entry.Message.Contains("handler_ms=", StringComparison.Ordinal) &&
                      entry.Message.Contains("telegram_request_count=0", StringComparison.Ordinal) &&
@@ -342,7 +389,7 @@ public sealed class TelegramHandlerDispatcherTests
             entry => entry.Level == LogLevel.Error &&
                      entry.EventId.Id == 3 &&
                      ReferenceEquals(entry.Exception, expected) &&
-                     entry.Message.Contains("Telegram handler failed", StringComparison.Ordinal));
+                     entry.Message.Contains("Telegram route execution failed", StringComparison.Ordinal));
 
         Assert.Contains("handler=ThrowingMessageHandler.Handle", entry.Message, StringComparison.Ordinal);
         Assert.DoesNotContain("handler_ms=", entry.Message, StringComparison.Ordinal);
@@ -2732,7 +2779,7 @@ public sealed class TelegramHandlerDispatcherTests
     }
 
     [Fact]
-    public async Task AutoAnswerCallback_FailureBypassesTelegramErrorHandlers()
+    public async Task AutoAnswerCallback_FailureUsesTelegramErrorHandlers()
     {
         var transport = new RecordingTelegramTransport(new TelegramTransportResponse(
             500,
@@ -2744,6 +2791,28 @@ public sealed class TelegramHandlerDispatcherTests
                 services.AddSingleton<ITelegramTransport>(transport);
                 services.AddTelegramHandler<AutoAnswerCallbackHandler>();
                 services.AddTelegramHandler<AutoAnswerFailureErrorHandler>();
+            });
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateCallbackUpdate("auto"));
+
+        Assert.Equal(
+            ["auto-answer:auto", "auto-answer-error:TelegramServerException"],
+            probe.Events);
+    }
+
+    [Fact]
+    public async Task AutoAnswerCallback_UnhandledFailureRethrows()
+    {
+        var transport = new RecordingTelegramTransport(new TelegramTransportResponse(
+            500,
+            """{"ok":false,"error_code":500,"description":"Internal Server Error"}"""));
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.RemoveAll<ITelegramTransport>();
+                services.AddSingleton<ITelegramTransport>(transport);
+                services.AddTelegramHandler<AutoAnswerCallbackHandler>();
             });
         var probe = serviceProvider.GetRequiredService<HandlerProbe>();
 

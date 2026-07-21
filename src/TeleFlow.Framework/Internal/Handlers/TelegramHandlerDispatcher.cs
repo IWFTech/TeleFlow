@@ -56,6 +56,7 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
             return;
         }
 
+        var routeLoggingEnabled = _logger.IsEnabled(LogLevel.Information);
         var debugEnabled = _logger.IsEnabled(LogLevel.Debug);
         string? updateType = null;
         string GetUpdateType() => updateType ??= TelegramUpdateLogFormatter.GetUpdateType(payload.Update);
@@ -110,11 +111,18 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
         {
             if (debugEnabled)
             {
-                LogNoHandlerMatched(
+                LogNoHandlerMatchedWithTiming(
                     _logger,
                     payload.Update.UpdateId,
                     GetUpdateType(),
                     matchElapsedMilliseconds);
+            }
+            else if (routeLoggingEnabled)
+            {
+                LogNoHandlerMatched(
+                    _logger,
+                    payload.Update.UpdateId,
+                    GetUpdateType());
             }
 
             return;
@@ -127,7 +135,7 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
 
         if (debugEnabled)
         {
-            LogHandlerMatched(
+            LogHandlerMatchedWithTiming(
                 _logger,
                 payload.Update.UpdateId,
                 GetUpdateType(),
@@ -136,6 +144,17 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
                 selection.Handler.ModuleName ?? string.Empty,
                 selection.Handler.SceneName ?? string.Empty,
                 matchElapsedMilliseconds);
+        }
+        else if (routeLoggingEnabled)
+        {
+            LogHandlerMatched(
+                _logger,
+                payload.Update.UpdateId,
+                GetUpdateType(),
+                GetHandlerName(),
+                GetRouteName(),
+                selection.Handler.ModuleName ?? string.Empty,
+                selection.Handler.SceneName ?? string.Empty);
         }
 
         var handlerTimingEnabled = debugEnabled;
@@ -150,13 +169,18 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
                 selection,
                 telegramContext,
                 effectiveCancellationToken).ConfigureAwait(false);
+
+            await AutoAnswerCallbackAsync(
+                selection.Handler,
+                telegramContext,
+                effectiveCancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception) when (!IsUpdateCancellation(exception, effectiveCancellationToken))
         {
-            HandlerFailureLogContext? logContext = null;
-            HandlerFailureLogContext GetLogContext()
+            RouteExecutionFailureLogContext? logContext = null;
+            RouteExecutionFailureLogContext GetLogContext()
             {
-                logContext ??= new HandlerFailureLogContext(
+                logContext ??= new RouteExecutionFailureLogContext(
                     payload.Update.UpdateId,
                     GetUpdateType(),
                     GetHandlerName(),
@@ -170,7 +194,7 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
 
             if (_logger.IsEnabled(LogLevel.Error))
             {
-                LogHandlerFailure(
+                LogRouteExecutionFailure(
                     exception,
                     GetLogContext(),
                     handlerTimingEnabled,
@@ -192,11 +216,6 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
             throw;
         }
 
-        await AutoAnswerCallbackAsync(
-            selection.Handler,
-            telegramContext,
-            effectiveCancellationToken).ConfigureAwait(false);
-
         if (!handlerTimingEnabled)
         {
             return;
@@ -205,7 +224,7 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
         var completedHandlerElapsed = _timeProvider.GetElapsedTime(handlerStarted);
         var completedTiming = requestTimingScope!.CreateSummary(_timeProvider, completedHandlerElapsed);
 
-        LogHandlerCompleted(
+        LogRouteExecutionCompleted(
             _logger,
             payload.Update.UpdateId,
             GetUpdateType(),
@@ -271,7 +290,7 @@ internal sealed partial class TelegramHandlerDispatcher : IUpdateDispatcher
         TelegramRouteSelection selection,
         TelegramUpdateContext telegramContext,
         Exception exception,
-        HandlerFailureLogContext? logContext,
+        RouteExecutionFailureLogContext? logContext,
         CancellationToken cancellationToken)
     {
         var errorContext = new TelegramErrorContext(
