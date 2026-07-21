@@ -85,11 +85,8 @@ public sealed class ConfigureBotCommands(ITelegramClient bot) : ITeleFlowStartup
         await bot.SetMyCommandsAsync(
             commands:
             [
-                new BotCommand
-                {
-                    Command = "start",
-                    Description = "Start"
-                }
+                BotCommands.Create("start", "Start"),
+                BotCommands.Ephemeral("help", "Show personal help")
             ],
             cancellationToken: ct);
     }
@@ -97,6 +94,8 @@ public sealed class ConfigureBotCommands(ITelegramClient bot) : ITeleFlowStartup
 ```
 
 Lifecycle tasks are not Telegram handlers. They do not receive `MessageContext`, `CallbackQueryContext`, or fake updates. They are resolved through dependency injection from a dedicated lifecycle scope, so scoped application services can be used safely.
+
+`BotCommands` makes command intent explicit. `Create(...)` creates a normal command; `Ephemeral(...)` sets Telegram's `is_ephemeral` flag, so the command and its response are visible only to the user who invoked it in a group or supergroup. This helper does not discover handlers or publish commands automatically. Telegram still accepts only Bot API command names, so use a lowercase English command name such as `help` for the command menu and add application aliases separately when needed.
 
 If a startup task fails, update processing does not start. If the update source fails after startup has completed, shutdown tasks still run and the original failure is surfaced. If shutdown also fails, TeleFlow reports both failures.
 
@@ -130,7 +129,7 @@ public Task WhoAmI(MessageContext ctx, CancellationToken ct)
 }
 ```
 
-`ctx.Message` contains message actions such as `AnswerAsync`, `ReplyAsync`, `AnswerPhotoAsync`, `ReplyDocumentAsync`, and `DeleteAsync`. These helpers target the current chat. Use `ctx.Bot.*Async` when the target chat or method surface should be explicit.
+`ctx.Message` contains message actions such as `AnswerAsync`, `ReplyAsync`, `AnswerPhotoAsync`, `ReplyDocumentAsync`, `SendEphemeralAsync`, and `DeleteAsync`. These helpers target the current chat. Use `ctx.Bot.*Async` when the target chat or method surface should be explicit.
 
 Callback handlers use `CallbackQueryContext`:
 
