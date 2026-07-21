@@ -1,3 +1,4 @@
+using TeleFlow.Telegram.Internal;
 using TeleFlow.Telegram.Schema.Abstractions;
 using TeleFlow.Telegram.Schema.Types;
 
@@ -136,6 +137,28 @@ public sealed partial class MessageActions
         return SendTextAsync(text, replyMarkup, replyToCurrentMessage: true, cancellationToken);
     }
 
+    /// <summary>
+    /// Sends a text message visible only to the user represented by the current group or supergroup update.
+    /// </summary>
+    public Task<EphemeralMessageReference> SendEphemeralAsync(
+        string text,
+        CancellationToken cancellationToken = default)
+    {
+        return SendEphemeralCoreAsync(text, inlineKeyboard: null, cancellationToken);
+    }
+
+    /// <summary>
+    /// Sends a text message with an inline keyboard visible only to the user represented by the current group or supergroup update.
+    /// </summary>
+    public Task<EphemeralMessageReference> SendEphemeralAsync(
+        string text,
+        InlineKeyboardMarkup replyMarkup,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(replyMarkup);
+        return SendEphemeralCoreAsync(text, replyMarkup, cancellationToken);
+    }
+
     [Obsolete("Use ReplyAsync instead.")]
     public Task<Message> ReplyTextAsync(string text, CancellationToken cancellationToken = default)
     {
@@ -169,26 +192,65 @@ public sealed partial class MessageActions
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(text);
+        var reply = CreateReplyConfiguration(replyToCurrentMessage);
 
         return _context.Bot.SendMessageAsync(
             IntegerString.From(_context.TelegramChat.Id),
             text,
-            replyParameters: replyToCurrentMessage
-                ? new ReplyParameters
-                {
-                    MessageId = _context.TelegramMessage.MessageId
-                }
-                : null,
+            receiverUserId: reply.ReceiverUserId,
+            replyParameters: reply.ReplyParameters,
             replyMarkup: replyMarkup,
             cancellationToken: ResolveCancellationToken(cancellationToken));
     }
 
     public Task<bool> DeleteAsync(CancellationToken cancellationToken = default)
     {
+        if (_context.TelegramMessage.EphemeralMessageId is long ephemeralMessageId)
+        {
+            var target = EphemeralMessageTargetResolver.ResolveForEphemeralMessage(_context.TelegramMessage);
+            return _context.Bot.DeleteEphemeralMessageAsync(
+                target.ChatId,
+                target.ReceiverUserId,
+                ephemeralMessageId,
+                ResolveCancellationToken(cancellationToken));
+        }
+
         return _context.Bot.DeleteMessageAsync(
             IntegerString.From(_context.TelegramChat.Id),
             _context.TelegramMessage.MessageId,
             ResolveCancellationToken(cancellationToken));
+    }
+
+    private Task<EphemeralMessageReference> SendEphemeralCoreAsync(
+        string text,
+        InlineKeyboardMarkup? inlineKeyboard,
+        CancellationToken cancellationToken)
+    {
+        var target = EphemeralMessageTargetResolver.ResolveForMessage(_context.TelegramMessage);
+        return _context.Bot.SendEphemeralMessageAsync(
+            target,
+            text,
+            replyMarkup: inlineKeyboard,
+            cancellationToken: ResolveCancellationToken(cancellationToken));
+    }
+
+    private (ReplyParameters? ReplyParameters, long? ReceiverUserId) CreateReplyConfiguration(
+        bool replyToCurrentMessage)
+    {
+        if (!replyToCurrentMessage)
+        {
+            return default;
+        }
+
+        if (_context.TelegramMessage.EphemeralMessageId is long ephemeralMessageId)
+        {
+            var target = EphemeralMessageTargetResolver.ResolveForEphemeralMessage(_context.TelegramMessage);
+            return (
+                new ReplyParameters { EphemeralMessageId = ephemeralMessageId },
+                target.ReceiverUserId);
+        }
+
+        return (new ReplyParameters { MessageId = _context.TelegramMessage.MessageId }, null);
     }
 
     private CancellationToken ResolveCancellationToken(CancellationToken cancellationToken)

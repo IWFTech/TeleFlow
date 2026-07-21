@@ -534,12 +534,14 @@ public sealed partial class MessageActions
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(photo);
+        var reply = CreateReplyConfiguration(replyToCurrentMessage);
         return _context.Bot.SendPhotoAsync(
             CurrentChatId,
             photo,
             caption: caption,
             parseMode: parseMode,
-            replyParameters: CreateReplyParameters(replyToCurrentMessage),
+            receiverUserId: reply.ReceiverUserId,
+            replyParameters: reply.ReplyParameters,
             replyMarkup: replyMarkup,
             cancellationToken: ResolveCancellationToken(cancellationToken));
     }
@@ -553,12 +555,14 @@ public sealed partial class MessageActions
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(document);
+        var reply = CreateReplyConfiguration(replyToCurrentMessage);
         return _context.Bot.SendDocumentAsync(
             CurrentChatId,
             document,
             caption: caption,
             parseMode: parseMode,
-            replyParameters: CreateReplyParameters(replyToCurrentMessage),
+            receiverUserId: reply.ReceiverUserId,
+            replyParameters: reply.ReplyParameters,
             replyMarkup: replyMarkup,
             cancellationToken: ResolveCancellationToken(cancellationToken));
     }
@@ -572,12 +576,14 @@ public sealed partial class MessageActions
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(video);
+        var reply = CreateReplyConfiguration(replyToCurrentMessage);
         return _context.Bot.SendVideoAsync(
             CurrentChatId,
             video,
             caption: caption,
             parseMode: parseMode,
-            replyParameters: CreateReplyParameters(replyToCurrentMessage),
+            receiverUserId: reply.ReceiverUserId,
+            replyParameters: reply.ReplyParameters,
             replyMarkup: replyMarkup,
             cancellationToken: ResolveCancellationToken(cancellationToken));
     }
@@ -591,12 +597,14 @@ public sealed partial class MessageActions
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(animation);
+        var reply = CreateReplyConfiguration(replyToCurrentMessage);
         return _context.Bot.SendAnimationAsync(
             CurrentChatId,
             animation,
             caption: caption,
             parseMode: parseMode,
-            replyParameters: CreateReplyParameters(replyToCurrentMessage),
+            receiverUserId: reply.ReceiverUserId,
+            replyParameters: reply.ReplyParameters,
             replyMarkup: replyMarkup,
             cancellationToken: ResolveCancellationToken(cancellationToken));
     }
@@ -610,12 +618,14 @@ public sealed partial class MessageActions
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(audio);
+        var reply = CreateReplyConfiguration(replyToCurrentMessage);
         return _context.Bot.SendAudioAsync(
             CurrentChatId,
             audio,
             caption: caption,
             parseMode: parseMode,
-            replyParameters: CreateReplyParameters(replyToCurrentMessage),
+            receiverUserId: reply.ReceiverUserId,
+            replyParameters: reply.ReplyParameters,
             replyMarkup: replyMarkup,
             cancellationToken: ResolveCancellationToken(cancellationToken));
     }
@@ -629,12 +639,14 @@ public sealed partial class MessageActions
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(voice);
+        var reply = CreateReplyConfiguration(replyToCurrentMessage);
         return _context.Bot.SendVoiceAsync(
             CurrentChatId,
             voice,
             caption: caption,
             parseMode: parseMode,
-            replyParameters: CreateReplyParameters(replyToCurrentMessage),
+            receiverUserId: reply.ReceiverUserId,
+            replyParameters: reply.ReplyParameters,
             replyMarkup: replyMarkup,
             cancellationToken: ResolveCancellationToken(cancellationToken));
     }
@@ -646,10 +658,12 @@ public sealed partial class MessageActions
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(sticker);
+        var reply = CreateReplyConfiguration(replyToCurrentMessage);
         return _context.Bot.SendStickerAsync(
             CurrentChatId,
             sticker,
-            replyParameters: CreateReplyParameters(replyToCurrentMessage),
+            receiverUserId: reply.ReceiverUserId,
+            replyParameters: reply.ReplyParameters,
             replyMarkup: replyMarkup,
             cancellationToken: ResolveCancellationToken(cancellationToken));
     }
@@ -661,24 +675,16 @@ public sealed partial class MessageActions
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(videoNote);
+        var reply = CreateReplyConfiguration(replyToCurrentMessage);
         return _context.Bot.SendVideoNoteAsync(
             CurrentChatId,
             videoNote,
-            replyParameters: CreateReplyParameters(replyToCurrentMessage),
+            receiverUserId: reply.ReceiverUserId,
+            replyParameters: reply.ReplyParameters,
             replyMarkup: replyMarkup,
             cancellationToken: ResolveCancellationToken(cancellationToken));
     }
 
     private IntegerString CurrentChatId => IntegerString.From(_context.TelegramChat.Id);
-
-    private ReplyParameters? CreateReplyParameters(bool replyToCurrentMessage)
-    {
-        return replyToCurrentMessage
-            ? new ReplyParameters
-            {
-                MessageId = _context.TelegramMessage.MessageId
-            }
-            : null;
-    }
 
 }

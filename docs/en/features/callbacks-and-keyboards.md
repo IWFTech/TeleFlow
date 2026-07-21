@@ -251,3 +251,20 @@ await ctx.Message.AnswerAsync(
 - `DeleteMessageAsync(...)`.
 
 Use `ctx.Bot` for Bot API methods not covered by helpers.
+
+## Ephemeral Callback Responses
+
+In a group or supergroup, a callback handler can send a response visible only to the user who pressed the button:
+
+```csharp
+[Callback]
+public async Task ShowPrivateDetails(CallbackQueryContext ctx, CancellationToken ct)
+{
+    await ctx.Callback.SendEphemeralAsync("Only you can see these details.", ct);
+    await ctx.Callback.AnswerAsync(ct);
+}
+```
+
+`SendEphemeralAsync(...)` passes the callback query ID to Telegram, but it does **not** answer the callback query. Keep `AnswerAsync(...)` or the auto-answer middleware so Telegram stops showing the loading indicator.
+
+If the button belongs to an ephemeral message, `EditTextAsync(...)` and `DeleteMessageAsync(...)` select Telegram's dedicated ephemeral endpoints automatically. The response is still best-effort: Telegram can fail to deliver it, and an ephemeral message reference is not durable state.

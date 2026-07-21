@@ -85,11 +85,8 @@ public sealed class ConfigureBotCommands(ITelegramClient bot) : ITeleFlowStartup
         await bot.SetMyCommandsAsync(
             commands:
             [
-                new BotCommand
-                {
-                    Command = "start",
-                    Description = "Start"
-                }
+                BotCommands.Create("start", "Start"),
+                BotCommands.Ephemeral("help", "Показать личную справку")
             ],
             cancellationToken: ct);
     }
@@ -97,6 +94,8 @@ public sealed class ConfigureBotCommands(ITelegramClient bot) : ITeleFlowStartup
 ```
 
 Lifecycle tasks не являются Telegram handlers. Они не получают `MessageContext`, `CallbackQueryContext` или fake updates. TeleFlow создаёт их через dependency injection в отдельном lifecycle scope, поэтому scoped application services можно использовать безопасно.
+
+`BotCommands` явно задаёт смысл команды. `Create(...)` создаёт обычную команду, а `Ephemeral(...)` выставляет Telegram-флаг `is_ephemeral`: в группе или супергруппе команда и её ответ видны только вызвавшему пользователю. Этот helper не ищет handlers и не публикует команды автоматически. Telegram по-прежнему принимает для меню только имена команд по правилам Bot API, поэтому используй строчное английское имя вроде `help`, а локальные алиасы добавляй отдельно.
 
 Если startup task падает, update processing не стартует. Если update source падает уже после успешного startup, shutdown tasks всё равно выполняются, а исходная ошибка пробрасывается наружу. Если shutdown тоже падает, TeleFlow сообщает обе ошибки.
 
@@ -130,7 +129,7 @@ public Task WhoAmI(MessageContext ctx, CancellationToken ct)
 }
 ```
 
-`ctx.Message` содержит message actions: `AnswerAsync`, `ReplyAsync`, `AnswerPhotoAsync`, `ReplyDocumentAsync`, `DeleteAsync`. Эти helpers нацелены на current chat. Используй `ctx.Bot.*Async`, когда target chat или method surface должны быть явными.
+`ctx.Message` содержит message actions: `AnswerAsync`, `ReplyAsync`, `AnswerPhotoAsync`, `ReplyDocumentAsync`, `SendEphemeralAsync`, `DeleteAsync`. Эти helpers нацелены на current chat. Используй `ctx.Bot.*Async`, когда target chat или method surface должны быть явными.
 
 Callback handlers используют `CallbackQueryContext`:
 

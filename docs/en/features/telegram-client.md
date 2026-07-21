@@ -256,6 +256,52 @@ public Task Document(MessageContext ctx, CancellationToken ct)
 
 Use context helpers when the current chat and reply target are obvious. Use `ctx.Bot.*Async` when you need the full Telegram method surface or a different chat target.
 
+## Ephemeral Messages And Commands
+
+Telegram Bot API 10.2 can send a message visible only to one user in a group or supergroup. This is a Telegram-side privacy feature, not a normal message followed by a timer and deletion.
+
+Register an ephemeral command explicitly during startup:
+
+```csharp
+await bot.SetMyCommandsAsync(
+    [
+        BotCommands.Create("start", "Open the bot"),
+        BotCommands.Ephemeral("help", "Show personal help")
+    ],
+    cancellationToken: ct);
+```
+
+`BotCommands.Ephemeral(...)` only builds the Bot API model. It does not infer a handler or configure command scopes.
+
+From a message handler, use `SendEphemeralAsync` when the response itself should be private:
+
+```csharp
+[Command("help")]
+public async Task Help(MessageContext ctx, CancellationToken ct)
+{
+    var message = await ctx.Message.SendEphemeralAsync(
+        "Only you can see this help message.",
+        ct);
+
+    await message.EditTextAsync("Personal help is ready.", ct);
+}
+```
+
+The helper derives the current group chat and sender from the update. It fails clearly in private chats and channels because Telegram does not support this delivery mode there. `EphemeralMessageReference` exposes Telegram's dedicated edit and delete methods; do not persist it as a durable identifier because Telegram may reuse an ephemeral message ID after deletion or expiry.
+
+When a user sends an ephemeral message to the bot, `ctx.Message.ReplyAsync(...)` automatically uses the required ephemeral reply parameters. Telegram only accepts that reply within 15 seconds. Use `SendEphemeralAsync(...)` when creating a new private response; `AnswerAsync(...)` remains a normal chat message.
+
+For client code outside a handler, construct the target explicitly:
+
+```csharp
+using TeleFlow.Telegram.Schema.Abstractions;
+
+var target = new EphemeralMessageTarget(IntegerString.From(chatId), userId);
+var message = await bot.SendEphemeralMessageAsync(target, "Private result", cancellationToken: ct);
+```
+
+Telegram does not guarantee delivery, especially when the receiver is offline. Do not use ephemeral messages for receipts, durable status, or data the user must be able to retrieve later.
+
 ## Media Groups
 
 `MediaGroup` is a small builder over Telegram `sendMediaGroup`:

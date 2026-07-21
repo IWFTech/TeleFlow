@@ -77,6 +77,11 @@ public sealed class CallbackQueryActions
 
         if (CallbackQueryMessageTargetResolver.TryResolve(_context.TelegramCallbackQuery, out var target))
         {
+            if (target.IsEphemeral)
+            {
+                return EditEphemeralTextAsync(target, text, replyMarkup, cancellationToken);
+            }
+
             return _context.Bot.EditMessageTextAsync(
                 chatId: IntegerString.From(target.ChatId),
                 messageId: target.MessageId,
@@ -106,10 +111,83 @@ public sealed class CallbackQueryActions
                 "The current callback query does not contain a deletable chat message target.");
         }
 
+        if (target.IsEphemeral)
+        {
+            return _context.Bot.DeleteEphemeralMessageAsync(
+                IntegerString.From(target.ChatId),
+                EphemeralMessageTargetResolver.ResolveReceiverUserId(_context.TelegramCallbackQuery, target),
+                target.EphemeralMessageId!.Value,
+                ResolveCancellationToken(cancellationToken));
+        }
+
         return _context.Bot.DeleteMessageAsync(
             IntegerString.From(target.ChatId),
             target.MessageId,
             ResolveCancellationToken(cancellationToken));
+    }
+
+    /// <summary>
+    /// Sends a text message visible only to the user who triggered the callback in a group or supergroup chat.
+    /// Sending the message does not acknowledge the callback query.
+    /// </summary>
+    public Task<EphemeralMessageReference> SendEphemeralAsync(
+        string text,
+        CancellationToken cancellationToken = default)
+    {
+        return SendEphemeralCoreAsync(text, inlineKeyboard: null, cancellationToken);
+    }
+
+    /// <summary>
+    /// Sends a text message with an inline keyboard visible only to the user who triggered the callback in a group or supergroup chat.
+    /// Sending the message does not acknowledge the callback query.
+    /// </summary>
+    public Task<EphemeralMessageReference> SendEphemeralAsync(
+        string text,
+        InlineKeyboardMarkup replyMarkup,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(replyMarkup);
+        return SendEphemeralCoreAsync(text, replyMarkup, cancellationToken);
+    }
+
+    private async Task<MessageBoolean> EditEphemeralTextAsync(
+        TelegramMessageTarget target,
+        string text,
+        InlineKeyboardMarkup? replyMarkup,
+        CancellationToken cancellationToken)
+    {
+        var result = await _context.Bot.EditEphemeralMessageTextAsync(
+            IntegerString.From(target.ChatId),
+            EphemeralMessageTargetResolver.ResolveReceiverUserId(_context.TelegramCallbackQuery, target),
+            target.EphemeralMessageId!.Value,
+            text,
+            replyMarkup: replyMarkup,
+            cancellationToken: ResolveCancellationToken(cancellationToken)).ConfigureAwait(false);
+
+        return MessageBoolean.From(result);
+    }
+
+    private Task<EphemeralMessageReference> SendEphemeralCoreAsync(
+        string text,
+        InlineKeyboardMarkup? inlineKeyboard,
+        CancellationToken cancellationToken)
+    {
+        if (!CallbackQueryMessageTargetResolver.TryResolve(_context.TelegramCallbackQuery, out var target))
+        {
+            throw new InvalidOperationException(
+                "The current callback query does not contain a group or supergroup chat target for an ephemeral message.");
+        }
+
+        var ephemeralTarget = EphemeralMessageTargetResolver.ResolveForCallback(
+            _context.TelegramCallbackQuery,
+            target);
+
+        return _context.Bot.SendEphemeralMessageAsync(
+            ephemeralTarget,
+            text,
+            replyMarkup: inlineKeyboard,
+            callbackQueryId: _context.TelegramCallbackQuery.Id,
+            cancellationToken: ResolveCancellationToken(cancellationToken));
     }
 
     private CancellationToken ResolveCancellationToken(CancellationToken cancellationToken)

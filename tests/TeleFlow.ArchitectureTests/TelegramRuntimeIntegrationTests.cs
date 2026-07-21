@@ -2527,6 +2527,304 @@ public sealed class TelegramRuntimeIntegrationTests
     }
 
     [Fact]
+    public async Task MessageSendEphemeralAsync_UsesCurrentSenderAndGroupChat()
+    {
+        var fakeClient = new RecordingTelegramClient
+        {
+            Handler = method => method switch
+            {
+                SendMessage => new Message
+                {
+                    MessageId = 0,
+                    EphemeralMessageId = 30,
+                    ReceiverUser = new User { Id = 7, IsBot = false, FirstName = "User" },
+                    Date = 0,
+                    Chat = new Chat { Id = 100, Type = "supergroup" },
+                    Text = "private"
+                },
+                _ => throw new InvalidOperationException("Unexpected method.")
+            }
+        };
+
+        using var serviceProvider = CreateTelegramServiceProvider(clientOverride: fakeClient);
+        var context = new UpdateContext(
+            serviceProvider,
+            new TelegramUpdatePayload(
+                new Update
+                {
+                    UpdateId = 1,
+                    Message = new Message
+                    {
+                        MessageId = 10,
+                        Date = 0,
+                        From = new User { Id = 7, IsBot = false, FirstName = "User" },
+                        Chat = new Chat { Id = 100, Type = "supergroup" },
+                        Text = "/help"
+                    }
+                }));
+
+        var message = await context.GetMessageContext().Message.SendEphemeralAsync("private");
+
+        var sendMessage = Assert.IsType<SendMessage>(fakeClient.Methods.Single());
+        Assert.Equal(100L, sendMessage.ChatId.Integer);
+        Assert.Equal(7L, sendMessage.ReceiverUserId);
+        Assert.Null(sendMessage.CallbackQueryId);
+        Assert.Equal(30L, message.EphemeralMessageId);
+        Assert.Equal(7L, message.ReceiverUserId);
+    }
+
+    [Fact]
+    public async Task MessageReplyAsync_UsesEphemeralReplyParametersForIncomingEphemeralMessage()
+    {
+        var fakeClient = new RecordingTelegramClient
+        {
+            Handler = method => method switch
+            {
+                SendMessage => new Message
+                {
+                    MessageId = 0,
+                    EphemeralMessageId = 31,
+                    ReceiverUser = new User { Id = 7, IsBot = false, FirstName = "User" },
+                    Date = 0,
+                    Chat = new Chat { Id = 100, Type = "supergroup" },
+                    Text = "reply"
+                },
+                _ => throw new InvalidOperationException("Unexpected method.")
+            }
+        };
+
+        using var serviceProvider = CreateTelegramServiceProvider(clientOverride: fakeClient);
+        var context = new UpdateContext(
+            serviceProvider,
+            new TelegramUpdatePayload(
+                new Update
+                {
+                    UpdateId = 1,
+                    Message = new Message
+                    {
+                        MessageId = 0,
+                        EphemeralMessageId = 12,
+                        ReceiverUser = new User { Id = 7, IsBot = false, FirstName = "User" },
+                        Date = 0,
+                        From = new User { Id = 7, IsBot = false, FirstName = "User" },
+                        Chat = new Chat { Id = 100, Type = "supergroup" },
+                        Text = "/help"
+                    }
+                }));
+
+        await context.GetMessageContext().Message.ReplyAsync("reply");
+
+        var sendMessage = Assert.IsType<SendMessage>(fakeClient.Methods.Single());
+        Assert.Equal(7L, sendMessage.ReceiverUserId);
+        Assert.Null(sendMessage.ReplyParameters?.MessageId);
+        Assert.Equal(12L, sendMessage.ReplyParameters?.EphemeralMessageId);
+    }
+
+    [Fact]
+    public async Task MessageSendEphemeralAsync_FailsClearlyOutsideGroupChats()
+    {
+        using var serviceProvider = CreateTelegramServiceProvider(clientOverride: new RecordingTelegramClient());
+        var context = new UpdateContext(
+            serviceProvider,
+            new TelegramUpdatePayload(
+                new Update
+                {
+                    UpdateId = 1,
+                    Message = new Message
+                    {
+                        MessageId = 10,
+                        Date = 0,
+                        From = new User { Id = 7, IsBot = false, FirstName = "User" },
+                        Chat = new Chat { Id = 100, Type = "private" },
+                        Text = "/help"
+                    }
+                }));
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => context.GetMessageContext().Message.SendEphemeralAsync("private"));
+
+        Assert.Contains("group or supergroup", exception.Message);
+    }
+
+    [Fact]
+    public async Task MessageReplyPhotoAsync_UsesEphemeralReplyParametersForIncomingEphemeralMessage()
+    {
+        var fakeClient = new RecordingTelegramClient
+        {
+            Handler = method => method switch
+            {
+                SendPhoto => new Message
+                {
+                    MessageId = 0,
+                    EphemeralMessageId = 31,
+                    ReceiverUser = new User { Id = 7, IsBot = false, FirstName = "User" },
+                    Date = 0,
+                    Chat = new Chat { Id = 100, Type = "supergroup" }
+                },
+                _ => throw new InvalidOperationException("Unexpected method.")
+            }
+        };
+
+        using var serviceProvider = CreateTelegramServiceProvider(clientOverride: fakeClient);
+        var context = new UpdateContext(
+            serviceProvider,
+            new TelegramUpdatePayload(
+                new Update
+                {
+                    UpdateId = 1,
+                    Message = new Message
+                    {
+                        MessageId = 0,
+                        EphemeralMessageId = 12,
+                        ReceiverUser = new User { Id = 7, IsBot = false, FirstName = "User" },
+                        Date = 0,
+                        From = new User { Id = 7, IsBot = false, FirstName = "User" },
+                        Chat = new Chat { Id = 100, Type = "supergroup" }
+                    }
+                }));
+
+        await context.GetMessageContext().Message.ReplyPhotoAsync(InputFileString.From("file-id"));
+
+        var sendPhoto = Assert.IsType<SendPhoto>(fakeClient.Methods.Single());
+        Assert.Equal(7L, sendPhoto.ReceiverUserId);
+        Assert.Null(sendPhoto.ReplyParameters?.MessageId);
+        Assert.Equal(12L, sendPhoto.ReplyParameters?.EphemeralMessageId);
+    }
+
+    [Fact]
+    public async Task MessageDeleteAsync_UsesEphemeralEndpointForIncomingEphemeralMessage()
+    {
+        var fakeClient = new RecordingTelegramClient
+        {
+            Handler = method => method switch
+            {
+                DeleteEphemeralMessage => true,
+                _ => throw new InvalidOperationException("Unexpected method.")
+            }
+        };
+
+        using var serviceProvider = CreateTelegramServiceProvider(clientOverride: fakeClient);
+        var context = new UpdateContext(
+            serviceProvider,
+            new TelegramUpdatePayload(
+                new Update
+                {
+                    UpdateId = 1,
+                    Message = new Message
+                    {
+                        MessageId = 0,
+                        EphemeralMessageId = 12,
+                        ReceiverUser = new User { Id = 7, IsBot = false, FirstName = "User" },
+                        Date = 0,
+                        From = new User { Id = 7, IsBot = false, FirstName = "User" },
+                        Chat = new Chat { Id = 100, Type = "supergroup" }
+                    }
+                }));
+
+        await context.GetMessageContext().Message.DeleteAsync();
+
+        var delete = Assert.IsType<DeleteEphemeralMessage>(fakeClient.Methods.Single());
+        Assert.Equal(100L, delete.ChatId.Integer);
+        Assert.Equal(7L, delete.ReceiverUserId);
+        Assert.Equal(12L, delete.EphemeralMessageId);
+    }
+
+    [Fact]
+    public void BotCommands_Ephemeral_CreatesExplicitEphemeralCommand()
+    {
+        var command = BotCommands.Ephemeral("help", "Show personal help");
+
+        Assert.Equal("help", command.Command);
+        Assert.Equal("Show personal help", command.Description);
+        Assert.True(command.IsEphemeral);
+    }
+
+    [Fact]
+    public async Task EphemeralMessageReference_UsesDedicatedEditAndDeleteMethods()
+    {
+        var fakeClient = new RecordingTelegramClient
+        {
+            Handler = method => method switch
+            {
+                SendMessage => new Message
+                {
+                    MessageId = 0,
+                    EphemeralMessageId = 30,
+                    ReceiverUser = new User { Id = 7, IsBot = false, FirstName = "User" },
+                    Date = 0,
+                    Chat = new Chat { Id = 100, Type = "supergroup" },
+                    Text = "private"
+                },
+                EditEphemeralMessageText => true,
+                EditEphemeralMessageCaption => true,
+                EditEphemeralMessageMedia => true,
+                EditEphemeralMessageReplyMarkup => true,
+                DeleteEphemeralMessage => true,
+                _ => throw new InvalidOperationException("Unexpected method.")
+            }
+        };
+
+        var message = await fakeClient.SendEphemeralMessageAsync(
+            new EphemeralMessageTarget(IntegerString.From(100), 7),
+            "private");
+
+        await message.EditTextAsync("edited");
+        await message.EditCaptionAsync("caption");
+        await message.EditMediaAsync(InputMedia.From(new InputMediaPhoto { Media = "file-id" }));
+        await message.EditReplyMarkupAsync();
+        await message.DeleteAsync();
+
+        Assert.Collection(
+            fakeClient.Methods,
+            method => Assert.IsType<SendMessage>(method),
+            method => Assert.IsType<EditEphemeralMessageText>(method),
+            method => Assert.IsType<EditEphemeralMessageCaption>(method),
+            method => Assert.IsType<EditEphemeralMessageMedia>(method),
+            method => Assert.IsType<EditEphemeralMessageReplyMarkup>(method),
+            method => Assert.IsType<DeleteEphemeralMessage>(method));
+    }
+
+    [Fact]
+    public async Task SendEphemeralMessageAsync_FailsClearlyWhenTelegramOmitsEphemeralMessageId()
+    {
+        var fakeClient = new RecordingTelegramClient
+        {
+            Handler = method => method switch
+            {
+                SendMessage => new Message
+                {
+                    MessageId = 0,
+                    Date = 0,
+                    Chat = new Chat { Id = 100, Type = "supergroup" },
+                    Text = "private"
+                },
+                _ => throw new InvalidOperationException("Unexpected method.")
+            }
+        };
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => fakeClient.SendEphemeralMessageAsync(
+                new EphemeralMessageTarget(IntegerString.From(100), 7),
+                "private"));
+
+        Assert.Contains("ephemeral_message_id", exception.Message);
+    }
+
+    [Fact]
+    public async Task SendEphemeralMessageAsync_RejectsWhitespaceCallbackQueryId()
+    {
+        var fakeClient = new RecordingTelegramClient();
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => fakeClient.SendEphemeralMessageAsync(
+                new EphemeralMessageTarget(IntegerString.From(100), 7),
+                "private",
+                callbackQueryId: " "));
+
+        Assert.Empty(fakeClient.Methods);
+    }
+
+    [Fact]
     public async Task MessageAnswerAsync_CanSendInlineKeyboardWithTypedCallbackData()
     {
         var fakeClient = new RecordingTelegramClient
@@ -3342,6 +3640,116 @@ public sealed class TelegramRuntimeIntegrationTests
                 Assert.Equal("inline-42", edit.InlineMessageId);
                 Assert.Null(edit.ChatId);
                 Assert.Null(edit.MessageId);
+            });
+    }
+
+    [Fact]
+    public async Task CallbackSendEphemeralAsync_UsesCallbackTargetAndTriggerId()
+    {
+        var fakeClient = new RecordingTelegramClient
+        {
+            Handler = method => method switch
+            {
+                SendMessage => new Message
+                {
+                    MessageId = 0,
+                    EphemeralMessageId = 40,
+                    ReceiverUser = new User { Id = 5, IsBot = false, FirstName = "User" },
+                    Date = 0,
+                    Chat = new Chat { Id = 100, Type = "supergroup" },
+                    Text = "private"
+                },
+                _ => throw new InvalidOperationException("Unexpected method.")
+            }
+        };
+
+        using var serviceProvider = CreateTelegramServiceProvider(clientOverride: fakeClient);
+        var context = new UpdateContext(
+            serviceProvider,
+            new TelegramUpdatePayload(
+                new Update
+                {
+                    UpdateId = 1,
+                    CallbackQuery = new CallbackQuery
+                    {
+                        Id = "callback-1",
+                        From = new User { Id = 5, IsBot = false, FirstName = "User" },
+                        Message = MaybeInaccessibleMessage.From(
+                            new Message
+                            {
+                                MessageId = 99,
+                                Date = 1,
+                                Chat = new Chat { Id = 100, Type = "supergroup" }
+                            }),
+                        ChatInstance = "chat-instance"
+                    }
+                }));
+
+        await context.GetCallbackQueryContext().Callback.SendEphemeralAsync("private");
+
+        var sendMessage = Assert.IsType<SendMessage>(fakeClient.Methods.Single());
+        Assert.Equal(100L, sendMessage.ChatId.Integer);
+        Assert.Equal(5L, sendMessage.ReceiverUserId);
+        Assert.Equal("callback-1", sendMessage.CallbackQueryId);
+    }
+
+    [Fact]
+    public async Task CallbackActions_UseEphemeralEndpointsForEphemeralMessageTargets()
+    {
+        var fakeClient = new RecordingTelegramClient
+        {
+            Handler = method => method switch
+            {
+                EditEphemeralMessageText => true,
+                DeleteEphemeralMessage => true,
+                _ => throw new InvalidOperationException("Unexpected method.")
+            }
+        };
+
+        using var serviceProvider = CreateTelegramServiceProvider(clientOverride: fakeClient);
+        var context = new UpdateContext(
+            serviceProvider,
+            new TelegramUpdatePayload(
+                new Update
+                {
+                    UpdateId = 1,
+                    CallbackQuery = new CallbackQuery
+                    {
+                        Id = "callback-1",
+                        From = new User { Id = 5, IsBot = false, FirstName = "User" },
+                        Message = MaybeInaccessibleMessage.From(
+                            new Message
+                            {
+                                MessageId = 0,
+                                EphemeralMessageId = 40,
+                                ReceiverUser = new User { Id = 5, IsBot = false, FirstName = "User" },
+                                Date = 1,
+                                Chat = new Chat { Id = 100, Type = "supergroup" }
+                            }),
+                        ChatInstance = "chat-instance"
+                    }
+                }));
+
+        var callback = context.GetCallbackQueryContext().Callback;
+        var editResult = await callback.EditTextAsync("edited");
+        await callback.DeleteMessageAsync();
+
+        Assert.True(editResult.Boolean);
+        Assert.Collection(
+            fakeClient.Methods,
+            method =>
+            {
+                var edit = Assert.IsType<EditEphemeralMessageText>(method);
+                Assert.Equal(100L, edit.ChatId.Integer);
+                Assert.Equal(5L, edit.ReceiverUserId);
+                Assert.Equal(40L, edit.EphemeralMessageId);
+            },
+            method =>
+            {
+                var delete = Assert.IsType<DeleteEphemeralMessage>(method);
+                Assert.Equal(100L, delete.ChatId.Integer);
+                Assert.Equal(5L, delete.ReceiverUserId);
+                Assert.Equal(40L, delete.EphemeralMessageId);
             });
     }
 

@@ -17,13 +17,21 @@ internal static class CallbackQueryMessageTargetResolver
 
         if (message.TryGetMessage(out var accessibleMessage) && accessibleMessage is not null)
         {
-            target = new TelegramMessageTarget(accessibleMessage.Chat.Id, accessibleMessage.MessageId);
+            target = new TelegramMessageTarget(
+                accessibleMessage.Chat,
+                accessibleMessage.MessageId,
+                accessibleMessage.EphemeralMessageId,
+                accessibleMessage.ReceiverUser?.Id);
             return true;
         }
 
         if (message.TryGetInaccessibleMessage(out var inaccessibleMessage) && inaccessibleMessage is not null)
         {
-            target = new TelegramMessageTarget(inaccessibleMessage.Chat.Id, inaccessibleMessage.MessageId);
+            target = new TelegramMessageTarget(
+                inaccessibleMessage.Chat,
+                inaccessibleMessage.MessageId,
+                EphemeralMessageId: null,
+                ReceiverUserId: null);
             return true;
         }
 
