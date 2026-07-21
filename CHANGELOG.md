@@ -4,6 +4,26 @@ TeleFlow follows SemVer for published NuGet packages and documented public behav
 
 ## Unreleased
 
+## 1.0.0-alpha.12 - 2026-07-22
+
+### Added
+
+- Added `BotCommands.Create(...)` and `BotCommands.Ephemeral(...)` helpers for explicit normal and Telegram ephemeral command registration.
+- Added client, message, and callback helpers for Telegram ephemeral messages, including explicit targets and dedicated edit/delete operations.
+
+### Changed
+
+- Command routes now use the longest matching configured prefix regardless of configuration order.
+- Standard `AddLongPolling()` and `AddWebhook()` applications resolve and cache bot identity once at startup when `BotUsername` is not configured. Direct/custom update pipelines remain explicit and should configure `BotUsername` when mention-qualified command routing is required.
+- Long-polling diagnostics now emit received, matched/no-match, and acknowledged update lifecycle events at `Information`; detailed elapsed-time diagnostics remain opt-in through `Debug`.
+- Added an explicit EN/RU update failure and acknowledgement contract covering routes, middleware, error handlers, cancellation, long polling, and webhooks.
+
+### Fixed
+
+- Slash commands addressed to another bot, such as `/start@another_bot`, no longer match local command routes.
+- Automatic callback-answer failures now use the existing `[Error]` handler pipeline. A handled error acknowledges the update; an unhandled error preserves fail-fast delivery behavior.
+- Expected application cancellation no longer produces an error-level update-processing log.
+
 ## 1.0.0-alpha.11 - 2026-07-21
 
 ### Added
