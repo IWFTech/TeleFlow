@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using TeleFlow.Annotations;
 using TeleFlow.Framework.Dispatching;
 using TeleFlow.Framework.Updates;
@@ -84,6 +85,23 @@ public sealed class TelegramFrameworkWebhookTests
         using var provider = services.BuildServiceProvider();
 
         Assert.Single(provider.GetServices<IUpdateSource>());
+    }
+
+    [Fact]
+    public void AddWebhook_RegistersBotIdentityStartupService()
+    {
+        var services = new ServiceCollection();
+        services.AddTelegramBot(options =>
+        {
+            options.Token = "test-token";
+            options.BotUsername = "teleflow_test_bot";
+        });
+        services.AddWebhook();
+
+        using var provider = services.BuildServiceProvider();
+        var service = Assert.Single(provider.GetServices<IHostedService>());
+
+        Assert.IsAssignableFrom<IHostedLifecycleService>(service);
     }
 
     [Fact]
