@@ -14,6 +14,7 @@ using TeleFlow.Framework.Callbacks;
 using TeleFlow.Framework.Dispatching;
 using TeleFlow.Framework.Updates;
 using TeleFlow.Telegram;
+using TeleFlow.Telegram.Formatting;
 using TeleFlow.Telegram.Schema.Abstractions;
 using TeleFlow.Telegram.Schema.Methods;
 using TeleFlow.Telegram.Schema.Types;
@@ -3087,6 +3088,40 @@ public sealed class TelegramRuntimeIntegrationTests
     }
 
     [Fact]
+    public async Task MessageAnswerAsync_UsesFormattedTextModeInsteadOfClientDefault()
+    {
+        var fakeClient = CreateRecordingMessageClient<SendMessage>();
+        fakeClient.Defaults.ParseMode = TelegramParseMode.MarkdownV2;
+
+        using var serviceProvider = CreateTelegramServiceProvider(clientOverride: fakeClient);
+        var context = CreateScopedMessageUpdateContext(serviceProvider);
+        var text = TelegramHtml.Create().Bold("formatted").Build();
+
+        await context.GetMessageContext().Message.AnswerAsync(text);
+
+        var sendMessage = Assert.IsType<SendMessage>(fakeClient.Methods.Single());
+        Assert.Equal("<b>formatted</b>", sendMessage.Text);
+        Assert.Equal(TelegramParseMode.Html.Value, sendMessage.ParseMode);
+    }
+
+    [Fact]
+    public async Task MessageReplyAsync_UsesFormattedTextModeAndReplyTarget()
+    {
+        var fakeClient = CreateRecordingMessageClient<SendMessage>();
+        fakeClient.Defaults.ParseMode = TelegramParseMode.Html;
+
+        using var serviceProvider = CreateTelegramServiceProvider(clientOverride: fakeClient);
+        var context = CreateScopedMessageUpdateContext(serviceProvider);
+        var text = TelegramMarkdownV2.Create().Bold("formatted").Build();
+
+        await context.GetMessageContext().Message.ReplyAsync(text);
+
+        var sendMessage = Assert.IsType<SendMessage>(fakeClient.Methods.Single());
+        Assert.Equal(10L, sendMessage.ReplyParameters?.MessageId);
+        Assert.Equal(TelegramParseMode.MarkdownV2.Value, sendMessage.ParseMode);
+    }
+
+    [Fact]
     public async Task MessageReplyTextAsync_RemainsObsoleteAliasForReplyAsync()
     {
         var fakeClient = new RecordingTelegramClient
@@ -3837,6 +3872,51 @@ public sealed class TelegramRuntimeIntegrationTests
     }
 
     [Fact]
+    public async Task CallbackFormattedEditText_UsesExplicitModeForEphemeralMessageTargets()
+    {
+        var fakeClient = new RecordingTelegramClient
+        {
+            Handler = method => method switch
+            {
+                EditEphemeralMessageText => true,
+                _ => throw new InvalidOperationException("Unexpected method.")
+            }
+        };
+        fakeClient.Defaults.ParseMode = TelegramParseMode.MarkdownV2;
+
+        using var serviceProvider = CreateTelegramServiceProvider(clientOverride: fakeClient);
+        var context = new UpdateContext(
+            serviceProvider,
+            new TelegramUpdatePayload(
+                new Update
+                {
+                    UpdateId = 1,
+                    CallbackQuery = new CallbackQuery
+                    {
+                        Id = "callback-1",
+                        From = new User { Id = 5, IsBot = false, FirstName = "User" },
+                        Message = MaybeInaccessibleMessage.From(
+                            new Message
+                            {
+                                MessageId = 0,
+                                EphemeralMessageId = 40,
+                                ReceiverUser = new User { Id = 5, IsBot = false, FirstName = "User" },
+                                Date = 1,
+                                Chat = new Chat { Id = 100, Type = "supergroup" }
+                            }),
+                        ChatInstance = "chat-instance"
+                    }
+                }));
+        var text = TelegramHtml.Create().Bold("formatted").Build();
+
+        await context.GetCallbackQueryContext().Callback.EditTextAsync(text);
+
+        var edit = Assert.IsType<EditEphemeralMessageText>(fakeClient.Methods.Single());
+        Assert.Equal("<b>formatted</b>", edit.Text);
+        Assert.Equal(TelegramParseMode.Html.Value, edit.ParseMode);
+    }
+
+    [Fact]
     public async Task CallbackEditText_CanSendInlineKeyboardWithTypedCallbackData()
     {
         var fakeClient = new RecordingTelegramClient
@@ -3874,6 +3954,30 @@ public sealed class TelegramRuntimeIntegrationTests
         var edit = Assert.IsType<EditMessageText>(fakeClient.Methods.Single());
         Assert.Equal("inline-42", edit.InlineMessageId);
         Assert.Equal("del:99", edit.ReplyMarkup?.InlineKeyboard[0][0].CallbackData);
+    }
+
+    [Fact]
+    public async Task CallbackEditTextAsync_UsesFormattedTextMode()
+    {
+        var fakeClient = new RecordingTelegramClient
+        {
+            Handler = method => method switch
+            {
+                EditMessageText => MessageBoolean.From(true),
+                _ => throw new InvalidOperationException("Unexpected method.")
+            }
+        };
+        fakeClient.Defaults.ParseMode = TelegramParseMode.Html;
+
+        using var serviceProvider = CreateTelegramServiceProvider(clientOverride: fakeClient);
+        var context = CreateCallbackQueryUpdateContext(serviceProvider);
+        var text = TelegramMarkdownV2.Create().Bold("formatted").Build();
+
+        await context.GetCallbackQueryContext().Callback.EditTextAsync(text);
+
+        var edit = Assert.IsType<EditMessageText>(fakeClient.Methods.Single());
+        Assert.Equal("*formatted*", edit.Text);
+        Assert.Equal(TelegramParseMode.MarkdownV2.Value, edit.ParseMode);
     }
 
     [Fact]

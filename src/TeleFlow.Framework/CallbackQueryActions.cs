@@ -1,6 +1,7 @@
 using TeleFlow.Telegram.Internal;
 using TeleFlow.Telegram.Schema.Abstractions;
 using TeleFlow.Telegram.Schema.Types;
+using TeleFlow.Telegram.Formatting;
 
 namespace TeleFlow.Telegram;
 
@@ -56,7 +57,19 @@ public sealed class CallbackQueryActions
 
     public Task<MessageBoolean> EditTextAsync(string text, CancellationToken cancellationToken = default)
     {
-        return EditTextCoreAsync(text, replyMarkup: null, cancellationToken);
+        return EditTextCoreAsync(text, replyMarkup: null, parseMode: null, cancellationToken);
+    }
+
+    /// <summary>
+    /// Edits the callback message with formatted text.
+    /// The formatted value carries its explicit Telegram parse mode and does not use the client's parse-mode default.
+    /// </summary>
+    public Task<MessageBoolean> EditTextAsync(
+        TelegramFormattedText text,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        return EditTextCoreAsync(text.Text, replyMarkup: null, text.ParseMode, cancellationToken);
     }
 
     public Task<MessageBoolean> EditTextAsync(
@@ -65,12 +78,26 @@ public sealed class CallbackQueryActions
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(replyMarkup);
-        return EditTextCoreAsync(text, replyMarkup, cancellationToken);
+        return EditTextCoreAsync(text, replyMarkup, parseMode: null, cancellationToken);
+    }
+
+    /// <summary>
+    /// Edits the callback message with formatted text and an inline keyboard.
+    /// </summary>
+    public Task<MessageBoolean> EditTextAsync(
+        TelegramFormattedText text,
+        InlineKeyboardMarkup replyMarkup,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        ArgumentNullException.ThrowIfNull(replyMarkup);
+        return EditTextCoreAsync(text.Text, replyMarkup, text.ParseMode, cancellationToken);
     }
 
     private Task<MessageBoolean> EditTextCoreAsync(
         string text,
         InlineKeyboardMarkup? replyMarkup,
+        TelegramParseMode? parseMode,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(text);
@@ -79,13 +106,14 @@ public sealed class CallbackQueryActions
         {
             if (target.IsEphemeral)
             {
-                return EditEphemeralTextAsync(target, text, replyMarkup, cancellationToken);
+                return EditEphemeralTextAsync(target, text, replyMarkup, parseMode, cancellationToken);
             }
 
             return _context.Bot.EditMessageTextAsync(
                 chatId: IntegerString.From(target.ChatId),
                 messageId: target.MessageId,
                 text: text,
+                parseMode: parseMode,
                 replyMarkup: replyMarkup,
                 cancellationToken: ResolveCancellationToken(cancellationToken));
         }
@@ -95,6 +123,7 @@ public sealed class CallbackQueryActions
             return _context.Bot.EditMessageTextAsync(
                 inlineMessageId: _context.TelegramCallbackQuery.InlineMessageId,
                 text: text,
+                parseMode: parseMode,
                 replyMarkup: replyMarkup,
                 cancellationToken: ResolveCancellationToken(cancellationToken));
         }
@@ -154,6 +183,7 @@ public sealed class CallbackQueryActions
         TelegramMessageTarget target,
         string text,
         InlineKeyboardMarkup? replyMarkup,
+        TelegramParseMode? parseMode,
         CancellationToken cancellationToken)
     {
         var result = await _context.Bot.EditEphemeralMessageTextAsync(
@@ -161,6 +191,7 @@ public sealed class CallbackQueryActions
             EphemeralMessageTargetResolver.ResolveReceiverUserId(_context.TelegramCallbackQuery, target),
             target.EphemeralMessageId!.Value,
             text,
+            parseMode: parseMode,
             replyMarkup: replyMarkup,
             cancellationToken: ResolveCancellationToken(cancellationToken)).ConfigureAwait(false);
 
