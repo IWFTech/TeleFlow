@@ -8,6 +8,10 @@ TeleFlow follows SemVer for published NuGet packages and documented public behav
 
 - Added CI guardrails for generated Telegram schema/client updates, requiring changelog acknowledgement and validating Telegram Bot API manifest, badge, and generated header consistency.
 
+### Changed
+
+- Updated the generated Telegram schema and client surface to Telegram Bot API 10.2.
+
 ## 1.0.0-alpha.9 - 2026-07-02
 
 This alpha focuses on Telegram client response execution internals: clearer request execution stages and less JSON rematerialization on successful Bot API responses.
