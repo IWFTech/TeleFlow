@@ -4,6 +4,17 @@ TeleFlow follows SemVer for published NuGet packages and documented public behav
 
 ## Unreleased
 
+## 1.0.0-alpha.11 - 2026-07-21
+
+### Added
+
+- Added `TelegramBotApiEnvironment` to configure production or Telegram Bot API test-environment requests through both `AddTelegramClient(...)` and `AddTelegramBot(...)`.
+- Added test-environment endpoint construction for all outgoing Bot API methods, including custom root `BaseUrl` configurations.
+
+### Changed
+
+- Documented the separate Telegram test-account and test-bot credential requirement, the test endpoint path, and the current payment-update boundary.
+
 ## 1.0.0-alpha.10 - 2026-07-21
 
 ### Added
