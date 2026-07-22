@@ -16,6 +16,8 @@ public sealed class ProjectGraphTests
         Assert.Contains("TeleFlow.Framework.LongPolling", solutionText);
         Assert.Contains("TeleFlow.Framework.Webhooks", solutionText);
         Assert.Contains("TeleFlow.Framework.Hosting", solutionText);
+        Assert.Contains("TeleFlow.Framework.I18n", solutionText);
+        Assert.Contains("TeleFlow.Framework.I18n.Fluent", solutionText);
         Assert.Contains("TeleFlow.Telegram", solutionText);
         Assert.Contains("TeleFlow.Telegram.Client", solutionText);
         Assert.Contains("TeleFlow.Telegram.LongPolling", solutionText);
@@ -134,6 +136,33 @@ public sealed class ProjectGraphTests
         Assert.Equal(
             ["..\\TeleFlow.Framework.Core\\TeleFlow.Framework.Core.csproj"],
             GetProjectReferences("src/TeleFlow.Framework.Hosting/TeleFlow.Framework.Hosting.csproj"));
+    }
+
+    [Fact]
+    public void FrameworkI18n_ReferencesFrameworkOnly()
+    {
+        Assert.Equal(
+            ["..\\TeleFlow.Framework\\TeleFlow.Framework.csproj"],
+            GetProjectReferences("src/TeleFlow.Framework.I18n/TeleFlow.Framework.I18n.csproj"));
+    }
+
+    [Fact]
+    public void FrameworkI18nFluent_ReferencesI18nOnly()
+    {
+        Assert.Equal(
+            ["..\\TeleFlow.Framework.I18n\\TeleFlow.Framework.I18n.csproj"],
+            GetProjectReferences("src/TeleFlow.Framework.I18n.Fluent/TeleFlow.Framework.I18n.Fluent.csproj"));
+    }
+
+    [Fact]
+    public void FrameworkAndCore_DoNotReferenceOptionalI18nPackages()
+    {
+        Assert.DoesNotContain(
+            GetProjectReferences("src/TeleFlow.Framework/TeleFlow.Framework.csproj"),
+            static reference => reference.Contains("I18n", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            GetProjectReferences("src/TeleFlow.Framework.Core/TeleFlow.Framework.Core.csproj"),
+            static reference => reference.Contains("I18n", StringComparison.Ordinal));
     }
 
     [Fact]

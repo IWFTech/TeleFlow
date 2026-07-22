@@ -20,6 +20,8 @@ $runtimePackages = @(
     @{ Id = "IWF.TeleFlow.Annotations"; Project = "src\TeleFlow.Annotations\TeleFlow.Annotations.csproj" },
     @{ Id = "IWF.TeleFlow.Framework.Core"; Project = "src\TeleFlow.Framework.Core\TeleFlow.Framework.Core.csproj" },
     @{ Id = "IWF.TeleFlow.Framework.Hosting"; Project = "src\TeleFlow.Framework.Hosting\TeleFlow.Framework.Hosting.csproj" },
+    @{ Id = "IWF.TeleFlow.Framework.I18n"; Project = "src\TeleFlow.Framework.I18n\TeleFlow.Framework.I18n.csproj" },
+    @{ Id = "IWF.TeleFlow.Framework.I18n.Fluent"; Project = "src\TeleFlow.Framework.I18n.Fluent\TeleFlow.Framework.I18n.Fluent.csproj" },
     @{ Id = "IWF.TeleFlow.Storage.Memory"; Project = "src\TeleFlow.Storage.Memory\TeleFlow.Storage.Memory.csproj" },
     @{ Id = "IWF.TeleFlow.Telegram.Schema"; Project = "src\TeleFlow.Telegram.Schema\TeleFlow.Telegram.Schema.csproj" },
     @{ Id = "IWF.TeleFlow.Telegram.Client"; Project = "src\TeleFlow.Telegram.Client\TeleFlow.Telegram.Client.csproj" },

@@ -30,6 +30,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\TeleFlow.Annotations\TeleFlow.Annotations.csproj" />
     <ProjectReference Include="..\..\src\TeleFlow.Framework.Core\TeleFlow.Framework.Core.csproj" />
+    <ProjectReference Include="..\..\src\TeleFlow.Framework.I18n\TeleFlow.Framework.I18n.csproj" />
+    <ProjectReference Include="..\..\src\TeleFlow.Framework.I18n.Fluent\TeleFlow.Framework.I18n.Fluent.csproj" />
     <ProjectReference Include="..\..\src\TeleFlow.Generators\TeleFlow.Generators.csproj" />
     <ProjectReference Include="..\..\src\TeleFlow.Framework.Hosting\TeleFlow.Framework.Hosting.csproj" />
     <ProjectReference Include="..\..\src\TeleFlow.Storage.Memory\TeleFlow.Storage.Memory.csproj" />

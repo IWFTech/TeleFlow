@@ -12,12 +12,50 @@ using TeleFlow.Framework.States;
 using TeleFlow.Framework.Updates;
 using TeleFlow.Generators;
 using TeleFlow.Telegram;
+using TeleFlow.Telegram.I18n.Fluent;
 using TeleFlow.Telegram.Schema.Types;
 
 namespace TeleFlow.ArchitectureTests;
 
 public sealed class TelegramHandlerGeneratorTests
 {
+    [Fact]
+    public void Generator_TreatsFluentLocalizerAsAnInjectedHandlerService()
+    {
+        var compilation = CreateCompilation(
+            """
+            using System.Threading.Tasks;
+            using TeleFlow.Annotations;
+            using TeleFlow.Telegram;
+            using TeleFlow.Telegram.I18n.Fluent;
+
+            namespace Bot;
+
+            public sealed class LocalizedHandler
+            {
+                [Command("start")]
+                public Task Handle(MessageContext context, IFluentLocalizer localizer)
+                {
+                    _ = localizer.Format("welcome");
+                    return Task.CompletedTask;
+                }
+            }
+            """);
+
+        var generatedCompilation = RunGenerator(compilation, out var diagnostics);
+        var generatedSource = generatedCompilation.SyntaxTrees
+            .Single(tree => tree.FilePath.EndsWith("TeleFlow.Telegram.GeneratedHandlers.g.cs", StringComparison.Ordinal))
+            .ToString();
+        var errors = generatedCompilation.GetDiagnostics()
+            .Concat(diagnostics)
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+
+        Assert.Empty(errors);
+        Assert.Contains("typeof(global::TeleFlow.Telegram.I18n.Fluent.IFluentLocalizer)", generatedSource);
+        Assert.Contains("TelegramGeneratedHandlerParameterKind.Service", generatedSource);
+    }
+
     [Fact]
     public void Generator_EmitsRegistrarMetadataAndDirectInvokers()
     {
@@ -2857,6 +2895,7 @@ public sealed class TelegramHandlerGeneratorTests
         references.Add(MetadataReference.CreateFromFile(typeof(CommandAttribute).Assembly.Location));
         references.Add(MetadataReference.CreateFromFile(typeof(State).Assembly.Location));
         references.Add(MetadataReference.CreateFromFile(typeof(MessageContext).Assembly.Location));
+        references.Add(MetadataReference.CreateFromFile(typeof(IFluentLocalizer).Assembly.Location));
         references.Add(MetadataReference.CreateFromFile(typeof(GeneratedErrorRuntimeProbe).Assembly.Location));
 
         return CSharpCompilation.Create(
