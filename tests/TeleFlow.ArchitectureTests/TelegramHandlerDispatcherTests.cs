@@ -1486,7 +1486,7 @@ public sealed class TelegramHandlerDispatcherTests
     }
 
     [Fact]
-    public async Task FromUserFilter_MatchesExpectedSender()
+    public async Task FromUserFilter_MatchesExpectedHumanSender()
     {
         using var serviceProvider = CreateServiceProvider(
             services =>
@@ -1498,18 +1498,24 @@ public sealed class TelegramHandlerDispatcherTests
         var probe = serviceProvider.GetRequiredService<HandlerProbe>();
 
         await DispatchAsync(serviceProvider, CreateMessageUpdate("hello", fromUserId: 7));
+        await DispatchAsync(
+            serviceProvider,
+            CreateMessageUpdate("hello", message => message with
+            {
+                From = new User { Id = 5, IsBot = true, FirstName = "Bot" }
+            }));
         await DispatchAsync(serviceProvider, CreateMessageUpdate("hello", fromUserId: 5));
 
-        Assert.Equal(["message:hello", "from-user:5"], probe.Events);
+        Assert.Equal(["message:hello", "message:hello", "from-user:5"], probe.Events);
     }
 
     [Fact]
-    public async Task FromHumanFilter_MatchesOnlyActualHumanMessageSenders()
+    public async Task FromUserFilterWithoutIds_MatchesAnyActualHumanMessageSender()
     {
         using var serviceProvider = CreateServiceProvider(
             services =>
             {
-                services.AddTelegramHandler<FromHumanHandler>();
+                services.AddTelegramHandler<AnyUserSenderHandler>();
                 services.AddTelegramHandler<AnyMessageHandler>();
             });
 
@@ -1530,7 +1536,41 @@ public sealed class TelegramHandlerDispatcherTests
                 SenderChat = new Chat { Id = -100, Type = "channel", Title = "Channel" }
             }));
 
-        Assert.Equal(["from-human:human", "message:bot", "message:sender-chat"], probe.Events);
+        Assert.Equal(["from-user:human", "message:bot", "message:sender-chat"], probe.Events);
+    }
+
+    [Fact]
+    public async Task FromBotFilterWithIds_MatchesOnlyExpectedBotSender()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.AddTelegramHandler<FromBotByIdHandler>();
+                services.AddTelegramHandler<AnyMessageHandler>();
+            });
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(
+            serviceProvider,
+            CreateMessageUpdate("other-bot", message => message with
+            {
+                From = new User { Id = 11, IsBot = true, FirstName = "Other bot" }
+            }));
+        await DispatchAsync(
+            serviceProvider,
+            CreateMessageUpdate("human", message => message with
+            {
+                From = new User { Id = 10, IsBot = false, FirstName = "Human" }
+            }));
+        await DispatchAsync(
+            serviceProvider,
+            CreateMessageUpdate("expected-bot", message => message with
+            {
+                From = new User { Id = 10, IsBot = true, FirstName = "Expected bot" }
+            }));
+
+        Assert.Equal(["message:other-bot", "message:human", "from-bot:10"], probe.Events);
     }
 
     [Fact]
@@ -1601,7 +1641,7 @@ public sealed class TelegramHandlerDispatcherTests
             services =>
             {
                 services.AddTelegramHandler<CallbackFromUserHandler>();
-                services.AddTelegramHandler<CallbackFromHumanHandler>();
+                services.AddTelegramHandler<CallbackFromAnyUserHandler>();
                 services.AddTelegramHandler<CallbackFromBotHandler>();
                 services.AddTelegramHandler<CallbackFromPremiumUserHandler>();
                 services.AddTelegramHandler<RawCallbackHandler>();
@@ -1629,7 +1669,7 @@ public sealed class TelegramHandlerDispatcherTests
                 "callback-user:user:no-message",
                 "callback-user:user:accessible",
                 "callback-user:user:inaccessible",
-                "callback-human:human:no-message",
+                "callback-user-any:human:no-message",
                 "callback-bot:bot:no-message",
                 "callback-premium:premium:no-message"
             ],
@@ -4550,13 +4590,24 @@ public sealed class TelegramHandlerDispatcherTests
         }
     }
 
-    public sealed class FromHumanHandler
+    public sealed class AnyUserSenderHandler
     {
         [Message]
-        [FromHuman]
+        [FromUser]
         public Task Handle(MessageContext context, HandlerProbe probe)
         {
-            probe.Events.Add($"from-human:{context.TelegramMessage.Text}");
+            probe.Events.Add($"from-user:{context.TelegramMessage.Text}");
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class FromBotByIdHandler
+    {
+        [Message]
+        [FromBot(10)]
+        public Task Handle(MessageContext context, HandlerProbe probe)
+        {
+            probe.Events.Add($"from-bot:{context.TelegramMessage.From?.Id}");
             return Task.CompletedTask;
         }
     }
@@ -4565,8 +4616,6 @@ public sealed class TelegramHandlerDispatcherTests
     {
         [Message]
         [FromUser(5)]
-        [FromHuman]
-        [FromBot(false)]
         [FromPremiumUser]
         public Task Handle(MessageContext context, HandlerProbe probe)
         {
@@ -4609,14 +4658,14 @@ public sealed class TelegramHandlerDispatcherTests
         }
     }
 
-    public sealed class CallbackFromHumanHandler
+    public sealed class CallbackFromAnyUserHandler
     {
         [Callback]
         [CallbackDataPrefix("human:")]
-        [FromHuman]
+        [FromUser]
         public Task Handle(CallbackQueryContext context, HandlerProbe probe)
         {
-            probe.Events.Add($"callback-human:{context.TelegramCallbackQuery.Data}");
+            probe.Events.Add($"callback-user-any:{context.TelegramCallbackQuery.Data}");
             return Task.CompletedTask;
         }
     }
@@ -4824,7 +4873,7 @@ public sealed class TelegramHandlerDispatcherTests
     public sealed class HumanSenderHandler
     {
         [Message]
-        [FromBot(false)]
+        [FromUser]
         public Task Handle(MessageContext context, HandlerProbe probe)
         {
             probe.Events.Add("from-human");
@@ -5065,7 +5114,7 @@ public sealed class TelegramHandlerDispatcherTests
     public sealed class ChatMemberWithSenderUserFilterHandler
     {
         [ChatMemberUpdated]
-        [FromHuman]
+        [FromUser]
         public Task Handle(ChatMemberUpdatedContext context)
         {
             return Task.CompletedTask;

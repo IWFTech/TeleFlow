@@ -110,9 +110,8 @@ Use regex only when the input shape cannot be expressed as a template clearly.
 | `[ChatId(...)]` | Limits handler to chat ids. Zero is rejected. |
 | `[ChatUsername(...)]` | Limits handler to chat usernames. |
 | `[MessageThreadId(...)]` | Limits handler to message thread ids. |
-| `[FromUser(...)]` | Limits message, command, and callback handlers to actual sender user IDs. |
-| `[FromHuman]` | Requires an actual non-bot sender user. |
-| `[FromBot]` | Filters by the sender user's bot flag. |
+| `[FromUser(...)]` | Requires a non-bot sender and optionally limits it to specific user IDs. |
+| `[FromBot(...)]` | Requires a bot sender and optionally limits it to specific bot user IDs. |
 | `[FromPremiumUser]` | Requires a Telegram Premium sender user. |
 | `[RequireTelegramRole(...)]` | Requires Telegram member statuses. |
 

@@ -50,7 +50,6 @@ internal static class TelegramHandlerSymbols
     public const string HasPollAttribute = "TeleFlow.Annotations.HasPollAttribute";
     public const string HasDiceAttribute = "TeleFlow.Annotations.HasDiceAttribute";
     public const string FromBotAttribute = "TeleFlow.Annotations.FromBotAttribute";
-    public const string FromHumanAttribute = "TeleFlow.Annotations.FromHumanAttribute";
     public const string FromPremiumUserAttribute = "TeleFlow.Annotations.FromPremiumUserAttribute";
     public const string IsReplyAttribute = "TeleFlow.Annotations.IsReplyAttribute";
     public const string ReplyToBotAttribute = "TeleFlow.Annotations.ReplyToBotAttribute";

@@ -78,22 +78,37 @@ Telegram exposes both the chat where an update arrived and the identity that sen
 | Filter | Reads | Supported routes | Meaning |
 | --- | --- | --- | --- |
 | `[ChatType(...)]` | Destination chat | Message, command, callback, chat member | The chat where the update happened. |
-| `[FromUser(...)]` | Sender user ID | Message, command, callback | An allowlist of actual Telegram user IDs. |
-| `[FromHuman]` | Sender user | Message, command, callback | The sender is a non-bot user. |
-| `[FromBot]` | Sender user | Message, command, callback | The sender is a bot. `[FromBot(false)]` remains supported; prefer `[FromHuman]` when that is what the code means. |
+| `[FromUser(...)]` | Sender user | Message, command, callback | A non-bot user, optionally limited to specific user IDs. |
+| `[FromBot(...)]` | Sender user | Message, command, callback | A bot, optionally limited to specific bot user IDs. |
 | `[FromPremiumUser]` | Sender user | Message, command, callback | The sender is a Telegram Premium user. |
 | `[SenderChatType(...)]` | `message.sender_chat` | Message, command | The message was sent on behalf of a channel or another chat. |
 
-Use `[FromHuman]` for commands intended for people:
+Use parameterless `[FromUser]` for commands intended for people:
 
 ```csharp
 [Command("profile")]
-[FromHuman]
+[FromUser]
 public Task Profile(MessageContext ctx, CancellationToken ct)
 {
     return ctx.Message.AnswerAsync("Human sender.", ct);
 }
 ```
+
+Passing IDs narrows the same category. It does not change what that category means:
+
+```csharp
+[Command("admin")]
+[FromUser(123456789)]
+public Task HumanAdmin(MessageContext ctx, CancellationToken ct) =>
+    ctx.Message.AnswerAsync("Human administrator.", ct);
+
+[Command("integration")]
+[FromBot(987654321)]
+public Task IntegrationBot(MessageContext ctx, CancellationToken ct) =>
+    ctx.Message.AnswerAsync("Known bot integration.", ct);
+```
+
+`[FromUser]` never matches a bot, even when its ID appears in the allowlist. `[FromBot]` never matches a human. The former `[FromBot(false)]` form is no longer supported; use `[FromUser]` instead.
 
 Use `[SenderChatType]` when message provenance matters:
 
@@ -109,7 +124,7 @@ public Task ChannelPostInGroup(MessageContext ctx, CancellationToken ct)
 
 Here `[ChatType]` checks the destination supergroup. `[SenderChatType]` checks the channel that sent the message.
 
-Telegram may include a backward-compatible fake `message.from` for messages sent on behalf of a chat. TeleFlow does not treat that value as a real sender user. Consequently, `[FromUser]`, `[FromHuman]`, `[FromBot]`, and `[FromPremiumUser]` do not match such a message. Use `[SenderChatType]` instead.
+Telegram may include a backward-compatible fake `message.from` for messages sent on behalf of a chat. TeleFlow does not treat that value as a real sender user. Consequently, `[FromUser]`, `[FromBot]`, and `[FromPremiumUser]` do not match such a message. Use `[SenderChatType]` instead.
 
 For callbacks, sender-user filters read `callback_query.from` and do not depend on whether the callback contains an accessible message:
 

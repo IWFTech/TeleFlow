@@ -60,6 +60,24 @@ public sealed class AnnotationContractTests
     }
 
     [Fact]
+    public void SenderIdentityAttributes_AllowAnEmptyIdFilter()
+    {
+        Assert.Empty(new FromUserAttribute().UserIds);
+        Assert.Empty(new FromBotAttribute().BotIds);
+    }
+
+    [Fact]
+    public void FromBotAttribute_DefensivelyCopiesInputArray()
+    {
+        var botIds = new[] { 100L };
+
+        var attribute = new FromBotAttribute(botIds);
+        botIds[0] = 200;
+
+        Assert.Equal([100L], attribute.BotIds);
+    }
+
+    [Fact]
     public void ChatIdAttribute_DefensivelyCopiesInputArray()
     {
         var chatIds = new[] { -100L };

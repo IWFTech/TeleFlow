@@ -68,13 +68,10 @@ internal static class TelegramFilterEvaluator
                                                    filter.StringValues,
                                                    username,
                                                    StringComparison.OrdinalIgnoreCase),
-            TelegramFilterKind.FromUser => facts.SenderUser is not null &&
-                                           ContainsLong(filter.LongValues, facts.SenderUser.Id),
-            TelegramFilterKind.FromHuman => facts.SenderUser is { IsBot: false },
-            TelegramFilterKind.FromBot => facts.SenderUser is not null &&
-                                          GetFirstStringValue(filter) is { } expected &&
-                                          bool.TryParse(expected, out var expectedValue) &&
-                                          facts.SenderUser.IsBot == expectedValue,
+            TelegramFilterKind.FromUser => facts.SenderUser is { IsBot: false } user &&
+                                           MatchesOptionalId(filter.LongValues, user.Id),
+            TelegramFilterKind.FromBot => facts.SenderUser is { IsBot: true } bot &&
+                                          MatchesOptionalId(filter.LongValues, bot.Id),
             TelegramFilterKind.FromPremiumUser => facts.SenderUser?.IsPremium == true,
             TelegramFilterKind.SenderChatType => facts.SenderChat is not null &&
                                                  ContainsString(
@@ -197,11 +194,11 @@ internal static class TelegramFilterEvaluator
         return await ResolveUncachedStatusAsync(context, identity, cancellationToken).ConfigureAwait(false);
     }
 
-    private static string? GetFirstStringValue(TelegramFilterDescriptor filter)
+    private static bool MatchesOptionalId(
+        IReadOnlyList<long> ids,
+        long id)
     {
-        return filter.StringValues.Count > 0
-            ? filter.StringValues[0]
-            : null;
+        return ids.Count == 0 || ContainsLong(ids, id);
     }
 
     private static bool ContainsString(

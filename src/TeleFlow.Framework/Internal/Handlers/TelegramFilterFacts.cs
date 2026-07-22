@@ -45,7 +45,6 @@ internal static class TelegramFilterFacts
         new(typeof(HasVenueAttribute), TelegramFilterKind.HasVenue, TelegramMarkerFilterGroup.MessageContent),
         new(typeof(HasPollAttribute), TelegramFilterKind.HasPoll, TelegramMarkerFilterGroup.MessageContent),
         new(typeof(HasDiceAttribute), TelegramFilterKind.HasDice, TelegramMarkerFilterGroup.MessageContent),
-        new(typeof(FromHumanAttribute), TelegramFilterKind.FromHuman, TelegramMarkerFilterGroup.SenderUser),
         new(typeof(FromPremiumUserAttribute), TelegramFilterKind.FromPremiumUser, TelegramMarkerFilterGroup.SenderUser),
         new(typeof(IsReplyAttribute), TelegramFilterKind.IsReply, TelegramMarkerFilterGroup.MessageSender),
         new(typeof(ReplyToBotAttribute), TelegramFilterKind.ReplyToBot, TelegramMarkerFilterGroup.MessageSender),
@@ -73,7 +72,6 @@ internal static class TelegramFilterFacts
                 TelegramFilterKind.CallbackDataPrefix => TelegramFilterTarget.Callback,
 
             TelegramFilterKind.FromUser or
-                TelegramFilterKind.FromHuman or
                 TelegramFilterKind.FromBot or
                 TelegramFilterKind.FromPremiumUser => TelegramFilterTarget.SenderUser,
 

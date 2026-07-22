@@ -110,9 +110,8 @@ Regex стоит использовать только когда форма inp
 | `[ChatId(...)]` | Limits handler to chat ids. Ноль отклоняется. |
 | `[ChatUsername(...)]` | Limits handler to chat usernames. |
 | `[MessageThreadId(...)]` | Limits handler to message thread ids. |
-| `[FromUser(...)]` | Ограничивает message, command и callback handlers по ID реального user sender. |
-| `[FromHuman]` | Требует реального user sender, который не является bot. |
-| `[FromBot]` | Проверяет bot flag пользователя-отправителя. |
+| `[FromUser(...)]` | Требует отправителя-человека и при необходимости ограничивает его конкретными user IDs. |
+| `[FromBot(...)]` | Требует отправителя-bot и при необходимости ограничивает его конкретными bot user IDs. |
 | `[FromPremiumUser]` | Требует Telegram Premium пользователя-отправителя. |
 | `[RequireTelegramRole(...)]` | Requires Telegram member statuses. |
 

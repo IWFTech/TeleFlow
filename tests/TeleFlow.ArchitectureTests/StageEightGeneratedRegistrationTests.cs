@@ -353,6 +353,24 @@ public sealed class StageEightGeneratedRegistrationTests
                 SenderChat = new Chat { Id = -100, Type = "channel", Title = "Channel" }
             }));
         await DispatchAsync(serviceProvider, CreateCallbackUpdate("sender-user:no-message"));
+        await DispatchAsync(
+            serviceProvider,
+            CreateMessageUpdate("generated-bot", configure: message => message with
+            {
+                From = new User { Id = 11, IsBot = true, FirstName = "Other bot" }
+            }));
+        await DispatchAsync(
+            serviceProvider,
+            CreateMessageUpdate("generated-bot", configure: message => message with
+            {
+                From = new User { Id = 10, IsBot = false, FirstName = "Human" }
+            }));
+        await DispatchAsync(
+            serviceProvider,
+            CreateMessageUpdate("generated-bot", configure: message => message with
+            {
+                From = new User { Id = 10, IsBot = true, FirstName = "Expected bot" }
+            }));
 
         Assert.Equal(
             [
@@ -360,7 +378,10 @@ public sealed class StageEightGeneratedRegistrationTests
                 "fallback:generated-human",
                 "fallback:generated-sender-chat",
                 "generated-sender-chat",
-                "generated-callback-sender:sender-user:no-message"
+                "generated-callback-sender:sender-user:no-message",
+                "fallback:generated-bot",
+                "fallback:generated-bot",
+                "generated-bot"
             ],
             probe.Events);
     }
@@ -1164,7 +1185,7 @@ internal sealed class StageEightGeneratedHandlersRegistrar : ITelegramGeneratedH
             textFilters: [new("generated-human", TextMatchMode.Equals, ignoreCase: true)],
             filters:
             [
-                new(TelegramGeneratedFilterKind.FromHuman)
+                new(TelegramGeneratedFilterKind.FromUser)
             ],
             chatMemberTransitions: [],
             roleRequirements: [],
@@ -1232,6 +1253,34 @@ internal sealed class StageEightGeneratedHandlersRegistrar : ITelegramGeneratedH
                 new(typeof(GeneratedHandlerProbe), TelegramGeneratedHandlerParameterKind.Service, "probe")
             ],
             InvokeCallbackSender));
+
+        registry.RegisterHandler(new TelegramGeneratedHandlerDescriptor(
+            typeof(GeneratedBotSenderHandler),
+            nameof(GeneratedBotSenderHandler.Handle),
+            TelegramGeneratedHandlerKind.Message,
+            TelegramGeneratedRouteKind.TextExact,
+            routePattern: "generated-bot",
+            commandPrefixes: ["/"],
+            allowSpaceAfterPrefix: false,
+            ignoreCase: true,
+            registrationOrder: 20,
+            moduleName: null,
+            command: null,
+            callbackPayloadType: null,
+            textFilters: [new("generated-bot", TextMatchMode.Equals, ignoreCase: true)],
+            filters:
+            [
+                new(TelegramGeneratedFilterKind.FromBot, longValues: [10])
+            ],
+            chatMemberTransitions: [],
+            roleRequirements: [],
+            states: [],
+            parameters:
+            [
+                new(typeof(MessageContext), TelegramGeneratedHandlerParameterKind.Context, "context"),
+                new(typeof(GeneratedHandlerProbe), TelegramGeneratedHandlerParameterKind.Service, "probe")
+            ],
+            InvokeBotSender));
 
         registry.RegisterHandler(new TelegramGeneratedHandlerDescriptor(
             typeof(GeneratedSceneStartHandler),
@@ -1656,6 +1705,15 @@ internal sealed class StageEightGeneratedHandlersRegistrar : ITelegramGeneratedH
         await handler.Handle((CallbackQueryContext)arguments[0]!, (GeneratedHandlerProbe)arguments[1]!);
     }
 
+    private static async ValueTask InvokeBotSender(
+        IServiceProvider services,
+        object?[] arguments,
+        CancellationToken cancellationToken)
+    {
+        var handler = (GeneratedBotSenderHandler)services.GetRequiredService(typeof(GeneratedBotSenderHandler));
+        await handler.Handle((MessageContext)arguments[0]!, (GeneratedHandlerProbe)arguments[1]!);
+    }
+
     private static async ValueTask InvokeSceneStart(
         IServiceProvider services,
         object?[] arguments,
@@ -2070,6 +2128,15 @@ public sealed class GeneratedHumanSenderHandler
     public Task Handle(MessageContext context, GeneratedHandlerProbe probe)
     {
         probe.Events.Add("generated-human");
+        return Task.CompletedTask;
+    }
+}
+
+public sealed class GeneratedBotSenderHandler
+{
+    public Task Handle(MessageContext context, GeneratedHandlerProbe probe)
+    {
+        probe.Events.Add("generated-bot");
         return Task.CompletedTask;
     }
 }

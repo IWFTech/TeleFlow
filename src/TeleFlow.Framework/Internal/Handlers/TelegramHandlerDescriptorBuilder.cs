@@ -436,8 +436,8 @@ internal static class TelegramHandlerDescriptorBuilder
         {
             filters.Add(new TelegramFilterDescriptor(
                 TelegramFilterKind.FromBot,
-                [fromBot.Value.ToString()],
-                longValues: []));
+                stringValues: [],
+                fromBot.BotIds.ToArray()));
         }
 
         AppendMarkerFilters(filters, member, TelegramMarkerFilterGroup.SenderUser);

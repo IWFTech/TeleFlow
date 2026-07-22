@@ -928,8 +928,6 @@ public sealed class TelegramHandlerGeneratorTests
                 [HasText]
                 [HasCaption]
                 [HasVideo]
-                [FromBot(false)]
-                [FromHuman]
                 [FromPremiumUser]
                 [IsReply]
                 [FromUser(5)]
@@ -940,6 +938,26 @@ public sealed class TelegramHandlerGeneratorTests
                     return Task.CompletedTask;
                 }
 
+            }
+
+            public sealed class AnyUserHandlers
+            {
+                [Message]
+                [FromUser]
+                public Task Handle(MessageContext context)
+                {
+                    return Task.CompletedTask;
+                }
+            }
+
+            public sealed class BotHandlers
+            {
+                [Message]
+                [FromBot(10)]
+                public Task Handle(MessageContext context)
+                {
+                    return Task.CompletedTask;
+                }
             }
 
             public sealed class CallbackFilteredHandlers
@@ -993,8 +1011,7 @@ public sealed class TelegramHandlerGeneratorTests
         Assert.Contains("TelegramGeneratedFilterKind.HasCaption", generatedSource);
         Assert.Contains("TelegramGeneratedFilterKind.HasVideo", generatedSource);
         Assert.Contains("TelegramGeneratedFilterKind.FromBot", generatedSource);
-        Assert.Contains("\"False\"", generatedSource);
-        Assert.Contains("TelegramGeneratedFilterKind.FromHuman", generatedSource);
+        Assert.Contains("10L", generatedSource);
         Assert.Contains("TelegramGeneratedFilterKind.FromPremiumUser", generatedSource);
         Assert.Contains("TelegramGeneratedFilterKind.IsReply", generatedSource);
         Assert.Contains("TelegramGeneratedFilterKind.FromUser", generatedSource);
@@ -2326,6 +2343,10 @@ public sealed class TelegramHandlerGeneratorTests
                 public Task InvalidUser(MessageContext context) => Task.CompletedTask;
 
                 [Message]
+                [FromBot(0)]
+                public Task InvalidBot(MessageContext context) => Task.CompletedTask;
+
+                [Message]
                 [ChatType((TelegramChatType)999)]
                 public Task InvalidChatType(MessageContext context) => Task.CompletedTask;
 
@@ -2365,7 +2386,7 @@ public sealed class TelegramHandlerGeneratorTests
                 public Task HasThreadOnChatMember(ChatMemberUpdatedContext context) => Task.CompletedTask;
 
                 [ChatMemberUpdated]
-                [FromHuman]
+                [FromUser]
                 public Task SenderUserOnChatMember(ChatMemberUpdatedContext context) => Task.CompletedTask;
             }
             """);
@@ -2374,7 +2395,8 @@ public sealed class TelegramHandlerGeneratorTests
         AssertInvalidFilterDiagnostic(diagnostics, "Callback filters cannot be used on message handlers.");
         AssertInvalidFilterDiagnostic(diagnostics, "ChatTypeAttribute must specify at least one known Telegram chat type.");
         AssertInvalidFilterDiagnostic(diagnostics, "SenderChatTypeAttribute must specify at least one known Telegram chat type.");
-        AssertInvalidFilterDiagnostic(diagnostics, "FromUserAttribute must specify at least one positive Telegram user id.");
+        AssertInvalidFilterDiagnostic(diagnostics, "FromUserAttribute must contain only positive Telegram user ids.");
+        AssertInvalidFilterDiagnostic(diagnostics, "FromBotAttribute must contain only positive Telegram bot ids.");
         AssertInvalidFilterDiagnostic(diagnostics, "ChatIdAttribute must specify at least one non-zero Telegram chat id.");
         AssertInvalidFilterDiagnostic(diagnostics, "ChatUsernameAttribute must specify at least one non-empty Telegram chat username.");
         AssertInvalidFilterDiagnostic(diagnostics, "MessageThreadIdAttribute must specify at least one positive Telegram message thread id.");
@@ -2440,12 +2462,22 @@ public sealed class TelegramHandlerGeneratorTests
                 [ChatId(100)]
                 [ChatUsername("@admin")]
                 [FromUser(5)]
-                [FromHuman]
-                [FromBot(false)]
+                [FromBot(10)]
                 [FromPremiumUser]
                 [MessageThreadId(42)]
                 [HasMessageThread]
                 public Task Handle(CallbackQueryContext context) => Task.CompletedTask;
+            }
+
+            public sealed class AnySenderHandlers
+            {
+                [Message]
+                [FromUser]
+                public Task User(MessageContext context) => Task.CompletedTask;
+
+                [Message]
+                [FromBot]
+                public Task Bot(MessageContext context) => Task.CompletedTask;
             }
 
             public sealed class ChatMemberHandler

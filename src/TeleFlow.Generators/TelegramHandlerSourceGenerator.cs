@@ -894,23 +894,18 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
             builder.Add(new GeneratedFilter("ChatUsername", values, LongValues: []));
         }
 
-        foreach (AttributeData attribute in TelegramHandlerSymbols.GetAttributes(
-                     symbol,
-                     TelegramHandlerSymbols.FromUserAttribute,
-                     inherit: true))
+        if (!AppendSenderIdFilters(
+                builder,
+                symbol,
+                TelegramHandlerSymbols.FromUserAttribute,
+                "FromUser") ||
+            !AppendSenderIdFilters(
+                builder,
+                symbol,
+                TelegramHandlerSymbols.FromBotAttribute,
+                "FromBot"))
         {
-            ImmutableArray<long> values = attribute.ConstructorArguments.Length > 0
-                ? attribute.ConstructorArguments[0].Values
-                    .Select(static value => value.Value)
-                    .OfType<long>()
-                    .Where(static value => value > 0)
-                    .ToImmutableArray()
-                : [];
-
-            if (values.Length > 0)
-            {
-                builder.Add(new GeneratedFilter("FromUser", StringValues: [], values));
-            }
+            return false;
         }
 
         foreach (TelegramBuiltInFilterSpec spec in TelegramBuiltInFilterFacts.MarkerSpecs)
@@ -937,18 +932,6 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
             }
 
             builder.Add(new GeneratedFilter("MessageThreadId", StringValues: [], values));
-        }
-
-        foreach (AttributeData attribute in TelegramHandlerSymbols.GetAttributes(
-                     symbol,
-                     TelegramHandlerSymbols.FromBotAttribute,
-                     inherit: true))
-        {
-            bool value = attribute.ConstructorArguments.Length == 0 ||
-                         attribute.ConstructorArguments[0].Value is not bool explicitValue ||
-                         explicitValue;
-
-            builder.Add(new GeneratedFilter("FromBot", [value.ToString()], LongValues: []));
         }
 
         foreach (AttributeData attribute in TelegramHandlerSymbols.GetAttributes(
@@ -1044,6 +1027,39 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
             }
 
             builder.Add(new GeneratedFilter(generatedKind, values.ToImmutable(), LongValues: []));
+        }
+
+        return true;
+    }
+
+    private static bool AppendSenderIdFilters(
+        ImmutableArray<GeneratedFilter>.Builder builder,
+        ISymbol symbol,
+        string attributeMetadataName,
+        string generatedKind)
+    {
+        foreach (AttributeData attribute in TelegramHandlerSymbols.GetAttributes(
+                     symbol,
+                     attributeMetadataName,
+                     inherit: true))
+        {
+            if (attribute.ConstructorArguments.Length != 1)
+            {
+                return false;
+            }
+
+            ImmutableArray<TypedConstant> arguments = attribute.ConstructorArguments[0].Values;
+
+            if (arguments.IsDefault ||
+                arguments.Any(static value => value.Value is not long id || id <= 0))
+            {
+                return false;
+            }
+
+            builder.Add(new GeneratedFilter(
+                generatedKind,
+                StringValues: [],
+                arguments.Select(static value => (long)value.Value!).ToImmutableArray()));
         }
 
         return true;

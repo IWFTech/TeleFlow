@@ -207,7 +207,6 @@ internal static class TelegramBuiltInFilterFacts
         new(TelegramHandlerSymbols.HasPollAttribute, "HasPoll", TelegramBuiltInFilterTarget.Message, IsMarker: true),
         new(TelegramHandlerSymbols.HasDiceAttribute, "HasDice", TelegramBuiltInFilterTarget.Message, IsMarker: true),
         new(TelegramHandlerSymbols.FromBotAttribute, "FromBot", TelegramBuiltInFilterTarget.SenderUser, IsMarker: false),
-        new(TelegramHandlerSymbols.FromHumanAttribute, "FromHuman", TelegramBuiltInFilterTarget.SenderUser, IsMarker: true),
         new(TelegramHandlerSymbols.FromPremiumUserAttribute, "FromPremiumUser", TelegramBuiltInFilterTarget.SenderUser, IsMarker: true),
         new(TelegramHandlerSymbols.IsReplyAttribute, "IsReply", TelegramBuiltInFilterTarget.Message, IsMarker: true),
         new(TelegramHandlerSymbols.ReplyToBotAttribute, "ReplyToBot", TelegramBuiltInFilterTarget.Message, IsMarker: true),

@@ -453,19 +453,20 @@ public sealed partial class TelegramHandlerAnalyzer
             }
         }
 
-        foreach (AttributeData attribute in TelegramHandlerSymbols.GetAttributes(method.ContainingType, TelegramHandlerSymbols.FromUserAttribute, inherit: true)
-                     .Concat(TelegramHandlerSymbols.GetAttributes(method, TelegramHandlerSymbols.FromUserAttribute, inherit: true)))
-        {
-            if (attribute.ConstructorArguments.Length == 0 ||
-                attribute.ConstructorArguments[0].Values.IsDefaultOrEmpty ||
-                attribute.ConstructorArguments[0].Values.Any(static value => value.Value is not long userId || userId <= 0))
-            {
-                context.ReportDiagnostic(Diagnostic.Create(
-                    InvalidFilter,
-                    location,
-                    "FromUserAttribute must specify at least one positive Telegram user id."));
-            }
-        }
+        AnalyzeSenderIdFilters(
+            context,
+            method,
+            TelegramHandlerSymbols.FromUserAttribute,
+            "FromUserAttribute",
+            "user",
+            location);
+        AnalyzeSenderIdFilters(
+            context,
+            method,
+            TelegramHandlerSymbols.FromBotAttribute,
+            "FromBotAttribute",
+            "bot",
+            location);
 
         foreach (AttributeData attribute in TelegramHandlerSymbols.GetAttributes(method.ContainingType, TelegramHandlerSymbols.CallbackDataPrefixAttribute, inherit: true)
                      .Concat(TelegramHandlerSymbols.GetAttributes(method, TelegramHandlerSymbols.CallbackDataPrefixAttribute, inherit: true)))
@@ -522,6 +523,36 @@ public sealed partial class TelegramHandlerAnalyzer
                     InvalidFilter,
                     location,
                     $"{attributeDisplayName} must specify at least one known Telegram chat type."));
+            }
+        }
+    }
+
+    private static void AnalyzeSenderIdFilters(
+        SymbolAnalysisContext context,
+        IMethodSymbol method,
+        string attributeMetadataName,
+        string attributeDisplayName,
+        string senderDisplayName,
+        Location? location)
+    {
+        foreach (AttributeData attribute in TelegramHandlerSymbols.GetAttributes(
+                     method.ContainingType,
+                     attributeMetadataName,
+                     inherit: true)
+                 .Concat(TelegramHandlerSymbols.GetAttributes(
+                     method,
+                     attributeMetadataName,
+                     inherit: true)))
+        {
+            if (attribute.ConstructorArguments.Length != 1 ||
+                attribute.ConstructorArguments[0].Values.IsDefault ||
+                attribute.ConstructorArguments[0].Values.Any(
+                    static value => value.Value is not long id || id <= 0))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    InvalidFilter,
+                    location,
+                    $"{attributeDisplayName} must contain only positive Telegram {senderDisplayName} ids."));
             }
         }
     }

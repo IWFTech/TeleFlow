@@ -29,6 +29,5 @@ internal enum TelegramFilterKind
     HasMessageThread,
     HasCallbackData,
     CallbackDataPrefix,
-    FromHuman,
     SenderChatType
 }
