@@ -388,6 +388,16 @@ internal static class TelegramHandlerDescriptorBuilder
                 longValues: []));
         }
 
+        var senderChatType = member.GetCustomAttribute<SenderChatTypeAttribute>(inherit: true);
+
+        if (senderChatType is not null)
+        {
+            filters.Add(new TelegramFilterDescriptor(
+                TelegramFilterKind.SenderChatType,
+                senderChatType.ChatTypes.Select(TelegramFilterFacts.MapChatType).ToArray(),
+                longValues: []));
+        }
+
         var chatId = member.GetCustomAttribute<ChatIdAttribute>(inherit: true);
 
         if (chatId is not null)
@@ -426,10 +436,11 @@ internal static class TelegramHandlerDescriptorBuilder
         {
             filters.Add(new TelegramFilterDescriptor(
                 TelegramFilterKind.FromBot,
-                [fromBot.Value.ToString()],
-                longValues: []));
+                stringValues: [],
+                fromBot.BotIds.ToArray()));
         }
 
+        AppendMarkerFilters(filters, member, TelegramMarkerFilterGroup.SenderUser);
         AppendMarkerFilters(filters, member, TelegramMarkerFilterGroup.MessageSender);
 
         var messageThreadId = member.GetCustomAttribute<MessageThreadIdAttribute>(inherit: true);

@@ -6,6 +6,7 @@ TeleFlow follows SemVer for published NuGet packages and documented public behav
 
 ### Added
 
+- Added `[SenderChatType(...)]` for messages sent on behalf of a channel or another chat.
 - Added optional `IWF.TeleFlow.Framework.I18n` locale-resolution primitives with ordered scoped resolvers, Telegram `language_code` fallback, and one locale decision per update.
 - Added optional `IWF.TeleFlow.Framework.I18n.Fluent` with startup-loaded immutable Linguini catalogs, exact/parent/fallback lookup, Fluent terms, attributes, plurals, `NUMBER`, and `DATETIME`.
 - Added plain, Telegram HTML, and Telegram MarkdownV2 localization modes with automatic dynamic-argument escaping, matching typed formatted fragments, custom emoji composition, and rich-message/LaTeX guidance.
@@ -13,6 +14,9 @@ TeleFlow follows SemVer for published NuGet packages and documented public behav
 
 ### Changed
 
+- `TelegramChatType` now contains only values accepted by `Chat.type`; the inline-query-only `sender` value is no longer exposed to destination and sender-chat filters.
+- `[FromUser]` now matches non-bot users and `[FromBot]` matches bots; both accept an optional ID allowlist. Replace `[FromBot(false)]` with `[FromUser]` and `[FromUser(botId)]` with `[FromBot(botId)]`.
+- Sender-user filters now support callback routes through `callback_query.from` and no longer treat Telegram's backward-compatible `message.from` value as a real user when `message.sender_chat` is present.
 - Added public `TelegramHtml.Escape(...)` and `TelegramMarkdownV2.Escape(...)` helpers for safe insertion of dynamic text into reviewed static markup.
 - Documented the exact .NET-backed `NUMBER` and `DATETIME` option surface instead of implying full JavaScript `Intl` compatibility.
 

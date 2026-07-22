@@ -919,6 +919,7 @@ public sealed class TelegramHandlerGeneratorTests
             namespace Bot;
 
             [ChatType(TelegramChatType.Private)]
+            [SenderChatType(TelegramChatType.Channel)]
             [ChatId(-1001234567890)]
             [ChatUsername("@Group")]
             public sealed class FilteredHandlers
@@ -927,7 +928,6 @@ public sealed class TelegramHandlerGeneratorTests
                 [HasText]
                 [HasCaption]
                 [HasVideo]
-                [FromBot(false)]
                 [FromPremiumUser]
                 [IsReply]
                 [FromUser(5)]
@@ -938,6 +938,26 @@ public sealed class TelegramHandlerGeneratorTests
                     return Task.CompletedTask;
                 }
 
+            }
+
+            public sealed class AnyUserHandlers
+            {
+                [Message]
+                [FromUser]
+                public Task Handle(MessageContext context)
+                {
+                    return Task.CompletedTask;
+                }
+            }
+
+            public sealed class BotHandlers
+            {
+                [Message]
+                [FromBot(10)]
+                public Task Handle(MessageContext context)
+                {
+                    return Task.CompletedTask;
+                }
             }
 
             public sealed class CallbackFilteredHandlers
@@ -981,6 +1001,8 @@ public sealed class TelegramHandlerGeneratorTests
         Assert.Contains("TelegramGeneratedFilterDescriptor", generatedSource);
         Assert.Contains("TelegramGeneratedFilterKind.ChatType", generatedSource);
         Assert.Contains("\"private\"", generatedSource);
+        Assert.Contains("TelegramGeneratedFilterKind.SenderChatType", generatedSource);
+        Assert.Contains("\"channel\"", generatedSource);
         Assert.Contains("TelegramGeneratedFilterKind.ChatId", generatedSource);
         Assert.Contains("-1001234567890L", generatedSource);
         Assert.Contains("TelegramGeneratedFilterKind.ChatUsername", generatedSource);
@@ -989,7 +1011,7 @@ public sealed class TelegramHandlerGeneratorTests
         Assert.Contains("TelegramGeneratedFilterKind.HasCaption", generatedSource);
         Assert.Contains("TelegramGeneratedFilterKind.HasVideo", generatedSource);
         Assert.Contains("TelegramGeneratedFilterKind.FromBot", generatedSource);
-        Assert.Contains("\"False\"", generatedSource);
+        Assert.Contains("10L", generatedSource);
         Assert.Contains("TelegramGeneratedFilterKind.FromPremiumUser", generatedSource);
         Assert.Contains("TelegramGeneratedFilterKind.IsReply", generatedSource);
         Assert.Contains("TelegramGeneratedFilterKind.FromUser", generatedSource);
@@ -1019,8 +1041,7 @@ public sealed class TelegramHandlerGeneratorTests
                 TelegramChatType.Private,
                 TelegramChatType.Group,
                 TelegramChatType.Supergroup,
-                TelegramChatType.Channel,
-                TelegramChatType.Sender)]
+                TelegramChatType.Channel)]
             public sealed class FilteredHandlers
             {
                 [Message]
@@ -1046,7 +1067,7 @@ public sealed class TelegramHandlerGeneratorTests
         Assert.Contains("\"group\"", generatedSource);
         Assert.Contains("\"supergroup\"", generatedSource);
         Assert.Contains("\"channel\"", generatedSource);
-        Assert.Contains("\"sender\"", generatedSource);
+        Assert.DoesNotContain("\"sender\"", generatedSource);
     }
 
     [Fact]
@@ -2301,6 +2322,10 @@ public sealed class TelegramHandlerGeneratorTests
                 [Callback]
                 [HasText]
                 public Task Callback(CallbackQueryContext context) => Task.CompletedTask;
+
+                [Callback]
+                [SenderChatType(TelegramChatType.Channel)]
+                public Task SenderChatOnCallback(CallbackQueryContext context) => Task.CompletedTask;
             }
 
             public sealed class MessageHandler
@@ -2318,8 +2343,20 @@ public sealed class TelegramHandlerGeneratorTests
                 public Task InvalidUser(MessageContext context) => Task.CompletedTask;
 
                 [Message]
+                [FromBot(0)]
+                public Task InvalidBot(MessageContext context) => Task.CompletedTask;
+
+                [Message]
                 [ChatType((TelegramChatType)999)]
                 public Task InvalidChatType(MessageContext context) => Task.CompletedTask;
+
+                [Message]
+                [SenderChatType((TelegramChatType)999)]
+                public Task InvalidSenderChatType(MessageContext context) => Task.CompletedTask;
+
+                [Message]
+                [SenderChatType]
+                public Task EmptySenderChatType(MessageContext context) => Task.CompletedTask;
 
                 [Message]
                 [ChatId(0)]
@@ -2347,17 +2384,25 @@ public sealed class TelegramHandlerGeneratorTests
                 [ChatMemberUpdated]
                 [HasMessageThread]
                 public Task HasThreadOnChatMember(ChatMemberUpdatedContext context) => Task.CompletedTask;
+
+                [ChatMemberUpdated]
+                [FromUser]
+                public Task SenderUserOnChatMember(ChatMemberUpdatedContext context) => Task.CompletedTask;
             }
             """);
 
         AssertInvalidFilterDiagnostic(diagnostics, "Message filters cannot be used on callback handlers.");
         AssertInvalidFilterDiagnostic(diagnostics, "Callback filters cannot be used on message handlers.");
         AssertInvalidFilterDiagnostic(diagnostics, "ChatTypeAttribute must specify at least one known Telegram chat type.");
-        AssertInvalidFilterDiagnostic(diagnostics, "FromUserAttribute must specify at least one positive Telegram user id.");
+        AssertInvalidFilterDiagnostic(diagnostics, "SenderChatTypeAttribute must specify at least one known Telegram chat type.");
+        AssertInvalidFilterDiagnostic(diagnostics, "FromUserAttribute must contain only positive Telegram user ids.");
+        AssertInvalidFilterDiagnostic(diagnostics, "FromBotAttribute must contain only positive Telegram bot ids.");
         AssertInvalidFilterDiagnostic(diagnostics, "ChatIdAttribute must specify at least one non-zero Telegram chat id.");
         AssertInvalidFilterDiagnostic(diagnostics, "ChatUsernameAttribute must specify at least one non-empty Telegram chat username.");
         AssertInvalidFilterDiagnostic(diagnostics, "MessageThreadIdAttribute must specify at least one positive Telegram message thread id.");
         AssertInvalidFilterDiagnostic(diagnostics, "CallbackDataPrefixAttribute must specify a non-empty callback data prefix.");
+        AssertInvalidFilterDiagnostic(diagnostics, "Sender chat filters cannot be used on callback handlers.");
+        AssertInvalidFilterDiagnostic(diagnostics, "Sender user filters cannot be used on chat member update handlers.");
         Assert.True(
             diagnostics.Count(
                 diagnostic => diagnostic.Id == TelegramHandlerAnalyzer.InvalidFilterId &&
@@ -2365,6 +2410,40 @@ public sealed class TelegramHandlerGeneratorTests
                                   "Message thread filters cannot be used on chat member update handlers.",
                                   StringComparison.Ordinal)) >= 2,
             "Expected diagnostics for MessageThreadId and HasMessageThread on chat-member handlers.");
+    }
+
+    [Fact]
+    public async Task Analyzer_RejectsInlineQuerySenderValueForChatFilters()
+    {
+        var diagnostics = await GetAnalyzerDiagnosticsAsync(
+            """
+            using System.Threading.Tasks;
+            using TeleFlow.Annotations;
+            using TeleFlow.Telegram;
+
+            public sealed class InvalidChatTypeHandlers
+            {
+                [Message]
+                [ChatType((TelegramChatType)4)]
+                public Task Destination(MessageContext context) => Task.CompletedTask;
+
+                [Message]
+                [SenderChatType((TelegramChatType)4)]
+                public Task Sender(MessageContext context) => Task.CompletedTask;
+            }
+            """);
+
+        var invalidFilterMessages = diagnostics
+            .Where(static diagnostic => diagnostic.Id == TelegramHandlerAnalyzer.InvalidFilterId)
+            .Select(static diagnostic => diagnostic.GetMessage())
+            .ToArray();
+
+        Assert.Contains(
+            "ChatTypeAttribute must specify at least one known Telegram chat type.",
+            invalidFilterMessages);
+        Assert.Contains(
+            "SenderChatTypeAttribute must specify at least one known Telegram chat type.",
+            invalidFilterMessages);
     }
 
     [Fact]
@@ -2382,9 +2461,23 @@ public sealed class TelegramHandlerGeneratorTests
                 [ChatType(TelegramChatType.Private)]
                 [ChatId(100)]
                 [ChatUsername("@admin")]
+                [FromUser(5)]
+                [FromBot(10)]
+                [FromPremiumUser]
                 [MessageThreadId(42)]
                 [HasMessageThread]
                 public Task Handle(CallbackQueryContext context) => Task.CompletedTask;
+            }
+
+            public sealed class AnySenderHandlers
+            {
+                [Message]
+                [FromUser]
+                public Task User(MessageContext context) => Task.CompletedTask;
+
+                [Message]
+                [FromBot]
+                public Task Bot(MessageContext context) => Task.CompletedTask;
             }
 
             public sealed class ChatMemberHandler

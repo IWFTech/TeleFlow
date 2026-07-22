@@ -71,6 +71,74 @@ public Task FromKnownUser(MessageContext ctx, CancellationToken ct)
 
 Built-in filters - это metadata. Framework оценивает их во время handler selection.
 
+### Отправитель и чат назначения
+
+Telegram отдельно передаёт чат, в который пришёл update, и того, от чьего имени он отправлен. Это разные данные, поэтому в TeleFlow для них используются разные filters.
+
+| Filter | Что читает | Поддерживаемые routes | Семантика |
+| --- | --- | --- | --- |
+| `[ChatType(...)]` | Чат назначения | Message, command, callback, chat member | Чат, в котором произошло событие. |
+| `[FromUser(...)]` | Пользователя-отправителя | Message, command, callback | Человек, при необходимости ограниченный списком ID. |
+| `[FromBot(...)]` | Пользователя-отправителя | Message, command, callback | Bot, при необходимости ограниченный списком ID bot users. |
+| `[FromPremiumUser]` | Пользователя-отправителя | Message, command, callback | Отправитель является Telegram Premium user. |
+| `[SenderChatType(...)]` | `message.sender_chat` | Message, command | Сообщение отправлено от имени channel или другого chat. |
+
+Для команд, предназначенных людям, используй `[FromUser]` без ID:
+
+```csharp
+[Command("profile")]
+[FromUser]
+public Task Profile(MessageContext ctx, CancellationToken ct)
+{
+    return ctx.Message.AnswerAsync("Human sender.", ct);
+}
+```
+
+Переданные ID сужают ту же категорию, но не меняют её смысл:
+
+```csharp
+[Command("admin")]
+[FromUser(123456789)]
+public Task HumanAdmin(MessageContext ctx, CancellationToken ct) =>
+    ctx.Message.AnswerAsync("Human administrator.", ct);
+
+[Command("integration")]
+[FromBot(987654321)]
+public Task IntegrationBot(MessageContext ctx, CancellationToken ct) =>
+    ctx.Message.AnswerAsync("Known bot integration.", ct);
+```
+
+`[FromUser]` никогда не сматчит bot, даже если его ID передан в allowlist. `[FromBot]` никогда не сматчит человека. Прежняя форма `[FromBot(false)]` больше не поддерживается; вместо неё используй `[FromUser]`.
+
+Когда важно, от имени какого chat отправлено сообщение, используй `[SenderChatType]`:
+
+```csharp
+[Message]
+[ChatType(TelegramChatType.Supergroup)]
+[SenderChatType(TelegramChatType.Channel)]
+public Task ChannelPostInGroup(MessageContext ctx, CancellationToken ct)
+{
+    return ctx.Message.AnswerAsync("Sent on behalf of a channel.", ct);
+}
+```
+
+В этом примере `[ChatType]` проверяет supergroup назначения, а `[SenderChatType]` - channel, от имени которого отправлено сообщение.
+
+Для сообщений от имени chat Telegram может заполнять `message.from` обратносовместимым подставным значением. TeleFlow не считает его реальным user sender. Поэтому `[FromUser]`, `[FromBot]` и `[FromPremiumUser]` такое сообщение не сматчат. Для него нужен `[SenderChatType]`.
+
+Для callback sender filters читают `callback_query.from` и не зависят от того, есть ли в callback доступное message:
+
+```csharp
+[Callback]
+[FromUser(123456789)]
+public Task KnownUserCallback(CallbackQueryContext ctx, CancellationToken ct)
+{
+    return ctx.Callback.AnswerAsync("Allowed.", ct);
+}
+```
+
+Sender-user и sender-chat filters нельзя использовать на chat-member handlers. В chat-member update есть actor, а не message sender; TeleFlow не подменяет один смысл другим молча.
+
 ## Custom filters
 
 Используй `[UseFilter<TFilter>]`, когда filter не нуждается в metadata на конкретном handler.

@@ -30,6 +30,7 @@ internal static class TelegramHandlerSymbols
     public const string AutoAnswerCallbackAttribute = "TeleFlow.Annotations.AutoAnswerCallbackAttribute";
     public const string RequireTelegramRoleAttribute = "TeleFlow.Annotations.RequireTelegramRoleAttribute";
     public const string ChatTypeAttribute = "TeleFlow.Annotations.ChatTypeAttribute";
+    public const string SenderChatTypeAttribute = "TeleFlow.Annotations.SenderChatTypeAttribute";
     public const string ChatIdAttribute = "TeleFlow.Annotations.ChatIdAttribute";
     public const string ChatUsernameAttribute = "TeleFlow.Annotations.ChatUsernameAttribute";
     public const string FromUserAttribute = "TeleFlow.Annotations.FromUserAttribute";

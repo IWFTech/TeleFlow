@@ -24,9 +24,4 @@ public enum TelegramChatType
     /// Telegram channel chat.
     /// </summary>
     Channel,
-
-    /// <summary>
-    /// Sender chat used when a user sends on behalf of a chat.
-    /// </summary>
-    Sender
 }

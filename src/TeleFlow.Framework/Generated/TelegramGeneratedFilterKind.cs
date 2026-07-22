@@ -36,5 +36,6 @@ public enum TelegramGeneratedFilterKind
     HasMessageThread,
     HasCallbackData,
     CallbackDataPrefix,
-    Custom
+    Custom,
+    SenderChatType
 }

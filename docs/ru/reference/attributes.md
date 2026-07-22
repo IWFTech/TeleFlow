@@ -105,13 +105,14 @@ Regex стоит использовать только когда форма inp
 
 | Attribute | Purpose |
 | --- | --- |
-| `[ChatType(...)]` | Limits handler to private, group, supergroup, channel, or sender chats. |
+| `[ChatType(...)]` | Ограничивает handler по типу chat назначения: `Private`, `Group`, `Supergroup` или `Channel`. |
+| `[SenderChatType(...)]` | Ограничивает message и command handlers по `message.sender_chat.type`, используя те же четыре реальных значения `Chat.type`. |
 | `[ChatId(...)]` | Limits handler to chat ids. Ноль отклоняется. |
 | `[ChatUsername(...)]` | Limits handler to chat usernames. |
 | `[MessageThreadId(...)]` | Limits handler to message thread ids. |
-| `[FromUser(...)]` | Limits handler to positive user ids. |
-| `[FromBot]` | Filters messages from bot users. |
-| `[FromPremiumUser]` | Filters premium users. |
+| `[FromUser(...)]` | Требует отправителя-человека и при необходимости ограничивает его конкретными user IDs. |
+| `[FromBot(...)]` | Требует отправителя-bot и при необходимости ограничивает его конкретными bot user IDs. |
+| `[FromPremiumUser]` | Требует Telegram Premium пользователя-отправителя. |
 | `[RequireTelegramRole(...)]` | Requires Telegram member statuses. |
 
 ## Callback attributes

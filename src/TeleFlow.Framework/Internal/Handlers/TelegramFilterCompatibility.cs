@@ -17,6 +17,11 @@ internal static class TelegramFilterCompatibility
                 TelegramHandlerKind.Callback,
             TelegramFilterTarget.Message => handlerKind is TelegramHandlerKind.Message or
                 TelegramHandlerKind.Command,
+            TelegramFilterTarget.SenderUser => handlerKind is TelegramHandlerKind.Message or
+                TelegramHandlerKind.Command or
+                TelegramHandlerKind.Callback,
+            TelegramFilterTarget.SenderChat => handlerKind is TelegramHandlerKind.Message or
+                TelegramHandlerKind.Command,
             TelegramFilterTarget.Callback => handlerKind == TelegramHandlerKind.Callback,
             _ => false
         };
@@ -34,6 +39,10 @@ internal static class TelegramFilterCompatibility
                 $"Message thread filters cannot be used on {FormatHandlerKind(handlerKind)} handlers.",
             TelegramFilterTarget.Message =>
                 $"Message filters cannot be used on {FormatHandlerKind(handlerKind)} handlers.",
+            TelegramFilterTarget.SenderUser =>
+                $"Sender user filters cannot be used on {FormatHandlerKind(handlerKind)} handlers.",
+            TelegramFilterTarget.SenderChat =>
+                $"Sender chat filters cannot be used on {FormatHandlerKind(handlerKind)} handlers.",
             TelegramFilterTarget.Callback =>
                 $"Callback filters cannot be used on {FormatHandlerKind(handlerKind)} handlers.",
             _ => $"Telegram filter '{kind}' cannot be used on {FormatHandlerKind(handlerKind)} handlers."
