@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Optional TeleFlow Project Fluent localization adapter with startup-loaded Linguini catalogs and Telegram-safe formatted text.</Description>
+    <RootNamespace>TeleFlow.Telegram.I18n.Fluent</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Linguini.Bundle" Version="0.11.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TeleFlow.Framework.I18n\TeleFlow.Framework.I18n.csproj" />
+  </ItemGroup>
+</Project>

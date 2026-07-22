@@ -12,28 +12,30 @@ internal sealed class TelegramCurrentUpdateAccessor(
     IUpdateContextAccessor currentUpdate,
     TelegramContextFactory contextFactory) : ITelegramCurrentUpdateAccessor
 {
-    public bool IsAvailable => TryGetCurrent(out _);
+    private bool _updateCached;
+    private Update? _update;
+    private bool _classificationCached;
+    private TelegramUpdateClassification _classification;
+
+    public bool IsAvailable => TryGetUpdate(out _);
 
     public TelegramUpdateContext Current => TryGetCurrent(out var context)
         ? context
         : throw new InvalidOperationException(
             "No current Telegram update is available. ITelegramCurrentUpdateAccessor can only be used inside TeleFlow Telegram update processing.");
 
-    public Update Update => Current.Update;
+    public Update Update => TryGetUpdate(out var update)
+        ? update
+        : throw new InvalidOperationException(
+            "No current Telegram update is available. ITelegramCurrentUpdateAccessor can only be used inside TeleFlow Telegram update processing.");
 
     public User? User
     {
         get
         {
-            if (!TryGetUpdate(out var update))
-            {
-                return null;
-            }
-
-            return update.Message?.From ??
-                   update.CallbackQuery?.From ??
-                   update.ChatMember?.From ??
-                   update.MyChatMember?.From;
+            return TryGetClassification(out var classification)
+                ? classification.User
+                : null;
         }
     }
 
@@ -41,15 +43,9 @@ internal sealed class TelegramCurrentUpdateAccessor(
     {
         get
         {
-            if (!TryGetUpdate(out var update))
-            {
-                return null;
-            }
-
-            return update.Message?.Chat ??
-                   GetCallbackChat(update.CallbackQuery) ??
-                   update.ChatMember?.Chat ??
-                   update.MyChatMember?.Chat;
+            return TryGetClassification(out var classification)
+                ? classification.Chat
+                : null;
         }
     }
 
@@ -160,6 +156,12 @@ internal sealed class TelegramCurrentUpdateAccessor(
 
     private bool TryGetUpdate(out Update update)
     {
+        if (_updateCached)
+        {
+            update = _update!;
+            return true;
+        }
+
         if (!currentUpdate.TryGetCurrent(out var context) ||
             context.Payload is not TelegramUpdatePayload payload)
         {
@@ -167,13 +169,29 @@ internal sealed class TelegramCurrentUpdateAccessor(
             return false;
         }
 
-        update = payload.Update;
+        _update = payload.Update;
+        _updateCached = true;
+        update = _update;
         return true;
     }
 
-    private static Chat? GetCallbackChat(CallbackQuery? callbackQuery)
+    private bool TryGetClassification(out TelegramUpdateClassification classification)
     {
-        return callbackQuery?.Message?.Message?.Chat ??
-               callbackQuery?.Message?.InaccessibleMessage?.Chat;
+        if (_classificationCached)
+        {
+            classification = _classification;
+            return true;
+        }
+
+        if (!TryGetUpdate(out var update))
+        {
+            classification = default;
+            return false;
+        }
+
+        _classification = TelegramUpdateClassifier.Classify(update);
+        _classificationCached = true;
+        classification = _classification;
+        return true;
     }
 }

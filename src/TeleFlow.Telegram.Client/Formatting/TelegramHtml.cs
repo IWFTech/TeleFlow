@@ -15,6 +15,16 @@ public static class TelegramHtml
     }
 
     /// <summary>
+    /// Escapes a dynamic value for insertion into reviewed Telegram HTML markup.
+    /// Quote delimiters are encoded so the value cannot leave a quoted attribute.
+    /// </summary>
+    public static string Escape(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        return TelegramHtmlEscaper.EscapeInterpolation(text);
+    }
+
+    /// <summary>
     /// Creates an HTML formatted-text value from reviewed static markup.
     /// This bypasses escaping and structural validation and must never receive user-controlled input.
     /// </summary>
