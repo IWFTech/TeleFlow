@@ -100,9 +100,11 @@ internal sealed class TelegramRouteDescriptor
         ArgumentNullException.ThrowIfNull(chatMemberTransitions);
         ArgumentNullException.ThrowIfNull(roleRequirements);
 
+        var normalizedPattern = NormalizeCommandPattern(routeKind, pattern);
+
         RouteKind = routeKind;
         Kind = GetHandlerKind(routeKind);
-        Pattern = pattern;
+        Pattern = normalizedPattern;
         CommandPolicy = commandPolicy ?? TelegramCommandPolicy.Default;
         TextFilters = textFilters;
         CallbackPayloadType = callbackPayloadType;
@@ -110,8 +112,8 @@ internal sealed class TelegramRouteDescriptor
         Filters = filters;
         ChatMemberTransitions = chatMemberTransitions;
         RoleRequirements = roleRequirements;
-        Matcher = TelegramRouteMatcher.Create(routeKind, pattern, CommandPolicy.IgnoreCase);
-        Specificity = GetSpecificity(routeKind, pattern);
+        Matcher = TelegramRouteMatcher.Create(routeKind, normalizedPattern, CommandPolicy.IgnoreCase);
+        Specificity = GetSpecificity(routeKind, normalizedPattern);
     }
 
     private static TelegramRouteKind MapLegacyRouteKind(
@@ -166,6 +168,19 @@ internal sealed class TelegramRouteDescriptor
     public TelegramRouteMatcher Matcher { get; }
 
     public int Specificity { get; }
+
+    private static string? NormalizeCommandPattern(
+        TelegramRouteKind routeKind,
+        string? pattern)
+    {
+        if (pattern is null ||
+            routeKind is not (TelegramRouteKind.CommandExact or TelegramRouteKind.CommandTemplate))
+        {
+            return pattern;
+        }
+
+        return TelegramCommandTextNormalizer.Normalize(pattern);
+    }
 
     private static int GetSpecificity(
         TelegramRouteKind routeKind,

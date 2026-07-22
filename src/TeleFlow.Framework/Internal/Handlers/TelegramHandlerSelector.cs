@@ -527,7 +527,7 @@ internal sealed partial class TelegramHandlerSelector
         if (isPrefixLess)
         {
             return string.Equals(
-                commandBody.Trim(),
+                TelegramCommandTextNormalizer.Normalize(commandBody.Trim()),
                 route.Pattern,
                 route.CommandPolicy.IgnoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
         }
@@ -536,7 +536,7 @@ internal sealed partial class TelegramHandlerSelector
         var token = tokenEnd < 0 ? commandBody : commandBody[..tokenEnd];
 
         return string.Equals(
-            token,
+            TelegramCommandTextNormalizer.Normalize(token),
             route.Pattern,
             route.CommandPolicy.IgnoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
     }
@@ -563,7 +563,11 @@ internal sealed partial class TelegramHandlerSelector
         bool isTemplate,
         out IReadOnlyDictionary<string, object?> routeValues)
     {
-        return TryMatchPattern(commandBody, route, isTemplate, route.CommandPolicy.IgnoreCase, out routeValues);
+        var value = isTemplate
+            ? TelegramCommandTextNormalizer.Normalize(commandBody)
+            : commandBody;
+
+        return TryMatchPattern(value, route, isTemplate, route.CommandPolicy.IgnoreCase, out routeValues);
     }
 
     private static bool TryMatchPattern(
