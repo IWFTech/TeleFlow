@@ -22,6 +22,7 @@ TeleFlow follows SemVer for published NuGet packages and documented public behav
 
 ### Fixed
 
+- Exact and template command routes now match canonically equivalent Unicode input while preserving raw message text and explicit regex semantics.
 - Current-update user and chat identity now covers every Telegram Bot API 10.2 update family, including inline, payment, business, poll, boost, managed-bot, and subscription updates.
 - Telegram update diagnostics now classify subscription updates instead of reporting them as unknown.
 - Fluent `DATETIME(...)` now formats `DateOnly` and `TimeOnly` without exceptions and maps combined `short` and `long` styles to culture-specific .NET patterns.

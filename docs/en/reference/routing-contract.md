@@ -85,10 +85,19 @@ values simply make the route not match, allowing the next candidate.
 `[TextRegex]` and `[CommandRegex]` preserve the application's expression. Add
 `^` and `$` when it must cover the whole input.
 
-Exact command/text comparisons and template matching use the route's
-`IgnoreCase` setting with ordinal, culture-independent semantics. TeleFlow does
-not globally normalize incoming text or alter the text exposed through contexts.
-Unicode normalization remains a separate, evidence-driven decision.
+Exact command comparisons and command-template matching normalize the configured
+pattern and incoming command body to Unicode NFC before applying the route's
+ordinal, culture-independent `IgnoreCase` setting. This lets canonically
+equivalent sequences such as composed `ё` and `е` plus a combining diaeresis
+match the same command. String values bound by `[CommandTemplate]` are NFC.
+
+The original message text exposed through `MessageContext` is never changed.
+TeleFlow does not treat the distinct letters `е` and `ё` as aliases. Declare
+both routes explicitly when both spellings should be accepted.
+
+Text routes and regex routes preserve the application's input contract and do
+not apply implicit Unicode normalization. Normalize explicitly in a regex when
+that route needs canonical-equivalence behavior.
 
 ## Registration Parity
 
