@@ -71,6 +71,59 @@ public Task FromKnownUser(MessageContext ctx, CancellationToken ct)
 
 Built-in filters are metadata. The framework evaluates them during handler selection.
 
+### Sender And Chat Semantics
+
+Telegram exposes both the chat where an update arrived and the identity that sent it. They are different facts, so TeleFlow uses different filters for them.
+
+| Filter | Reads | Supported routes | Meaning |
+| --- | --- | --- | --- |
+| `[ChatType(...)]` | Destination chat | Message, command, callback, chat member | The chat where the update happened. |
+| `[FromUser(...)]` | Sender user ID | Message, command, callback | An allowlist of actual Telegram user IDs. |
+| `[FromHuman]` | Sender user | Message, command, callback | The sender is a non-bot user. |
+| `[FromBot]` | Sender user | Message, command, callback | The sender is a bot. `[FromBot(false)]` remains supported; prefer `[FromHuman]` when that is what the code means. |
+| `[FromPremiumUser]` | Sender user | Message, command, callback | The sender is a Telegram Premium user. |
+| `[SenderChatType(...)]` | `message.sender_chat` | Message, command | The message was sent on behalf of a channel or another chat. |
+
+Use `[FromHuman]` for commands intended for people:
+
+```csharp
+[Command("profile")]
+[FromHuman]
+public Task Profile(MessageContext ctx, CancellationToken ct)
+{
+    return ctx.Message.AnswerAsync("Human sender.", ct);
+}
+```
+
+Use `[SenderChatType]` when message provenance matters:
+
+```csharp
+[Message]
+[ChatType(TelegramChatType.Supergroup)]
+[SenderChatType(TelegramChatType.Channel)]
+public Task ChannelPostInGroup(MessageContext ctx, CancellationToken ct)
+{
+    return ctx.Message.AnswerAsync("Sent on behalf of a channel.", ct);
+}
+```
+
+Here `[ChatType]` checks the destination supergroup. `[SenderChatType]` checks the channel that sent the message.
+
+Telegram may include a backward-compatible fake `message.from` for messages sent on behalf of a chat. TeleFlow does not treat that value as a real sender user. Consequently, `[FromUser]`, `[FromHuman]`, `[FromBot]`, and `[FromPremiumUser]` do not match such a message. Use `[SenderChatType]` instead.
+
+For callbacks, sender-user filters read `callback_query.from` and do not depend on whether the callback contains an accessible message:
+
+```csharp
+[Callback]
+[FromUser(123456789)]
+public Task KnownUserCallback(CallbackQueryContext ctx, CancellationToken ct)
+{
+    return ctx.Callback.AnswerAsync("Allowed.", ct);
+}
+```
+
+Sender-user and sender-chat filters are not valid on chat-member handlers. A chat-member update has an actor, not a message sender; TeleFlow does not silently reinterpret one concept as the other.
+
 ## Custom Filters
 
 Use `[UseFilter<TFilter>]` when the filter does not need per-handler metadata.

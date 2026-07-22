@@ -105,13 +105,15 @@ Use regex only when the input shape cannot be expressed as a template clearly.
 
 | Attribute | Purpose |
 | --- | --- |
-| `[ChatType(...)]` | Limits handler to private, group, supergroup, channel, or sender chats. |
+| `[ChatType(...)]` | Limits handler by destination chat type: `Private`, `Group`, `Supergroup`, or `Channel`. |
+| `[SenderChatType(...)]` | Limits message and command handlers by `message.sender_chat.type` using the same four actual `Chat.type` values. |
 | `[ChatId(...)]` | Limits handler to chat ids. Zero is rejected. |
 | `[ChatUsername(...)]` | Limits handler to chat usernames. |
 | `[MessageThreadId(...)]` | Limits handler to message thread ids. |
-| `[FromUser(...)]` | Limits handler to positive user ids. |
-| `[FromBot]` | Filters messages from bot users. |
-| `[FromPremiumUser]` | Filters premium users. |
+| `[FromUser(...)]` | Limits message, command, and callback handlers to actual sender user IDs. |
+| `[FromHuman]` | Requires an actual non-bot sender user. |
+| `[FromBot]` | Filters by the sender user's bot flag. |
+| `[FromPremiumUser]` | Requires a Telegram Premium sender user. |
 | `[RequireTelegramRole(...)]` | Requires Telegram member statuses. |
 
 ## Callback Attributes
