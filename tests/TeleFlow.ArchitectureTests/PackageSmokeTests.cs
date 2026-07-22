@@ -6,8 +6,9 @@ using System.Xml.Linq;
 
 namespace TeleFlow.ArchitectureTests;
 
-public sealed class PackageSmokeTests
+public sealed class PackageSmokeTests : IClassFixture<PackageSmokeFixture>
 {
+    private const string PackageSmokeCategory = "PackageSmoke";
     private static readonly string PackageVersion = $"1.0.0-smoke.{Environment.ProcessId}";
     private const string NuGetOrgSource = "https://api.nuget.org/v3/index.json";
     private static readonly TimeSpan DotNetCommandTimeout = TimeSpan.FromMinutes(3);
@@ -16,121 +17,100 @@ public sealed class PackageSmokeTests
 
     private static readonly PackageProject[] RuntimePackageProjects =
     [
-        new("IWF.TeleFlow.Annotations", "src/TeleFlow.Annotations/TeleFlow.Annotations.csproj"),
-        new("IWF.TeleFlow.Framework.Core", "src/TeleFlow.Framework.Core/TeleFlow.Framework.Core.csproj"),
-        new("IWF.TeleFlow.Framework.Hosting", "src/TeleFlow.Framework.Hosting/TeleFlow.Framework.Hosting.csproj"),
-        new("IWF.TeleFlow.Framework.I18n", "src/TeleFlow.Framework.I18n/TeleFlow.Framework.I18n.csproj"),
-        new("IWF.TeleFlow.Framework.I18n.Fluent", "src/TeleFlow.Framework.I18n.Fluent/TeleFlow.Framework.I18n.Fluent.csproj"),
-        new("IWF.TeleFlow.Storage.Memory", "src/TeleFlow.Storage.Memory/TeleFlow.Storage.Memory.csproj"),
-        new("IWF.TeleFlow.Telegram.Schema", "src/TeleFlow.Telegram.Schema/TeleFlow.Telegram.Schema.csproj"),
-        new("IWF.TeleFlow.Telegram.Client", "src/TeleFlow.Telegram.Client/TeleFlow.Telegram.Client.csproj"),
-        new("IWF.TeleFlow.Framework", "src/TeleFlow.Framework/TeleFlow.Framework.csproj"),
-        new("IWF.TeleFlow.Telegram.LongPolling", "src/TeleFlow.Telegram.LongPolling/TeleFlow.Telegram.LongPolling.csproj"),
-        new("IWF.TeleFlow.Telegram.Webhooks", "src/TeleFlow.Telegram.Webhooks/TeleFlow.Telegram.Webhooks.csproj"),
-        new("IWF.TeleFlow.Framework.LongPolling", "src/TeleFlow.Framework.LongPolling/TeleFlow.Framework.LongPolling.csproj"),
-        new("IWF.TeleFlow.Framework.Webhooks", "src/TeleFlow.Framework.Webhooks/TeleFlow.Framework.Webhooks.csproj"),
-        new("IWF.TeleFlow.Telegram", "src/TeleFlow.Telegram/TeleFlow.Telegram.csproj")
+        new("IWF.TeleFlow.Annotations"),
+        new("IWF.TeleFlow.Framework.Core"),
+        new("IWF.TeleFlow.Framework.Hosting"),
+        new("IWF.TeleFlow.Framework.I18n"),
+        new("IWF.TeleFlow.Framework.I18n.Fluent"),
+        new("IWF.TeleFlow.Storage.Memory"),
+        new("IWF.TeleFlow.Telegram.Schema"),
+        new("IWF.TeleFlow.Telegram.Client"),
+        new("IWF.TeleFlow.Framework"),
+        new("IWF.TeleFlow.Telegram.LongPolling"),
+        new("IWF.TeleFlow.Telegram.Webhooks"),
+        new("IWF.TeleFlow.Framework.LongPolling"),
+        new("IWF.TeleFlow.Framework.Webhooks"),
+        new("IWF.TeleFlow.Telegram")
     ];
 
     private static readonly PackageProject[] ReleaseAlignedToolingPackageProjects =
     [
-        new("IWF.TeleFlow.Generators", "src/TeleFlow.Generators/TeleFlow.Generators.csproj")
+        new("IWF.TeleFlow.Generators")
     ];
 
+    private static readonly PackageProject[] AllPackageProjects =
+    [
+        .. RuntimePackageProjects,
+        .. ReleaseAlignedToolingPackageProjects
+    ];
+
+    private readonly PackageSmokeFixture _fixture;
+
+    public PackageSmokeTests(PackageSmokeFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
     [Fact]
+    [Trait("Category", PackageSmokeCategory)]
     public async Task DocumentedPackageReferences_RestoreBuildAndResolveExpectedDependencyClosure()
     {
-        var tempDirectory = Directory.CreateTempSubdirectory("teleflow-package-smoke-");
+        var tempDirectory = _fixture.TempDirectory;
+        var packageSource = _fixture.PackageSource;
 
-        try
+        AssertPackedPackageSet(packageSource, AllPackageProjects);
+        AssertPackedPackageMetadata(packageSource, RuntimePackageProjects);
+
+        var scenarios = CreateScenarios();
+
+        foreach (var scenario in scenarios)
         {
-            var packageSource = Directory.CreateDirectory(Path.Combine(tempDirectory.FullName, "packages"));
-            await PackRuntimePackagesAsync(packageSource.FullName);
-            AssertPackedRuntimePackageTrain(packageSource.FullName);
-            AssertPackedPackageMetadata(packageSource.FullName, RuntimePackageProjects);
+            await BuildConsumerAsync(tempDirectory.FullName, packageSource, scenario);
 
-            var scenarios = CreateScenarios();
+            var packageNames = ReadResolvedPackageNames(
+                Path.Combine(tempDirectory.FullName, scenario.Name, "obj", "project.assets.json"));
 
-            foreach (var scenario in scenarios)
+            Assert.All(scenario.ExpectedPackages, packageName => Assert.Contains(packageName, packageNames));
+            Assert.All(scenario.ForbiddenPackages, packageName => Assert.DoesNotContain(packageName, packageNames));
+
+            foreach (var optionalI18nPackage in new[]
+                     {
+                         "IWF.TeleFlow.Framework.I18n",
+                         "IWF.TeleFlow.Framework.I18n.Fluent"
+                     })
             {
-                await BuildConsumerAsync(tempDirectory.FullName, packageSource.FullName, scenario);
-
-                var packageNames = ReadResolvedPackageNames(
-                    Path.Combine(tempDirectory.FullName, scenario.Name, "obj", "project.assets.json"));
-
-                Assert.All(scenario.ExpectedPackages, packageName => Assert.Contains(packageName, packageNames));
-                Assert.All(scenario.ForbiddenPackages, packageName => Assert.DoesNotContain(packageName, packageNames));
-
-                foreach (var optionalI18nPackage in new[]
-                         {
-                             "IWF.TeleFlow.Framework.I18n",
-                             "IWF.TeleFlow.Framework.I18n.Fluent"
-                         })
+                if (!scenario.ExpectedPackages.Contains(optionalI18nPackage, StringComparer.Ordinal))
                 {
-                    if (!scenario.ExpectedPackages.Contains(optionalI18nPackage, StringComparer.Ordinal))
-                    {
-                        Assert.DoesNotContain(optionalI18nPackage, packageNames);
-                    }
+                    Assert.DoesNotContain(optionalI18nPackage, packageNames);
                 }
             }
         }
-        finally
-        {
-            tempDirectory.Delete(recursive: true);
-        }
     }
 
     [Fact]
-    public async Task ReleaseAlignedToolingPackages_PackWithVersionAndMetadata()
+    [Trait("Category", PackageSmokeCategory)]
+    public void ReleaseAlignedToolingPackages_PackWithVersionAndMetadata()
     {
-        var tempDirectory = Directory.CreateTempSubdirectory("teleflow-tooling-package-smoke-");
-
-        try
-        {
-            var packageSource = Directory.CreateDirectory(Path.Combine(tempDirectory.FullName, "packages"));
-
-            foreach (var packageProject in ReleaseAlignedToolingPackageProjects)
-            {
-                await PackPackageAsync(packageProject, packageSource.FullName);
-            }
-
-            AssertPackedPackageSet(packageSource.FullName, ReleaseAlignedToolingPackageProjects);
-            AssertPackedPackageMetadata(packageSource.FullName, ReleaseAlignedToolingPackageProjects);
-            AssertPackedAnalyzerPackage(packageSource.FullName, "IWF.TeleFlow.Generators");
-        }
-        finally
-        {
-            tempDirectory.Delete(recursive: true);
-        }
+        var packageSource = _fixture.PackageSource;
+        AssertPackedPackageMetadata(packageSource, ReleaseAlignedToolingPackageProjects);
+        AssertPackedAnalyzerPackage(packageSource, "IWF.TeleFlow.Generators");
     }
 
     [Fact]
+    [Trait("Category", PackageSmokeCategory)]
     public async Task ReleaseAlignedToolingPackages_LoadAsAnalyzersFromPackageReference()
     {
-        var tempDirectory = Directory.CreateTempSubdirectory("teleflow-generator-package-smoke-");
+        var tempDirectory = _fixture.TempDirectory;
+        var packageSource = _fixture.PackageSource;
 
-        try
+        foreach (var scenario in CreateGeneratedPackageConsumerScenarios())
         {
-            var packageSource = Directory.CreateDirectory(Path.Combine(tempDirectory.FullName, "packages"));
-            await PackRuntimePackagesAsync(packageSource.FullName);
-
-            foreach (var packageProject in ReleaseAlignedToolingPackageProjects)
-            {
-                await PackPackageAsync(packageProject, packageSource.FullName);
-            }
-
-            foreach (var scenario in CreateGeneratedPackageConsumerScenarios())
-            {
-                await BuildGeneratorPackageConsumerAsync(tempDirectory.FullName, packageSource.FullName, scenario);
-            }
-        }
-        finally
-        {
-            tempDirectory.Delete(recursive: true);
+            await BuildGeneratorPackageConsumerAsync(tempDirectory.FullName, packageSource, scenario);
         }
     }
 
     [Fact]
+    [Trait("Category", PackageSmokeCategory)]
     public void VerifyReleaseScript_UsesTheSamePackageInventory()
     {
         var scriptPath = Path.Combine(RepositoryRoot, "eng", "verify-release.ps1");
@@ -151,22 +131,15 @@ public sealed class PackageSmokeTests
             packageIds.Order(StringComparer.Ordinal));
     }
 
-    private static async Task PackRuntimePackagesAsync(string packageSource)
-    {
-        foreach (var packageProject in RuntimePackageProjects)
-        {
-            await PackPackageAsync(packageProject, packageSource);
-        }
-    }
-
-    private static Task PackPackageAsync(PackageProject packageProject, string packageSource)
+    internal static Task PackPackageTrainAsync(string packageSource)
     {
         return RunDotNetAsync(
             RepositoryRoot,
             "pack",
-            Path.Combine(RepositoryRoot, packageProject.RelativeProjectPath),
+            Path.Combine(RepositoryRoot, "TeleFlow.sln"),
             "--configuration",
             "Release",
+            "--no-restore",
             "--output",
             packageSource,
             "/p:PackageVersion=" + PackageVersion,
@@ -223,11 +196,6 @@ public sealed class PackageSmokeTests
             "/p:RestoreIgnoreFailedSources=true",
             "/p:RestoreNoCache=true",
             "/nodeReuse:false");
-    }
-
-    private static void AssertPackedRuntimePackageTrain(string packageSource)
-    {
-        AssertPackedPackageSet(packageSource, RuntimePackageProjects);
     }
 
     private static void AssertPackedPackageSet(
@@ -1024,7 +992,7 @@ public sealed class PackageSmokeTests
         bool RequiresAspNetCore,
         string Source);
 
-    private sealed record PackageProject(string PackageId, string RelativeProjectPath);
+    private sealed record PackageProject(string PackageId);
 
     private sealed record PackageIdentity(
         string Id,
@@ -1033,4 +1001,30 @@ public sealed class PackageSmokeTests
         string Authors,
         string Tags,
         string Readme);
+}
+
+public sealed class PackageSmokeFixture : IAsyncLifetime
+{
+    private DirectoryInfo? _tempDirectory;
+    private string? _packageSource;
+
+    public DirectoryInfo TempDirectory => _tempDirectory
+        ?? throw new InvalidOperationException("The package smoke fixture has not been initialized.");
+
+    public string PackageSource => _packageSource
+        ?? throw new InvalidOperationException("The package smoke fixture has not been initialized.");
+
+    public async Task InitializeAsync()
+    {
+        _tempDirectory = Directory.CreateTempSubdirectory("teleflow-package-smoke-");
+        _packageSource = Directory.CreateDirectory(Path.Combine(_tempDirectory.FullName, "packages")).FullName;
+
+        await PackageSmokeTests.PackPackageTrainAsync(_packageSource);
+    }
+
+    public Task DisposeAsync()
+    {
+        _tempDirectory?.Delete(recursive: true);
+        return Task.CompletedTask;
+    }
 }

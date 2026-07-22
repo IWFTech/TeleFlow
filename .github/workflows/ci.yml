@@ -28,6 +28,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      minimum_sdk: ${{ steps.filter.outputs.minimum_sdk }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -39,6 +40,7 @@ jobs:
           filters: |
             code:
               - '.github/workflows/**'
+              - '.config/**'
               - 'Directory.Build.props'
               - 'Directory.Build.targets'
               - 'global.json'
@@ -47,6 +49,58 @@ jobs:
               - 'eng/**'
               - 'src/**'
               - 'tests/**'
+            minimum_sdk:
+              - '.github/workflows/ci.yml'
+              - 'Directory.Build.props'
+              - 'Directory.Build.targets'
+              - 'global.json'
+              - 'NuGet.config'
+              - 'TeleFlow.sln'
+              - 'eng/verify-minimum-sdk-generator.ps1'
+              - 'src/TeleFlow.Annotations/**'
+              - 'src/TeleFlow.Generators/**'
+
+  quality:
+    name: Quality
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Skip quality verification
+        if: ${{ needs.changes.outputs.code != 'true' }}
+        shell: pwsh
+        run: Write-Host "No code, project, build, test, or CI files changed. Skipping quality verification."
+
+      - name: Checkout
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore solution
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        shell: pwsh
+        run: dotnet restore ./TeleFlow.sln
+
+      - name: Verify whitespace formatting
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        shell: pwsh
+        run: dotnet format whitespace ./TeleFlow.sln --verify-no-changes --no-restore --verbosity minimal
+
+      - name: Verify style formatting
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        shell: pwsh
+        run: dotnet format style ./TeleFlow.sln --verify-no-changes --no-restore --verbosity minimal
+
+      - name: Verify strict analyzers
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        shell: pwsh
+        run: ./eng/verify-strict-analyzers.ps1 -Configuration Release -NoRestore
 
   verify:
     name: Verify (${{ matrix.os }})
@@ -82,30 +136,205 @@ jobs:
         shell: pwsh
         run: dotnet restore ./TeleFlow.sln
 
-      - name: Verify whitespace formatting
-        if: ${{ needs.changes.outputs.code == 'true' }}
-        shell: pwsh
-        run: dotnet format whitespace ./TeleFlow.sln --verify-no-changes --no-restore --verbosity minimal
-
-      - name: Verify style formatting
-        if: ${{ needs.changes.outputs.code == 'true' }}
-        shell: pwsh
-        run: dotnet format style ./TeleFlow.sln --verify-no-changes --no-restore --verbosity minimal
-
       - name: Build
         if: ${{ needs.changes.outputs.code == 'true' }}
         shell: pwsh
         run: dotnet build ./TeleFlow.sln -c Release --no-restore /nodeReuse:false
 
-      - name: Verify strict analyzers
+      - name: Test fast suite
         if: ${{ needs.changes.outputs.code == 'true' }}
         shell: pwsh
-        run: ./eng/verify-strict-analyzers.ps1 -Configuration Release -NoRestore
+        run: >-
+          dotnet test ./tests/TeleFlow.ArchitectureTests/TeleFlow.ArchitectureTests.csproj
+          -c Release
+          --no-build
+          --no-restore
+          /nodeReuse:false
+          --filter "Category!=PackageSmoke"
+          --logger "console;verbosity=minimal"
 
-      - name: Test
+  package-smoke:
+    name: Package smoke
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Skip package smoke
+        if: ${{ needs.changes.outputs.code != 'true' }}
+        shell: pwsh
+        run: Write-Host "No code, project, build, test, or CI files changed. Skipping package smoke."
+
+      - name: Checkout
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore test graph
         if: ${{ needs.changes.outputs.code == 'true' }}
         shell: pwsh
-        run: dotnet test ./TeleFlow.sln -c Release --no-build --no-restore /nodeReuse:false --logger "console;verbosity=minimal"
+        run: dotnet restore ./tests/TeleFlow.ArchitectureTests/TeleFlow.ArchitectureTests.csproj
+
+      - name: Build test graph
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        shell: pwsh
+        run: >-
+          dotnet build ./tests/TeleFlow.ArchitectureTests/TeleFlow.ArchitectureTests.csproj
+          -c Release
+          --no-restore
+          /nodeReuse:false
+
+      - name: Test package contracts
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        shell: pwsh
+        run: >-
+          dotnet test ./tests/TeleFlow.ArchitectureTests/TeleFlow.ArchitectureTests.csproj
+          -c Release
+          --no-build
+          --no-restore
+          /nodeReuse:false
+          --filter "Category=PackageSmoke"
+          --logger "console;verbosity=minimal"
+
+  coverage:
+    name: Coverage
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Skip coverage
+        if: ${{ needs.changes.outputs.code != 'true' }}
+        shell: pwsh
+        run: Write-Host "No code, project, build, test, or CI files changed. Skipping coverage."
+
+      - name: Checkout
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Setup Python
+        if: ${{ needs.changes.outputs.code == 'true' && github.event_name == 'pull_request' }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: eng/coverage-requirements.txt
+
+      - name: Restore coverage tools
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        shell: pwsh
+        run: dotnet tool restore
+
+      - name: Install changed-line coverage tool
+        if: ${{ needs.changes.outputs.code == 'true' && github.event_name == 'pull_request' }}
+        run: python -m pip install -r eng/coverage-requirements.txt
+
+      - name: Restore test graph
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        shell: pwsh
+        run: dotnet restore ./tests/TeleFlow.ArchitectureTests/TeleFlow.ArchitectureTests.csproj
+
+      - name: Build test graph
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        shell: pwsh
+        run: >-
+          dotnet build ./tests/TeleFlow.ArchitectureTests/TeleFlow.ArchitectureTests.csproj
+          -c Release
+          --no-restore
+          /nodeReuse:false
+
+      - name: Collect coverage
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        shell: pwsh
+        run: >-
+          dotnet test ./tests/TeleFlow.ArchitectureTests/TeleFlow.ArchitectureTests.csproj
+          -c Release
+          --no-build
+          --no-restore
+          /nodeReuse:false
+          --filter "Category!=PackageSmoke"
+          --settings ./eng/coverage.runsettings
+          --collect "XPlat Code Coverage"
+          --results-directory ./artifacts/coverage
+          --logger "console;verbosity=minimal"
+
+      - name: Locate coverage report
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        id: coverage-report
+        shell: pwsh
+        run: |
+          $reports = @(Get-ChildItem -Path ./artifacts/coverage -Recurse -Filter coverage.cobertura.xml)
+
+          if ($reports.Count -ne 1) {
+              throw "Expected exactly one Cobertura report, found $($reports.Count)."
+          }
+
+          "path=$($reports[0].FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Generate coverage report
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        shell: pwsh
+        run: >-
+          dotnet reportgenerator
+          "-reports:${{ steps.coverage-report.outputs.path }}"
+          "-targetdir:./artifacts/coverage/report"
+          "-reporttypes:Html;MarkdownSummaryGithub;Badges"
+          "-verbosity:Warning"
+
+      - name: Add coverage report to job summary
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        shell: pwsh
+        run: Get-Content ./artifacts/coverage/report/SummaryGithub.md | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+
+      - name: Verify aggregate coverage
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        shell: pwsh
+        run: >-
+          ./eng/verify-coverage.ps1
+          -CoveragePath "${{ steps.coverage-report.outputs.path }}"
+          -MinimumLineCoverage 85
+          -MinimumBranchCoverage 75
+
+      - name: Verify changed-line coverage
+        if: ${{ needs.changes.outputs.code == 'true' && github.event_name == 'pull_request' }}
+        shell: pwsh
+        run: >-
+          python -m diff_cover.diff_cover_tool
+          "${{ steps.coverage-report.outputs.path }}"
+          --compare-branch "origin/${{ github.base_ref }}"
+          --fail-under 80
+          --format markdown:./artifacts/coverage/diff-coverage.md
+
+      - name: Add changed-line coverage to job summary
+        if: ${{ always() && needs.changes.outputs.code == 'true' && github.event_name == 'pull_request' }}
+        shell: pwsh
+        run: |
+          if (Test-Path ./artifacts/coverage/diff-coverage.md) {
+              Get-Content ./artifacts/coverage/diff-coverage.md |
+                  Add-Content -Path $env:GITHUB_STEP_SUMMARY
+          }
+
+      - name: Upload coverage report
+        if: ${{ always() && needs.changes.outputs.code == 'true' && steps.coverage-report.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-${{ github.sha }}
+          path: artifacts/coverage
+          if-no-files-found: error
+          retention-days: 14
 
   schema-update-guardrails:
     name: Schema update guardrails
@@ -131,16 +360,16 @@ jobs:
 
     steps:
       - name: Skip minimum SDK generator smoke
-        if: ${{ needs.changes.outputs.code != 'true' }}
+        if: ${{ needs.changes.outputs.minimum_sdk != 'true' }}
         shell: pwsh
-        run: Write-Host "No code, project, build, test, or CI files changed. Skipping minimum SDK generator smoke."
+        run: Write-Host "No generator, annotation, package graph, or minimum SDK verification files changed. Skipping minimum SDK generator smoke."
 
       - name: Checkout
-        if: ${{ needs.changes.outputs.code == 'true' }}
+        if: ${{ needs.changes.outputs.minimum_sdk == 'true' }}
         uses: actions/checkout@v7
 
       - name: Setup minimum .NET SDK feature band
-        if: ${{ needs.changes.outputs.code == 'true' }}
+        if: ${{ needs.changes.outputs.minimum_sdk == 'true' }}
         id: setup-minimum-sdk
         uses: actions/setup-dotnet@v6
         with:
@@ -148,7 +377,7 @@ jobs:
           dotnet-quality: ga
 
       - name: Pin SDK roll-forward to minimum feature band
-        if: ${{ needs.changes.outputs.code == 'true' }}
+        if: ${{ needs.changes.outputs.minimum_sdk == 'true' }}
         shell: pwsh
         run: |
           $minimumGlobalJson = @{
@@ -164,6 +393,6 @@ jobs:
           dotnet --version
 
       - name: Verify generator package on minimum SDK
-        if: ${{ needs.changes.outputs.code == 'true' }}
+        if: ${{ needs.changes.outputs.minimum_sdk == 'true' }}
         shell: pwsh
         run: ./eng/verify-minimum-sdk-generator.ps1 -Configuration Release -RequiredSdkVersionPrefix "10.0.1"

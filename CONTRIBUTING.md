@@ -21,6 +21,40 @@ dotnet build ./TeleFlow.sln -c Release --no-restore /nodeReuse:false
 dotnet test ./TeleFlow.sln -c Release --no-build --no-restore /nodeReuse:false --logger "console;verbosity=minimal"
 ```
 
+For a fast framework/runtime iteration without packaging child processes:
+
+```powershell
+dotnet test ./tests/TeleFlow.ArchitectureTests/TeleFlow.ArchitectureTests.csproj -c Release --no-build --no-restore /nodeReuse:false --filter "Category!=PackageSmoke"
+```
+
+Run the NuGet package contract scenarios explicitly when package metadata, dependencies, build configuration, or generated analyzer packaging changes:
+
+```powershell
+dotnet test ./tests/TeleFlow.ArchitectureTests/TeleFlow.ArchitectureTests.csproj -c Release --no-build --no-restore /nodeReuse:false --filter "Category=PackageSmoke"
+```
+
+Collect the same coverage scope enforced by CI:
+
+```powershell
+dotnet test ./tests/TeleFlow.ArchitectureTests/TeleFlow.ArchitectureTests.csproj -c Release --no-build --no-restore /nodeReuse:false --filter "Category!=PackageSmoke" --settings ./eng/coverage.runsettings --collect "XPlat Code Coverage" --results-directory ./artifacts/coverage
+```
+
+Validate the produced Cobertura report against the repository aggregate floors:
+
+```powershell
+./eng/verify-coverage.ps1 -CoveragePath ./artifacts/coverage/<run-id>/coverage.cobertura.xml
+```
+
+Generate the same HTML report and SVG badges published through GitHub Pages:
+
+```powershell
+dotnet tool restore
+dotnet reportgenerator "-reports:./artifacts/coverage/<run-id>/coverage.cobertura.xml" "-targetdir:./artifacts/coverage/report" "-reporttypes:Html;MarkdownSummaryGithub;Badges" "-verbosity:Warning"
+```
+
+Pull requests additionally enforce changed-line coverage with the pinned tool in
+`eng/coverage-requirements.txt`.
+
 Run before release packaging changes:
 
 ```powershell
