@@ -412,19 +412,18 @@ public sealed partial class TelegramHandlerAnalyzer
             }
         }
 
-        foreach (AttributeData attribute in TelegramHandlerSymbols.GetAttributes(method.ContainingType, TelegramHandlerSymbols.ChatTypeAttribute, inherit: true)
-                     .Concat(TelegramHandlerSymbols.GetAttributes(method, TelegramHandlerSymbols.ChatTypeAttribute, inherit: true)))
-        {
-            if (attribute.ConstructorArguments.Length == 0 ||
-                attribute.ConstructorArguments[0].Values.IsDefaultOrEmpty ||
-                attribute.ConstructorArguments[0].Values.Any(static value => value.Value is not int chatType || !TelegramChatTypeFacts.IsKnown(chatType)))
-            {
-                context.ReportDiagnostic(Diagnostic.Create(
-                    InvalidFilter,
-                    location,
-                    "ChatTypeAttribute must specify at least one known Telegram chat type."));
-            }
-        }
+        AnalyzeChatTypeFilters(
+            context,
+            method,
+            TelegramHandlerSymbols.ChatTypeAttribute,
+            "ChatTypeAttribute",
+            location);
+        AnalyzeChatTypeFilters(
+            context,
+            method,
+            TelegramHandlerSymbols.SenderChatTypeAttribute,
+            "SenderChatTypeAttribute",
+            location);
 
         foreach (AttributeData attribute in TelegramHandlerSymbols.GetAttributes(method.ContainingType, TelegramHandlerSymbols.ChatIdAttribute, inherit: true)
                      .Concat(TelegramHandlerSymbols.GetAttributes(method, TelegramHandlerSymbols.ChatIdAttribute, inherit: true)))
@@ -493,6 +492,36 @@ public sealed partial class TelegramHandlerAnalyzer
                     InvalidFilter,
                     location,
                     "MessageThreadIdAttribute must specify at least one positive Telegram message thread id."));
+            }
+        }
+    }
+
+    private static void AnalyzeChatTypeFilters(
+        SymbolAnalysisContext context,
+        IMethodSymbol method,
+        string attributeMetadataName,
+        string attributeDisplayName,
+        Location? location)
+    {
+        foreach (AttributeData attribute in TelegramHandlerSymbols.GetAttributes(
+                     method.ContainingType,
+                     attributeMetadataName,
+                     inherit: true)
+                 .Concat(TelegramHandlerSymbols.GetAttributes(
+                     method,
+                     attributeMetadataName,
+                     inherit: true)))
+        {
+            if (attribute.ConstructorArguments.Length == 0 ||
+                attribute.ConstructorArguments[0].Values.IsDefaultOrEmpty ||
+                attribute.ConstructorArguments[0].Values.Any(
+                    static value => value.Value is not int chatType ||
+                                    !TelegramChatTypeFacts.IsKnown(chatType)))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    InvalidFilter,
+                    location,
+                    $"{attributeDisplayName} must specify at least one known Telegram chat type."));
             }
         }
     }

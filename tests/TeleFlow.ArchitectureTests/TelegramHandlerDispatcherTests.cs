@@ -1504,6 +1504,139 @@ public sealed class TelegramHandlerDispatcherTests
     }
 
     [Fact]
+    public async Task FromHumanFilter_MatchesOnlyActualHumanMessageSenders()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.AddTelegramHandler<FromHumanHandler>();
+                services.AddTelegramHandler<AnyMessageHandler>();
+            });
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("human"));
+        await DispatchAsync(
+            serviceProvider,
+            CreateMessageUpdate("bot", message => message with
+            {
+                From = new User { Id = 10, IsBot = true, FirstName = "Bot" }
+            }));
+        await DispatchAsync(
+            serviceProvider,
+            CreateMessageUpdate("sender-chat", message => message with
+            {
+                From = new User { Id = 5, IsBot = false, FirstName = "Fake sender" },
+                SenderChat = new Chat { Id = -100, Type = "channel", Title = "Channel" }
+            }));
+
+        Assert.Equal(["from-human:human", "message:bot", "message:sender-chat"], probe.Events);
+    }
+
+    [Fact]
+    public async Task SenderUserFilters_DoNotMatchBackwardCompatibleFromForSenderChatMessages()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.AddTelegramHandler<SenderChatFakeUserHandler>();
+                services.AddTelegramHandler<AnyMessageHandler>();
+            });
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(
+            serviceProvider,
+            CreateMessageUpdate("sender-chat", message => message with
+            {
+                From = new User
+                {
+                    Id = 5,
+                    IsBot = false,
+                    FirstName = "Fake sender",
+                    IsPremium = true
+                },
+                SenderChat = new Chat { Id = -100, Type = "channel", Title = "Channel" }
+            }));
+
+        Assert.Equal(["message:sender-chat"], probe.Events);
+    }
+
+    [Fact]
+    public async Task SenderChatTypeFilter_MatchesMessageSenderChatInsteadOfDestinationChat()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.AddTelegramHandler<ChannelSenderChatHandler>();
+                services.AddTelegramHandler<SupergroupSenderChatHandler>();
+                services.AddTelegramHandler<AnyMessageHandler>();
+            });
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("no-sender-chat", chatType: "channel"));
+        await DispatchAsync(
+            serviceProvider,
+            CreateMessageUpdate("channel", message => message with
+            {
+                SenderChat = new Chat { Id = -100, Type = "channel", Title = "Channel" }
+            }));
+        await DispatchAsync(
+            serviceProvider,
+            CreateMessageUpdate("supergroup", message => message with
+            {
+                SenderChat = new Chat { Id = -200, Type = "supergroup", Title = "Group" }
+            }));
+
+        Assert.Equal(
+            ["message:no-sender-chat", "sender-chat-channel:channel", "sender-chat-supergroup:supergroup"],
+            probe.Events);
+    }
+
+    [Fact]
+    public async Task SenderUserFilters_UseCallbackQuerySenderWithoutDependingOnMessageAccessibility()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.AddTelegramHandler<CallbackFromUserHandler>();
+                services.AddTelegramHandler<CallbackFromHumanHandler>();
+                services.AddTelegramHandler<CallbackFromBotHandler>();
+                services.AddTelegramHandler<CallbackFromPremiumUserHandler>();
+                services.AddTelegramHandler<RawCallbackHandler>();
+            });
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateCallbackUpdate("user:no-message"));
+        await DispatchAsync(serviceProvider, CreateCallbackUpdate("user:accessible", includeMessage: true));
+        await DispatchAsync(serviceProvider, CreateCallbackUpdate("user:inaccessible", inaccessibleChatId: 100));
+        await DispatchAsync(serviceProvider, CreateCallbackUpdate("human:no-message"));
+        await DispatchAsync(
+            serviceProvider,
+            CreateCallbackUpdate(
+                "bot:no-message",
+                configureSender: sender => sender with { Id = 10, IsBot = true, FirstName = "Bot" }));
+        await DispatchAsync(
+            serviceProvider,
+            CreateCallbackUpdate(
+                "premium:no-message",
+                configureSender: sender => sender with { IsPremium = true }));
+
+        Assert.Equal(
+            [
+                "callback-user:user:no-message",
+                "callback-user:user:accessible",
+                "callback-user:user:inaccessible",
+                "callback-human:human:no-message",
+                "callback-bot:bot:no-message",
+                "callback-premium:premium:no-message"
+            ],
+            probe.Events);
+    }
+
+    [Fact]
     public async Task ContentFilters_MatchMessagePayloadShape()
     {
         using var serviceProvider = CreateServiceProvider(
@@ -2340,6 +2473,61 @@ public sealed class TelegramHandlerDispatcherTests
             () => services.AddTelegramHandler<CallbackWithMessageFilterHandler>());
 
         Assert.Contains("Message filters cannot be used on callback handlers", exception.Message);
+    }
+
+    [Fact]
+    public void CallbackHandlerWithSenderChatFilter_FailsClearly()
+    {
+        var services = CreateBaseServices();
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => services.AddTelegramHandler<CallbackWithSenderChatFilterHandler>());
+
+        Assert.Contains("Sender chat filters cannot be used on callback handlers", exception.Message);
+    }
+
+    [Fact]
+    public void ChatMemberHandlerWithSenderUserFilter_FailsClearly()
+    {
+        var services = CreateBaseServices();
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => services.AddTelegramHandler<ChatMemberWithSenderUserFilterHandler>());
+
+        Assert.Contains("Sender user filters cannot be used on chat member update handlers", exception.Message);
+    }
+
+    [Fact]
+    public void SenderChatTypeFilterWithUnknownChatType_FailsDuringRegistration()
+    {
+        var services = CreateBaseServices();
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => services.AddTelegramHandler<UnknownSenderChatTypeHandler>());
+
+        Assert.Contains("Unsupported Telegram chat type '999'", exception.Message);
+    }
+
+    [Fact]
+    public void ChatTypeFilterWithInlineQuerySenderValue_FailsDuringRegistration()
+    {
+        var services = CreateBaseServices();
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => services.AddTelegramHandler<InlineQuerySenderDestinationChatTypeHandler>());
+
+        Assert.Contains("Unsupported Telegram chat type '4'", exception.Message);
+    }
+
+    [Fact]
+    public void SenderChatTypeFilterWithInlineQuerySenderValue_FailsDuringRegistration()
+    {
+        var services = CreateBaseServices();
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => services.AddTelegramHandler<InlineQuerySenderSenderChatTypeHandler>());
+
+        Assert.Contains("Unsupported Telegram chat type '4'", exception.Message);
     }
 
     [Fact]
@@ -3527,7 +3715,8 @@ public sealed class TelegramHandlerDispatcherTests
         bool includeMessage = false,
         Func<Message, Message>? configureMessage = null,
         long? inaccessibleChatId = null,
-        Func<InaccessibleMessage, InaccessibleMessage>? configureInaccessibleMessage = null)
+        Func<InaccessibleMessage, InaccessibleMessage>? configureInaccessibleMessage = null,
+        Func<User, User>? configureSender = null)
     {
         var message = new Message
         {
@@ -3548,18 +3737,22 @@ public sealed class TelegramHandlerDispatcherTests
 
         inaccessibleMessage = configureInaccessibleMessage?.Invoke(inaccessibleMessage) ?? inaccessibleMessage;
 
+        var sender = new User
+        {
+            Id = 5,
+            IsBot = false,
+            FirstName = "User"
+        };
+
+        sender = configureSender?.Invoke(sender) ?? sender;
+
         return new Update
         {
             UpdateId = 1,
             CallbackQuery = new CallbackQuery
             {
                 Id = "cb",
-                From = new User
-                {
-                    Id = 5,
-                    IsBot = false,
-                    FirstName = "User"
-                },
+                From = sender,
                 ChatInstance = "chat-instance",
                 Data = data,
                 Message = includeMessage
@@ -4357,6 +4550,101 @@ public sealed class TelegramHandlerDispatcherTests
         }
     }
 
+    public sealed class FromHumanHandler
+    {
+        [Message]
+        [FromHuman]
+        public Task Handle(MessageContext context, HandlerProbe probe)
+        {
+            probe.Events.Add($"from-human:{context.TelegramMessage.Text}");
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class SenderChatFakeUserHandler
+    {
+        [Message]
+        [FromUser(5)]
+        [FromHuman]
+        [FromBot(false)]
+        [FromPremiumUser]
+        public Task Handle(MessageContext context, HandlerProbe probe)
+        {
+            probe.Events.Add($"fake-user:{context.TelegramMessage.Text}");
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class ChannelSenderChatHandler
+    {
+        [Message]
+        [SenderChatType(TelegramChatType.Channel)]
+        public Task Handle(MessageContext context, HandlerProbe probe)
+        {
+            probe.Events.Add($"sender-chat-channel:{context.TelegramMessage.Text}");
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class SupergroupSenderChatHandler
+    {
+        [Message]
+        [SenderChatType(TelegramChatType.Supergroup)]
+        public Task Handle(MessageContext context, HandlerProbe probe)
+        {
+            probe.Events.Add($"sender-chat-supergroup:{context.TelegramMessage.Text}");
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class CallbackFromUserHandler
+    {
+        [Callback]
+        [CallbackDataPrefix("user:")]
+        [FromUser(5)]
+        public Task Handle(CallbackQueryContext context, HandlerProbe probe)
+        {
+            probe.Events.Add($"callback-user:{context.TelegramCallbackQuery.Data}");
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class CallbackFromHumanHandler
+    {
+        [Callback]
+        [CallbackDataPrefix("human:")]
+        [FromHuman]
+        public Task Handle(CallbackQueryContext context, HandlerProbe probe)
+        {
+            probe.Events.Add($"callback-human:{context.TelegramCallbackQuery.Data}");
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class CallbackFromBotHandler
+    {
+        [Callback]
+        [CallbackDataPrefix("bot:")]
+        [FromBot]
+        public Task Handle(CallbackQueryContext context, HandlerProbe probe)
+        {
+            probe.Events.Add($"callback-bot:{context.TelegramCallbackQuery.Data}");
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class CallbackFromPremiumUserHandler
+    {
+        [Callback]
+        [CallbackDataPrefix("premium:")]
+        [FromPremiumUser]
+        public Task Handle(CallbackQueryContext context, HandlerProbe probe)
+        {
+            probe.Events.Add($"callback-premium:{context.TelegramCallbackQuery.Data}");
+            return Task.CompletedTask;
+        }
+    }
+
     public sealed class PhotoHandler
     {
         [Message]
@@ -4759,6 +5047,56 @@ public sealed class TelegramHandlerDispatcherTests
         [Callback]
         [HasText]
         public Task Handle(CallbackQueryContext context)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class CallbackWithSenderChatFilterHandler
+    {
+        [Callback]
+        [SenderChatType(TelegramChatType.Channel)]
+        public Task Handle(CallbackQueryContext context)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class ChatMemberWithSenderUserFilterHandler
+    {
+        [ChatMemberUpdated]
+        [FromHuman]
+        public Task Handle(ChatMemberUpdatedContext context)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class UnknownSenderChatTypeHandler
+    {
+        [Message]
+        [SenderChatType((TelegramChatType)999)]
+        public Task Handle(MessageContext context)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class InlineQuerySenderDestinationChatTypeHandler
+    {
+        [Message]
+        [ChatType((TelegramChatType)4)]
+        public Task Handle(MessageContext context)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class InlineQuerySenderSenderChatTypeHandler
+    {
+        [Message]
+        [SenderChatType((TelegramChatType)4)]
+        public Task Handle(MessageContext context)
         {
             return Task.CompletedTask;
         }

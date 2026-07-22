@@ -838,34 +838,18 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
         ImmutableArray<GeneratedFilter>.Builder builder,
         ISymbol symbol)
     {
-        foreach (AttributeData attribute in TelegramHandlerSymbols.GetAttributes(
-                     symbol,
-                     TelegramHandlerSymbols.ChatTypeAttribute,
-                     inherit: true))
+        if (!AppendChatTypeFilters(
+                builder,
+                symbol,
+                TelegramHandlerSymbols.ChatTypeAttribute,
+                "ChatType") ||
+            !AppendChatTypeFilters(
+                builder,
+                symbol,
+                TelegramHandlerSymbols.SenderChatTypeAttribute,
+                "SenderChatType"))
         {
-            if (attribute.ConstructorArguments.Length == 0 ||
-                attribute.ConstructorArguments[0].Values.IsDefaultOrEmpty)
-            {
-                return false;
-            }
-
-            ImmutableArray<string>.Builder values = ImmutableArray.CreateBuilder<string>();
-
-            foreach (TypedConstant value in attribute.ConstructorArguments[0].Values)
-            {
-                if (value.Value is not int chatType ||
-                    !TelegramChatTypeFacts.TryMapToTelegramValue(chatType, out string mappedValue))
-                {
-                    return false;
-                }
-
-                values.Add(mappedValue);
-            }
-
-            if (values.Count > 0)
-            {
-                builder.Add(new GeneratedFilter("ChatType", values.ToImmutable(), LongValues: []));
-            }
+            return false;
         }
 
         foreach (AttributeData attribute in TelegramHandlerSymbols.GetAttributes(
@@ -1024,6 +1008,42 @@ public sealed partial class TelegramHandlerSourceGenerator : IIncrementalGenerat
                 filterType.ToDisplayString(FullyQualifiedFormat),
                 ToAttributeCreationExpression(attribute),
                 CustomContextMetadataNames: contextMetadataNames));
+        }
+
+        return true;
+    }
+
+    private static bool AppendChatTypeFilters(
+        ImmutableArray<GeneratedFilter>.Builder builder,
+        ISymbol symbol,
+        string attributeMetadataName,
+        string generatedKind)
+    {
+        foreach (AttributeData attribute in TelegramHandlerSymbols.GetAttributes(
+                     symbol,
+                     attributeMetadataName,
+                     inherit: true))
+        {
+            if (attribute.ConstructorArguments.Length == 0 ||
+                attribute.ConstructorArguments[0].Values.IsDefaultOrEmpty)
+            {
+                return false;
+            }
+
+            ImmutableArray<string>.Builder values = ImmutableArray.CreateBuilder<string>();
+
+            foreach (TypedConstant value in attribute.ConstructorArguments[0].Values)
+            {
+                if (value.Value is not int chatType ||
+                    !TelegramChatTypeFacts.TryMapToTelegramValue(chatType, out string mappedValue))
+                {
+                    return false;
+                }
+
+                values.Add(mappedValue);
+            }
+
+            builder.Add(new GeneratedFilter(generatedKind, values.ToImmutable(), LongValues: []));
         }
 
         return true;

@@ -333,6 +333,39 @@ public sealed class StageEightGeneratedRegistrationTests
     }
 
     [Fact]
+    public async Task GeneratedRegistrar_AppliesSenderFilterDescriptors()
+    {
+        using var serviceProvider = CreateServiceProvider();
+        var probe = serviceProvider.GetRequiredService<GeneratedHandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("generated-human"));
+        await DispatchAsync(
+            serviceProvider,
+            CreateMessageUpdate("generated-human", configure: message => message with
+            {
+                SenderChat = new Chat { Id = -100, Type = "channel", Title = "Channel" }
+            }));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("generated-sender-chat"));
+        await DispatchAsync(
+            serviceProvider,
+            CreateMessageUpdate("generated-sender-chat", configure: message => message with
+            {
+                SenderChat = new Chat { Id = -100, Type = "channel", Title = "Channel" }
+            }));
+        await DispatchAsync(serviceProvider, CreateCallbackUpdate("sender-user:no-message"));
+
+        Assert.Equal(
+            [
+                "generated-human",
+                "fallback:generated-human",
+                "fallback:generated-sender-chat",
+                "generated-sender-chat",
+                "generated-callback-sender:sender-user:no-message"
+            ],
+            probe.Events);
+    }
+
+    [Fact]
     public async Task GeneratedRegistrar_AppliesTelegramRoleRequirementDescriptors()
     {
         var resolver = new GeneratedRecordingRoleResolver(TelegramMemberStatusSet.Administrator);
@@ -1116,6 +1149,91 @@ internal sealed class StageEightGeneratedHandlersRegistrar : ITelegramGeneratedH
             InvokeTopicMessage));
 
         registry.RegisterHandler(new TelegramGeneratedHandlerDescriptor(
+            typeof(GeneratedHumanSenderHandler),
+            nameof(GeneratedHumanSenderHandler.Handle),
+            TelegramGeneratedHandlerKind.Message,
+            TelegramGeneratedRouteKind.TextExact,
+            routePattern: "generated-human",
+            commandPrefixes: ["/"],
+            allowSpaceAfterPrefix: false,
+            ignoreCase: true,
+            registrationOrder: 17,
+            moduleName: null,
+            command: null,
+            callbackPayloadType: null,
+            textFilters: [new("generated-human", TextMatchMode.Equals, ignoreCase: true)],
+            filters:
+            [
+                new(TelegramGeneratedFilterKind.FromHuman)
+            ],
+            chatMemberTransitions: [],
+            roleRequirements: [],
+            states: [],
+            parameters:
+            [
+                new(typeof(MessageContext), TelegramGeneratedHandlerParameterKind.Context, "context"),
+                new(typeof(GeneratedHandlerProbe), TelegramGeneratedHandlerParameterKind.Service, "probe")
+            ],
+            InvokeHumanSender));
+
+        registry.RegisterHandler(new TelegramGeneratedHandlerDescriptor(
+            typeof(GeneratedSenderChatHandler),
+            nameof(GeneratedSenderChatHandler.Handle),
+            TelegramGeneratedHandlerKind.Message,
+            TelegramGeneratedRouteKind.TextExact,
+            routePattern: "generated-sender-chat",
+            commandPrefixes: ["/"],
+            allowSpaceAfterPrefix: false,
+            ignoreCase: true,
+            registrationOrder: 18,
+            moduleName: null,
+            command: null,
+            callbackPayloadType: null,
+            textFilters: [new("generated-sender-chat", TextMatchMode.Equals, ignoreCase: true)],
+            filters:
+            [
+                new(TelegramGeneratedFilterKind.SenderChatType, stringValues: ["channel"])
+            ],
+            chatMemberTransitions: [],
+            roleRequirements: [],
+            states: [],
+            parameters:
+            [
+                new(typeof(MessageContext), TelegramGeneratedHandlerParameterKind.Context, "context"),
+                new(typeof(GeneratedHandlerProbe), TelegramGeneratedHandlerParameterKind.Service, "probe")
+            ],
+            InvokeSenderChat));
+
+        registry.RegisterHandler(new TelegramGeneratedHandlerDescriptor(
+            typeof(GeneratedCallbackSenderHandler),
+            nameof(GeneratedCallbackSenderHandler.Handle),
+            TelegramGeneratedHandlerKind.Callback,
+            TelegramGeneratedRouteKind.Callback,
+            routePattern: null,
+            commandPrefixes: ["/"],
+            allowSpaceAfterPrefix: false,
+            ignoreCase: true,
+            registrationOrder: 19,
+            moduleName: null,
+            command: null,
+            callbackPayloadType: null,
+            textFilters: [],
+            filters:
+            [
+                new(TelegramGeneratedFilterKind.CallbackDataPrefix, stringValues: ["sender-user:"]),
+                new(TelegramGeneratedFilterKind.FromUser, longValues: [5])
+            ],
+            chatMemberTransitions: [],
+            roleRequirements: [],
+            states: [],
+            parameters:
+            [
+                new(typeof(CallbackQueryContext), TelegramGeneratedHandlerParameterKind.Context, "context"),
+                new(typeof(GeneratedHandlerProbe), TelegramGeneratedHandlerParameterKind.Service, "probe")
+            ],
+            InvokeCallbackSender));
+
+        registry.RegisterHandler(new TelegramGeneratedHandlerDescriptor(
             typeof(GeneratedSceneStartHandler),
             nameof(GeneratedSceneStartHandler.Handle),
             TelegramGeneratedHandlerKind.Command,
@@ -1509,6 +1627,33 @@ internal sealed class StageEightGeneratedHandlersRegistrar : ITelegramGeneratedH
     {
         var handler = (GeneratedTopicMessageHandler)services.GetRequiredService(typeof(GeneratedTopicMessageHandler));
         await handler.Handle((MessageContext)arguments[0]!, (GeneratedHandlerProbe)arguments[1]!);
+    }
+
+    private static async ValueTask InvokeHumanSender(
+        IServiceProvider services,
+        object?[] arguments,
+        CancellationToken cancellationToken)
+    {
+        var handler = (GeneratedHumanSenderHandler)services.GetRequiredService(typeof(GeneratedHumanSenderHandler));
+        await handler.Handle((MessageContext)arguments[0]!, (GeneratedHandlerProbe)arguments[1]!);
+    }
+
+    private static async ValueTask InvokeSenderChat(
+        IServiceProvider services,
+        object?[] arguments,
+        CancellationToken cancellationToken)
+    {
+        var handler = (GeneratedSenderChatHandler)services.GetRequiredService(typeof(GeneratedSenderChatHandler));
+        await handler.Handle((MessageContext)arguments[0]!, (GeneratedHandlerProbe)arguments[1]!);
+    }
+
+    private static async ValueTask InvokeCallbackSender(
+        IServiceProvider services,
+        object?[] arguments,
+        CancellationToken cancellationToken)
+    {
+        var handler = (GeneratedCallbackSenderHandler)services.GetRequiredService(typeof(GeneratedCallbackSenderHandler));
+        await handler.Handle((CallbackQueryContext)arguments[0]!, (GeneratedHandlerProbe)arguments[1]!);
     }
 
     private static async ValueTask InvokeSceneStart(
@@ -1916,6 +2061,33 @@ public sealed class GeneratedTopicMessageHandler
     public Task Handle(MessageContext context, GeneratedHandlerProbe probe)
     {
         probe.Events.Add($"generated-topic:{context.TelegramMessage.MessageThreadId}");
+        return Task.CompletedTask;
+    }
+}
+
+public sealed class GeneratedHumanSenderHandler
+{
+    public Task Handle(MessageContext context, GeneratedHandlerProbe probe)
+    {
+        probe.Events.Add("generated-human");
+        return Task.CompletedTask;
+    }
+}
+
+public sealed class GeneratedSenderChatHandler
+{
+    public Task Handle(MessageContext context, GeneratedHandlerProbe probe)
+    {
+        probe.Events.Add("generated-sender-chat");
+        return Task.CompletedTask;
+    }
+}
+
+public sealed class GeneratedCallbackSenderHandler
+{
+    public Task Handle(CallbackQueryContext context, GeneratedHandlerProbe probe)
+    {
+        probe.Events.Add($"generated-callback-sender:{context.TelegramCallbackQuery.Data}");
         return Task.CompletedTask;
     }
 }

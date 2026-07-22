@@ -8,13 +8,16 @@ internal enum TelegramFilterTarget
     Message,
     Callback,
     Chat,
-    MessageThread
+    MessageThread,
+    SenderUser,
+    SenderChat
 }
 
 internal enum TelegramMarkerFilterGroup
 {
     MessageContent,
     MessageSender,
+    SenderUser,
     SharedMetadata
 }
 
@@ -42,7 +45,8 @@ internal static class TelegramFilterFacts
         new(typeof(HasVenueAttribute), TelegramFilterKind.HasVenue, TelegramMarkerFilterGroup.MessageContent),
         new(typeof(HasPollAttribute), TelegramFilterKind.HasPoll, TelegramMarkerFilterGroup.MessageContent),
         new(typeof(HasDiceAttribute), TelegramFilterKind.HasDice, TelegramMarkerFilterGroup.MessageContent),
-        new(typeof(FromPremiumUserAttribute), TelegramFilterKind.FromPremiumUser, TelegramMarkerFilterGroup.MessageSender),
+        new(typeof(FromHumanAttribute), TelegramFilterKind.FromHuman, TelegramMarkerFilterGroup.SenderUser),
+        new(typeof(FromPremiumUserAttribute), TelegramFilterKind.FromPremiumUser, TelegramMarkerFilterGroup.SenderUser),
         new(typeof(IsReplyAttribute), TelegramFilterKind.IsReply, TelegramMarkerFilterGroup.MessageSender),
         new(typeof(ReplyToBotAttribute), TelegramFilterKind.ReplyToBot, TelegramMarkerFilterGroup.MessageSender),
         new(typeof(HasMessageThreadAttribute), TelegramFilterKind.HasMessageThread, TelegramMarkerFilterGroup.SharedMetadata),
@@ -69,7 +73,13 @@ internal static class TelegramFilterFacts
                 TelegramFilterKind.CallbackDataPrefix => TelegramFilterTarget.Callback,
 
             TelegramFilterKind.FromUser or
-                TelegramFilterKind.HasText or
+                TelegramFilterKind.FromHuman or
+                TelegramFilterKind.FromBot or
+                TelegramFilterKind.FromPremiumUser => TelegramFilterTarget.SenderUser,
+
+            TelegramFilterKind.SenderChatType => TelegramFilterTarget.SenderChat,
+
+            TelegramFilterKind.HasText or
                 TelegramFilterKind.HasPhoto or
                 TelegramFilterKind.HasDocument or
                 TelegramFilterKind.HasCaption or
@@ -84,8 +94,6 @@ internal static class TelegramFilterFacts
                 TelegramFilterKind.HasVenue or
                 TelegramFilterKind.HasPoll or
                 TelegramFilterKind.HasDice or
-                TelegramFilterKind.FromBot or
-                TelegramFilterKind.FromPremiumUser or
                 TelegramFilterKind.IsReply or
                 TelegramFilterKind.ReplyToBot => TelegramFilterTarget.Message,
 
@@ -101,7 +109,6 @@ internal static class TelegramFilterFacts
             TelegramChatType.Group => "group",
             TelegramChatType.Supergroup => "supergroup",
             TelegramChatType.Channel => "channel",
-            TelegramChatType.Sender => "sender",
             _ => throw new InvalidOperationException($"Unsupported Telegram chat type '{chatType}'.")
         };
     }

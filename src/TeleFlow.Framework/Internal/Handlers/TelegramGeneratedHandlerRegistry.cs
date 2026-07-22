@@ -373,6 +373,8 @@ internal sealed class TelegramGeneratedHandlerRegistry : ITelegramGeneratedHandl
             TelegramGeneratedFilterKind.HasMessageThread => TelegramFilterKind.HasMessageThread,
             TelegramGeneratedFilterKind.HasCallbackData => TelegramFilterKind.HasCallbackData,
             TelegramGeneratedFilterKind.CallbackDataPrefix => TelegramFilterKind.CallbackDataPrefix,
+            TelegramGeneratedFilterKind.FromHuman => TelegramFilterKind.FromHuman,
+            TelegramGeneratedFilterKind.SenderChatType => TelegramFilterKind.SenderChatType,
             TelegramGeneratedFilterKind.Custom => throw new InvalidOperationException("Custom generated Telegram filters are mapped separately."),
             _ => throw new InvalidOperationException($"Unsupported generated Telegram filter kind '{kind}'.")
         };

@@ -14,6 +14,19 @@ public sealed class AnnotationContractTests
     }
 
     [Fact]
+    public void TelegramChatType_ContainsOnlyActualChatTypeValues()
+    {
+        Assert.Equal(
+            [
+                TelegramChatType.Private,
+                TelegramChatType.Group,
+                TelegramChatType.Supergroup,
+                TelegramChatType.Channel
+            ],
+            Enum.GetValues<TelegramChatType>());
+    }
+
+    [Fact]
     public void ChatTypeAttribute_DefensivelyCopiesInputArray()
     {
         var chatTypes = new[] { TelegramChatType.Private };
@@ -22,6 +35,17 @@ public sealed class AnnotationContractTests
         chatTypes[0] = TelegramChatType.Group;
 
         Assert.Equal([TelegramChatType.Private], attribute.ChatTypes);
+    }
+
+    [Fact]
+    public void SenderChatTypeAttribute_DefensivelyCopiesInputArray()
+    {
+        var chatTypes = new[] { TelegramChatType.Channel };
+
+        var attribute = new SenderChatTypeAttribute(chatTypes);
+        chatTypes[0] = TelegramChatType.Supergroup;
+
+        Assert.Equal([TelegramChatType.Channel], attribute.ChatTypes);
     }
 
     [Fact]
@@ -72,6 +96,12 @@ public sealed class AnnotationContractTests
 
         Assert.Equal(["admin:"], descriptor.StringValues);
         Assert.Equal([100L], descriptor.LongValues);
+    }
+
+    [Fact]
+    public void TelegramGeneratedFilterKind_PreservesExistingNumericValues()
+    {
+        Assert.Equal(27, (int)TelegramGeneratedFilterKind.Custom);
     }
 
     [Fact]

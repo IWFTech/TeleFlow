@@ -16,7 +16,9 @@ internal enum TelegramBuiltInFilterTarget
     Message,
     Callback,
     Chat,
-    MessageThread
+    MessageThread,
+    SenderUser,
+    SenderChat
 }
 
 internal sealed record TelegramBuiltInFilterSpec(
@@ -29,7 +31,7 @@ internal static class TelegramChatTypeFacts
 {
     public static bool IsKnown(int value)
     {
-        return value is >= 0 and <= 4;
+        return value is >= 0 and <= 3;
     }
 
     public static bool TryMapToTelegramValue(int value, out string telegramValue)
@@ -47,9 +49,6 @@ internal static class TelegramChatTypeFacts
                 return true;
             case 3:
                 telegramValue = "channel";
-                return true;
-            case 4:
-                telegramValue = "sender";
                 return true;
             default:
                 telegramValue = string.Empty;
@@ -188,9 +187,10 @@ internal static class TelegramBuiltInFilterFacts
     public static IReadOnlyList<TelegramBuiltInFilterSpec> All { get; } = new TelegramBuiltInFilterSpec[]
     {
         new(TelegramHandlerSymbols.ChatTypeAttribute, "ChatType", TelegramBuiltInFilterTarget.Chat, IsMarker: false),
+        new(TelegramHandlerSymbols.SenderChatTypeAttribute, "SenderChatType", TelegramBuiltInFilterTarget.SenderChat, IsMarker: false),
         new(TelegramHandlerSymbols.ChatIdAttribute, "ChatId", TelegramBuiltInFilterTarget.Chat, IsMarker: false),
         new(TelegramHandlerSymbols.ChatUsernameAttribute, "ChatUsername", TelegramBuiltInFilterTarget.Chat, IsMarker: false),
-        new(TelegramHandlerSymbols.FromUserAttribute, "FromUser", TelegramBuiltInFilterTarget.Message, IsMarker: false),
+        new(TelegramHandlerSymbols.FromUserAttribute, "FromUser", TelegramBuiltInFilterTarget.SenderUser, IsMarker: false),
         new(TelegramHandlerSymbols.HasTextAttribute, "HasText", TelegramBuiltInFilterTarget.Message, IsMarker: true),
         new(TelegramHandlerSymbols.HasPhotoAttribute, "HasPhoto", TelegramBuiltInFilterTarget.Message, IsMarker: true),
         new(TelegramHandlerSymbols.HasDocumentAttribute, "HasDocument", TelegramBuiltInFilterTarget.Message, IsMarker: true),
@@ -206,8 +206,9 @@ internal static class TelegramBuiltInFilterFacts
         new(TelegramHandlerSymbols.HasVenueAttribute, "HasVenue", TelegramBuiltInFilterTarget.Message, IsMarker: true),
         new(TelegramHandlerSymbols.HasPollAttribute, "HasPoll", TelegramBuiltInFilterTarget.Message, IsMarker: true),
         new(TelegramHandlerSymbols.HasDiceAttribute, "HasDice", TelegramBuiltInFilterTarget.Message, IsMarker: true),
-        new(TelegramHandlerSymbols.FromBotAttribute, "FromBot", TelegramBuiltInFilterTarget.Message, IsMarker: false),
-        new(TelegramHandlerSymbols.FromPremiumUserAttribute, "FromPremiumUser", TelegramBuiltInFilterTarget.Message, IsMarker: true),
+        new(TelegramHandlerSymbols.FromBotAttribute, "FromBot", TelegramBuiltInFilterTarget.SenderUser, IsMarker: false),
+        new(TelegramHandlerSymbols.FromHumanAttribute, "FromHuman", TelegramBuiltInFilterTarget.SenderUser, IsMarker: true),
+        new(TelegramHandlerSymbols.FromPremiumUserAttribute, "FromPremiumUser", TelegramBuiltInFilterTarget.SenderUser, IsMarker: true),
         new(TelegramHandlerSymbols.IsReplyAttribute, "IsReply", TelegramBuiltInFilterTarget.Message, IsMarker: true),
         new(TelegramHandlerSymbols.ReplyToBotAttribute, "ReplyToBot", TelegramBuiltInFilterTarget.Message, IsMarker: true),
         new(TelegramHandlerSymbols.MessageThreadIdAttribute, "MessageThreadId", TelegramBuiltInFilterTarget.MessageThread, IsMarker: false),
@@ -284,6 +285,11 @@ internal static class TelegramBuiltInFilterFacts
                 TelegramHandlerMetadataRouteKind.Callback,
             TelegramBuiltInFilterTarget.Message => routeKind is TelegramHandlerMetadataRouteKind.Command or
                 TelegramHandlerMetadataRouteKind.Message,
+            TelegramBuiltInFilterTarget.SenderUser => routeKind is TelegramHandlerMetadataRouteKind.Command or
+                TelegramHandlerMetadataRouteKind.Message or
+                TelegramHandlerMetadataRouteKind.Callback,
+            TelegramBuiltInFilterTarget.SenderChat => routeKind is TelegramHandlerMetadataRouteKind.Command or
+                TelegramHandlerMetadataRouteKind.Message,
             TelegramBuiltInFilterTarget.Callback => routeKind == TelegramHandlerMetadataRouteKind.Callback,
             _ => false
         };
@@ -305,6 +311,8 @@ internal static class TelegramBuiltInFilterFacts
             TelegramBuiltInFilterTarget.Chat => $"Chat filters cannot be used on {routeName} handlers.",
             TelegramBuiltInFilterTarget.MessageThread => $"Message thread filters cannot be used on {routeName} handlers.",
             TelegramBuiltInFilterTarget.Message => $"Message filters cannot be used on {routeName} handlers.",
+            TelegramBuiltInFilterTarget.SenderUser => $"Sender user filters cannot be used on {routeName} handlers.",
+            TelegramBuiltInFilterTarget.SenderChat => $"Sender chat filters cannot be used on {routeName} handlers.",
             TelegramBuiltInFilterTarget.Callback => $"Callback filters cannot be used on {routeName} handlers.",
             _ => $"Telegram filter cannot be used on {routeName} handlers."
         };
