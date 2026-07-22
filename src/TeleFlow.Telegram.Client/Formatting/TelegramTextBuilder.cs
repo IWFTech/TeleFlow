@@ -300,10 +300,7 @@ internal sealed class TelegramHtmlTextRenderer : TelegramTextRenderer
 
     public override string EscapeText(string text)
     {
-        return text
-            .Replace("&", "&amp;", StringComparison.Ordinal)
-            .Replace("<", "&lt;", StringComparison.Ordinal)
-            .Replace(">", "&gt;", StringComparison.Ordinal);
+        return TelegramHtmlEscaper.EscapeText(text);
     }
 
     public override string Bold(string text) => $"<b>{text}</b>";
@@ -355,11 +352,7 @@ internal sealed class TelegramHtmlTextRenderer : TelegramTextRenderer
 
     private static string EscapeAttribute(string value)
     {
-        return value
-            .Replace("&", "&amp;", StringComparison.Ordinal)
-            .Replace("<", "&lt;", StringComparison.Ordinal)
-            .Replace(">", "&gt;", StringComparison.Ordinal)
-            .Replace("\"", "&quot;", StringComparison.Ordinal);
+        return TelegramHtmlEscaper.EscapeInterpolation(value);
     }
 
     private static void ValidateLanguage(string language)

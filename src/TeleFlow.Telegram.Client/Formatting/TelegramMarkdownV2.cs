@@ -15,6 +15,15 @@ public static class TelegramMarkdownV2
     }
 
     /// <summary>
+    /// Escapes plain dynamic text for safe insertion into reviewed Telegram MarkdownV2 markup.
+    /// </summary>
+    public static string Escape(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        return TelegramMarkdownV2TextRenderer.Instance.EscapeText(text);
+    }
+
+    /// <summary>
     /// Creates a MarkdownV2 formatted-text value from reviewed static markup.
     /// This bypasses escaping and structural validation and must never receive user-controlled input.
     /// </summary>

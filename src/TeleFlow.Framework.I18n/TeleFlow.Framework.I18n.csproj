@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Optional TeleFlow Telegram update locale resolution, scoped locale access, and localization engine integration contracts.</Description>
+    <RootNamespace>TeleFlow.Telegram.I18n</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TeleFlow.Framework\TeleFlow.Framework.csproj" />
+  </ItemGroup>
+</Project>

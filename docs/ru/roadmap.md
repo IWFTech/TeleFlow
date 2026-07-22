@@ -290,18 +290,13 @@ public async Task EnterQuestion(
 
 ## Localization
 
-Статус: запланировано после стабилизации message helpers, keyboard builders, scenes и DI APIs.
+Статус: реализовано для `1.0.0-alpha.13` в optional packages.
 
 Текущее состояние:
 
-- Handlers могут использовать обычные application localization services через DI.
-- TeleFlow не предоставляет Telegram-context localization layer.
-
-Целевое состояние:
-
-- Добавить scoped localization boundary для Telegram contexts.
-- Дать replaceable locale resolver, который может использовать Telegram `language_code`, user profile data, state или application storage.
-- Интегрировать localization с message helpers, keyboards, scenes, validation messages и deep-link messages.
+- `IWF.TeleFlow.Framework.I18n` один раз на Telegram update определяет scoped locale через ordered application resolvers, Telegram `language_code` и fallback.
+- `IWF.TeleFlow.Framework.I18n.Fluent` загружает immutable Fluent catalogs во время startup validation и даёт plain, HTML, MarkdownV2 и explicit-locale formatting.
+- Handlers, generated method parameters, middleware, background services, keyboards, callback responses, custom emoji и rich-message LaTeX используют одни и те же небольшие contracts.
 
 Правила:
 
@@ -309,11 +304,10 @@ public async Task EnterQuestion(
 - Missing translation behavior должно быть явным и тестируемым.
 - Telegram `language_code` - default signal, но не единственный source of truth.
 
-Нужный результат:
+Будущая работа:
 
-- Handlers получают localized strings через context.
-- Keyboards и scene prompts локализуются без custom boilerplate.
-- Locale resolution заменяется через DI.
+- Рассматривать hot reload только после реального production use case и определения consistency semantics.
+- Рассмотреть application-defined pure Fluent functions без утечки Linguini types в public contracts TeleFlow.
 
 ## Dynamic access control
 

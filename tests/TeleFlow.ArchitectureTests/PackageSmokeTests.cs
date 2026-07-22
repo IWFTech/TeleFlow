@@ -19,6 +19,8 @@ public sealed class PackageSmokeTests
         new("IWF.TeleFlow.Annotations", "src/TeleFlow.Annotations/TeleFlow.Annotations.csproj"),
         new("IWF.TeleFlow.Framework.Core", "src/TeleFlow.Framework.Core/TeleFlow.Framework.Core.csproj"),
         new("IWF.TeleFlow.Framework.Hosting", "src/TeleFlow.Framework.Hosting/TeleFlow.Framework.Hosting.csproj"),
+        new("IWF.TeleFlow.Framework.I18n", "src/TeleFlow.Framework.I18n/TeleFlow.Framework.I18n.csproj"),
+        new("IWF.TeleFlow.Framework.I18n.Fluent", "src/TeleFlow.Framework.I18n.Fluent/TeleFlow.Framework.I18n.Fluent.csproj"),
         new("IWF.TeleFlow.Storage.Memory", "src/TeleFlow.Storage.Memory/TeleFlow.Storage.Memory.csproj"),
         new("IWF.TeleFlow.Telegram.Schema", "src/TeleFlow.Telegram.Schema/TeleFlow.Telegram.Schema.csproj"),
         new("IWF.TeleFlow.Telegram.Client", "src/TeleFlow.Telegram.Client/TeleFlow.Telegram.Client.csproj"),
@@ -58,6 +60,18 @@ public sealed class PackageSmokeTests
 
                 Assert.All(scenario.ExpectedPackages, packageName => Assert.Contains(packageName, packageNames));
                 Assert.All(scenario.ForbiddenPackages, packageName => Assert.DoesNotContain(packageName, packageNames));
+
+                foreach (var optionalI18nPackage in new[]
+                         {
+                             "IWF.TeleFlow.Framework.I18n",
+                             "IWF.TeleFlow.Framework.I18n.Fluent"
+                         })
+                {
+                    if (!scenario.ExpectedPackages.Contains(optionalI18nPackage, StringComparer.Ordinal))
+                    {
+                        Assert.DoesNotContain(optionalI18nPackage, packageNames);
+                    }
+                }
             }
         }
         finally
@@ -276,7 +290,9 @@ public sealed class PackageSmokeTests
             "IWF.TeleFlow.Telegram.LongPolling" or
             "IWF.TeleFlow.Telegram.Webhooks" => "Advanced TeleFlow raw transport package",
 
-            "IWF.TeleFlow.Framework.Hosting" => "Optional TeleFlow",
+            "IWF.TeleFlow.Framework.Hosting" or
+            "IWF.TeleFlow.Framework.I18n" or
+            "IWF.TeleFlow.Framework.I18n.Fluent" => "Optional TeleFlow",
             "IWF.TeleFlow.Generators" => "Reference directly with PrivateAssets=all",
             "IWF.TeleFlow.Storage.Memory" => "TeleFlow state storage add-on",
             _ => throw new InvalidOperationException($"Unexpected package id '{package.Id}'.")
@@ -564,6 +580,107 @@ public sealed class PackageSmokeTests
                     "IWF.TeleFlow.Framework.Webhooks",
                     "IWF.TeleFlow.Telegram.LongPolling",
                     "IWF.TeleFlow.Telegram.Schema",
+                    "IWF.TeleFlow.Telegram.Webhooks"
+                ]),
+
+            new PackageConsumerScenario(
+                Name: "FrameworkI18nPackageConsumer",
+                PackageId: "IWF.TeleFlow.Framework.I18n",
+                RequiresAspNetCore: false,
+                Source:
+                """
+                using Microsoft.Extensions.DependencyInjection;
+                using TeleFlow.Telegram;
+                using TeleFlow.Telegram.I18n;
+
+                public static class FrameworkI18nPackageConsumer
+                {
+                    public static void Configure(IServiceCollection services)
+                    {
+                        services.AddTelegramBot(options => options.Token = "token");
+                        services.AddTelegramI18n(options => options.FallbackLocale = new Locale("en"));
+                        services.AddTelegramLocaleResolver<ApplicationLocaleResolver>();
+                    }
+                }
+
+                internal sealed class ApplicationLocaleResolver : ILocaleResolver
+                {
+                    public ValueTask<Locale?> TryResolveAsync(
+                        LocaleResolutionContext context,
+                        CancellationToken cancellationToken = default)
+                    {
+                        return ValueTask.FromResult<Locale?>(null);
+                    }
+                }
+                """,
+                ExpectedPackages:
+                [
+                    "IWF.TeleFlow.Annotations",
+                    "IWF.TeleFlow.Framework.Core",
+                    "IWF.TeleFlow.Framework",
+                    "IWF.TeleFlow.Framework.I18n",
+                    "IWF.TeleFlow.Telegram.Client",
+                    "IWF.TeleFlow.Telegram.Schema"
+                ],
+                ForbiddenPackages:
+                [
+                    "IWF.TeleFlow.Framework.Hosting",
+                    "IWF.TeleFlow.Framework.I18n.Fluent",
+                    "IWF.TeleFlow.Framework.LongPolling",
+                    "IWF.TeleFlow.Framework.Webhooks",
+                    "IWF.TeleFlow.Storage.Memory",
+                    "IWF.TeleFlow.Telegram",
+                    "IWF.TeleFlow.Telegram.LongPolling",
+                    "IWF.TeleFlow.Telegram.Webhooks"
+                ]),
+
+            new PackageConsumerScenario(
+                Name: "FrameworkI18nFluentPackageConsumer",
+                PackageId: "IWF.TeleFlow.Framework.I18n.Fluent",
+                RequiresAspNetCore: false,
+                Source:
+                """
+                using Microsoft.Extensions.DependencyInjection;
+                using TeleFlow.Telegram;
+                using TeleFlow.Telegram.I18n;
+                using TeleFlow.Telegram.I18n.Fluent;
+
+                public static class FrameworkI18nFluentPackageConsumer
+                {
+                    public static void Configure(IServiceCollection services)
+                    {
+                        services.AddTelegramBot(options => options.Token = "token");
+                        services.AddTelegramFluentI18n(options =>
+                        {
+                            options.ResourcesPath = "Locales";
+                            options.FallbackLocale = new Locale("en");
+                        });
+                    }
+
+                    public static string Format(IFluentTextFormatter formatter)
+                    {
+                        return formatter.Format(new Locale("en"), "welcome", ("name", "User"));
+                    }
+                }
+                """,
+                ExpectedPackages:
+                [
+                    "IWF.TeleFlow.Annotations",
+                    "IWF.TeleFlow.Framework.Core",
+                    "IWF.TeleFlow.Framework",
+                    "IWF.TeleFlow.Framework.I18n",
+                    "IWF.TeleFlow.Framework.I18n.Fluent",
+                    "IWF.TeleFlow.Telegram.Client",
+                    "IWF.TeleFlow.Telegram.Schema"
+                ],
+                ForbiddenPackages:
+                [
+                    "IWF.TeleFlow.Framework.Hosting",
+                    "IWF.TeleFlow.Framework.LongPolling",
+                    "IWF.TeleFlow.Framework.Webhooks",
+                    "IWF.TeleFlow.Storage.Memory",
+                    "IWF.TeleFlow.Telegram",
+                    "IWF.TeleFlow.Telegram.LongPolling",
                     "IWF.TeleFlow.Telegram.Webhooks"
                 ]),
 

@@ -22,6 +22,7 @@ NuGet package IDs используют prefix `IWF.TeleFlow.*`. C# namespaces о
 | Generated handler metadata | `IWF.TeleFlow.Generators` | Source generator и analyzer package для build-time handler registration. Подключай напрямую с `PrivateAssets="all"` |
 | In-memory state storage | `IWF.TeleFlow.Storage.Memory` | Process-local state, state data, wizard history и регистрация state middleware |
 | Generic Host integration | `IWF.TeleFlow.Framework.Hosting` | Optional `IHostedService` adapter для запуска настроенного TeleFlow application через Microsoft.Extensions.Hosting |
+| Project Fluent localization | `IWF.TeleFlow.Framework.I18n.Fluent` | Optional startup-loaded Fluent catalogs, scoped Telegram locale resolution, безопасное HTML/MarkdownV2 formatting и explicit-locale formatting для background jobs |
 
 ### Advanced и dependency packages
 
@@ -34,6 +35,7 @@ NuGet package IDs используют prefix `IWF.TeleFlow.*`. C# namespaces о
 | Handler attributes | `IWF.TeleFlow.Annotations` | Обычно подтягивается framework packages. Подключай напрямую только для advanced compile-only сценариев |
 | Raw long polling без handlers | `IWF.TeleFlow.Telegram.LongPolling` | Когда нужны `getUpdates` и acknowledged update streaming поверх raw Telegram `Update` values |
 | Raw ASP.NET Core webhooks без handlers | `IWF.TeleFlow.Telegram.Webhooks` | Когда нужны ASP.NET Core endpoint helpers поверх raw Telegram `Update` values |
+| Localization engine boundary | `IWF.TeleFlow.Framework.I18n` | Когда нужен localization adapter не на Fluent. Обычное Fluent-приложение получает пакет транзитивно |
 
 ## Установка alpha packages
 
@@ -52,6 +54,14 @@ Generic Host integration добавляй только если приложен
 ```bash
 dotnet add package IWF.TeleFlow.Framework.Hosting --prerelease
 ```
+
+Fluent localization подключай только когда боту нужны переведённые user-facing messages:
+
+```bash
+dotnet add package IWF.TeleFlow.Framework.I18n.Fluent --prerelease
+```
+
+Структура ресурсов, locale resolution, безопасный formatting и background services описаны в [гайде по Fluent localization](../features/localization.md).
 
 ## Рекомендуемый дефолт
 
