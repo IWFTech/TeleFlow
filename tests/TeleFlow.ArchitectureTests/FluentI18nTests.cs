@@ -309,6 +309,19 @@ public sealed class FluentI18nTests
     }
 
     [Fact]
+    public void RuntimeValidation_ResolvesRelativeResourcePathsFromApplicationBaseDirectory()
+    {
+        var relativePath = $"teleflow-i18n-{Guid.NewGuid():N}";
+        using var resources = FluentResources.CreateAt(
+            Path.Join(AppContext.BaseDirectory, relativePath),
+            ("en", "common.ftl", "title = Relative path"));
+        using var provider = CreateProvider(relativePath);
+        var formatter = provider.GetRequiredService<IFluentTextFormatter>();
+
+        Assert.Equal("Relative path", formatter.Format(new Locale("en"), "title"));
+    }
+
+    [Fact]
     public async Task Formatter_IsolatesConcurrentLocales()
     {
         using var resources = FluentResources.Create(
@@ -458,11 +471,19 @@ public sealed class FluentI18nTests
         public static FluentResources Create(params (string Locale, string FileName, string Content)[] files)
         {
             var root = Directory.CreateTempSubdirectory("teleflow-i18n-");
+            return CreateAt(root.FullName, files);
+        }
+
+        public static FluentResources CreateAt(
+            string rootPath,
+            params (string Locale, string FileName, string Content)[] files)
+        {
+            var root = Directory.CreateDirectory(rootPath);
 
             foreach (var (locale, fileName, content) in files)
             {
-                var localeDirectory = Directory.CreateDirectory(System.IO.Path.Combine(root.FullName, locale));
-                System.IO.File.WriteAllText(System.IO.Path.Combine(localeDirectory.FullName, fileName), content);
+                var localeDirectory = Directory.CreateDirectory(System.IO.Path.Join(root.FullName, locale));
+                System.IO.File.WriteAllText(System.IO.Path.Join(localeDirectory.FullName, fileName), content);
             }
 
             return new FluentResources(root.FullName);

@@ -191,9 +191,9 @@ internal sealed class FluentCatalog(TelegramFluentI18nOptions options)
 
     private static string ResolveResourceRoot(string configuredPath)
     {
-        return Path.GetFullPath(Path.IsPathRooted(configuredPath)
-            ? configuredPath
-            : Path.Combine(AppContext.BaseDirectory, configuredPath));
+        return Path.IsPathRooted(configuredPath)
+            ? Path.GetFullPath(configuredPath)
+            : Path.GetFullPath(configuredPath, AppContext.BaseDirectory);
     }
 
     /// <summary>

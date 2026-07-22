@@ -108,7 +108,7 @@ internal static class FluentFunctions
         }
 
         if (value is not FluentNumber number ||
-            number.Value % 1 != 0 ||
+            !double.IsInteger(number.Value) ||
             number.Value < minimum ||
             number.Value > maximum)
         {
