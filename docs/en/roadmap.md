@@ -290,18 +290,13 @@ Expected outcome:
 
 ## Localization
 
-Status: planned after message helpers, keyboard builders, scenes, and DI APIs are stable.
+Status: implemented for `1.0.0-alpha.13` as optional packages.
 
 Current state:
 
-- Handlers can use ordinary application localization services through DI.
-- TeleFlow does not provide a Telegram-context localization layer.
-
-Target state:
-
-- Add a scoped localization boundary for Telegram contexts.
-- Provide a replaceable locale resolver that can use Telegram `language_code`, user profile data, state, or application storage.
-- Integrate localization with message helpers, keyboards, scenes, validation messages, and deep-link messages.
+- `IWF.TeleFlow.Framework.I18n` resolves a scoped locale once per Telegram update through ordered application resolvers, Telegram `language_code`, and fallback.
+- `IWF.TeleFlow.Framework.I18n.Fluent` loads immutable Fluent catalogs during startup validation and provides plain, HTML, MarkdownV2, and explicit-locale formatting.
+- Handlers, generated method parameters, middleware, background services, keyboards, callback responses, custom emoji, and rich-message LaTeX composition use the same small contracts.
 
 Rules:
 
@@ -309,11 +304,10 @@ Rules:
 - Missing translation behavior must be explicit and testable.
 - Telegram `language_code` is a default signal, not the only source of truth.
 
-Expected outcome:
+Future work:
 
-- Handlers can access localized strings through context.
-- Keyboards and scene prompts can be localized without custom boilerplate.
-- Locale resolution can be replaced through DI.
+- Evaluate hot reload only after a concrete production use case and clear consistency semantics exist.
+- Evaluate application-defined pure Fluent functions without exposing Linguini types in TeleFlow public contracts.
 
 ## Dynamic Access Control
 

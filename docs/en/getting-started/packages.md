@@ -22,6 +22,7 @@ Most applications install a small set of entry packages. The rest of the package
 | Generated handler metadata | `IWF.TeleFlow.Generators` | Source generator and analyzer package for build-time handler registration. Reference it directly with `PrivateAssets="all"` |
 | In-memory state storage | `IWF.TeleFlow.Storage.Memory` | Process-local state, state data, wizard history, and state middleware registration |
 | Generic Host integration | `IWF.TeleFlow.Framework.Hosting` | Optional `IHostedService` adapter for running a configured TeleFlow application through Microsoft.Extensions.Hosting |
+| Project Fluent localization | `IWF.TeleFlow.Framework.I18n.Fluent` | Optional startup-loaded Fluent catalogs, scoped Telegram locale resolution, safe HTML/MarkdownV2 formatting, and explicit-locale background formatting |
 
 ### Advanced And Dependency Packages
 
@@ -34,6 +35,7 @@ Most applications install a small set of entry packages. The rest of the package
 | Handler attributes | `IWF.TeleFlow.Annotations` | Normally restored through framework packages. Reference directly only for advanced compile-only scenarios |
 | Raw long polling without handlers | `IWF.TeleFlow.Telegram.LongPolling` | When you want `getUpdates` and acknowledged update streaming over raw Telegram `Update` values |
 | Raw ASP.NET Core webhooks without handlers | `IWF.TeleFlow.Telegram.Webhooks` | When you want ASP.NET Core endpoint helpers over raw Telegram `Update` values |
+| Localization engine boundary | `IWF.TeleFlow.Framework.I18n` | When implementing a localization adapter other than Fluent. Normal Fluent applications receive it transitively |
 
 ## Installing Alpha Packages
 
@@ -52,6 +54,14 @@ Add Generic Host integration only when the application is a worker service or an
 ```bash
 dotnet add package IWF.TeleFlow.Framework.Hosting --prerelease
 ```
+
+Add Fluent localization only when the bot needs translated user-facing text:
+
+```bash
+dotnet add package IWF.TeleFlow.Framework.I18n.Fluent --prerelease
+```
+
+See [Localization with Fluent](../features/localization.md) for resource layout, locale resolution, safe formatting, and background-service usage.
 
 ## Recommended Defaults
 

@@ -4,6 +4,25 @@ TeleFlow follows SemVer for published NuGet packages and documented public behav
 
 ## Unreleased
 
+### Added
+
+- Added optional `IWF.TeleFlow.Framework.I18n` locale-resolution primitives with ordered scoped resolvers, Telegram `language_code` fallback, and one locale decision per update.
+- Added optional `IWF.TeleFlow.Framework.I18n.Fluent` with startup-loaded immutable Linguini catalogs, exact/parent/fallback lookup, Fluent terms, attributes, plurals, `NUMBER`, and `DATETIME`.
+- Added plain, Telegram HTML, and Telegram MarkdownV2 localization modes with automatic dynamic-argument escaping, matching typed formatted fragments, custom emoji composition, and rich-message/LaTeX guidance.
+- Added scoped `IFluentLocalizer`, explicit-locale `IFluentTextFormatter`, and `ctx.I18n(...)` presentation helpers for handlers, middleware, background services, broadcasts, and outbox dispatchers.
+
+### Changed
+
+- Added public `TelegramHtml.Escape(...)` and `TelegramMarkdownV2.Escape(...)` helpers for safe insertion of dynamic text into reviewed static markup.
+- Documented the exact .NET-backed `NUMBER` and `DATETIME` option surface instead of implying full JavaScript `Intl` compatibility.
+
+### Fixed
+
+- Current-update user and chat identity now covers every Telegram Bot API 10.2 update family, including inline, payment, business, poll, boost, managed-bot, and subscription updates.
+- Telegram update diagnostics now classify subscription updates instead of reporting them as unknown.
+- Fluent `DATETIME(...)` now formats `DateOnly` and `TimeOnly` without exceptions and maps combined `short` and `long` styles to culture-specific .NET patterns.
+- Dynamic HTML localization arguments now encode quote delimiters and cannot escape quoted markup attributes.
+
 ## 1.0.0-alpha.12 - 2026-07-22
 
 ### Added

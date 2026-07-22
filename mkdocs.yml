@@ -87,6 +87,7 @@ nav:
       - Features:
           - Telegram client and schema: en/features/telegram-client.md
           - Formatted text and custom emoji: en/features/formatted-text.md
+          - Localization with Fluent: en/features/localization.md
           - Callbacks and keyboards: en/features/callbacks-and-keyboards.md
           - State and wizard: en/features/state-and-wizard.md
           - Roles and chat members: en/features/roles-and-chat-members.md
@@ -134,6 +135,7 @@ nav:
       - Features:
           - Telegram client and schema: ru/features/telegram-client.md
           - Форматированный текст и custom emoji: ru/features/formatted-text.md
+          - Локализация через Fluent: ru/features/localization.md
           - Callbacks and keyboards: ru/features/callbacks-and-keyboards.md
           - State and wizard: ru/features/state-and-wizard.md
           - Roles and chat members: ru/features/roles-and-chat-members.md
