@@ -66,6 +66,25 @@ public sealed class StageEightGeneratedRegistrationTests
     }
 
     [Fact]
+    public async Task GeneratedRegistrar_CommandsUseCanonicalUnicodeNormalization()
+    {
+        const string exactInput = "/работёнка-exact";
+        const string templateInput = "/работе\u0308нка-template мое\u0308";
+        using var serviceProvider = CreateServiceProvider();
+        var probe = serviceProvider.GetRequiredService<GeneratedHandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate(exactInput));
+        await DispatchAsync(serviceProvider, CreateMessageUpdate(templateInput));
+
+        Assert.Equal(
+            [
+                $"generated-unicode-exact:{exactInput}",
+                $"generated-unicode-template:моё:{templateInput}"
+            ],
+            probe.Events);
+    }
+
+    [Fact]
     public async Task GeneratedRegistrar_DispatchesMessageAndCallbackHandlers()
     {
         using var serviceProvider = CreateServiceProvider();
@@ -820,6 +839,61 @@ internal sealed class StageEightGeneratedHandlersRegistrar : ITelegramGeneratedH
             InvokeGeneratedOverlappingPrefixCommand));
 
         registry.RegisterHandler(new TelegramGeneratedHandlerDescriptor(
+            typeof(GeneratedUnicodeExactCommandHandler),
+            nameof(GeneratedUnicodeExactCommandHandler.Handle),
+            TelegramGeneratedHandlerKind.Command,
+            TelegramGeneratedRouteKind.CommandExact,
+            routePattern: "работе\u0308нка-exact",
+            commandPrefixes: ["/"],
+            allowSpaceAfterPrefix: false,
+            ignoreCase: true,
+            registrationOrder: 53,
+            moduleName: null,
+            command: "работе\u0308нка-exact",
+            callbackPayloadType: null,
+            textFilters: [],
+            filters: [],
+            chatMemberTransitions: [],
+            roleRequirements: [],
+            states: [],
+            parameters:
+            [
+                new(typeof(MessageContext), TelegramGeneratedHandlerParameterKind.Context, "context"),
+                new(typeof(GeneratedHandlerProbe), TelegramGeneratedHandlerParameterKind.Service, "probe")
+            ],
+            InvokeGeneratedUnicodeExactCommand));
+
+        registry.RegisterHandler(new TelegramGeneratedHandlerDescriptor(
+            typeof(GeneratedUnicodeCommandTemplateHandler),
+            nameof(GeneratedUnicodeCommandTemplateHandler.Handle),
+            TelegramGeneratedHandlerKind.Command,
+            TelegramGeneratedRouteKind.CommandTemplate,
+            routePattern: "работёнка-template {value:string}",
+            commandPrefixes: ["/"],
+            allowSpaceAfterPrefix: false,
+            ignoreCase: true,
+            registrationOrder: 54,
+            moduleName: null,
+            command: null,
+            callbackPayloadType: null,
+            textFilters: [],
+            filters: [],
+            chatMemberTransitions: [],
+            roleRequirements: [],
+            states: [],
+            parameters:
+            [
+                new(typeof(MessageContext), TelegramGeneratedHandlerParameterKind.Context, "context"),
+                new(typeof(string), TelegramGeneratedHandlerParameterKind.RouteValue, "value"),
+                new(typeof(GeneratedHandlerProbe), TelegramGeneratedHandlerParameterKind.Service, "probe")
+            ],
+            InvokeGeneratedUnicodeCommandTemplate,
+            routeValues:
+            [
+                new("value", typeof(string), isOptional: false)
+            ]));
+
+        registry.RegisterHandler(new TelegramGeneratedHandlerDescriptor(
             typeof(GeneratedFallbackMessageHandler),
             nameof(GeneratedFallbackMessageHandler.Handle),
             TelegramGeneratedHandlerKind.Message,
@@ -1549,6 +1623,29 @@ internal sealed class StageEightGeneratedHandlersRegistrar : ITelegramGeneratedH
         await handler.Handle((MessageContext)arguments[0]!, (GeneratedHandlerProbe)arguments[1]!);
     }
 
+    private static async ValueTask InvokeGeneratedUnicodeExactCommand(
+        IServiceProvider services,
+        object?[] arguments,
+        CancellationToken cancellationToken)
+    {
+        var handler = (GeneratedUnicodeExactCommandHandler)services.GetRequiredService(
+            typeof(GeneratedUnicodeExactCommandHandler));
+        await handler.Handle((MessageContext)arguments[0]!, (GeneratedHandlerProbe)arguments[1]!);
+    }
+
+    private static async ValueTask InvokeGeneratedUnicodeCommandTemplate(
+        IServiceProvider services,
+        object?[] arguments,
+        CancellationToken cancellationToken)
+    {
+        var handler = (GeneratedUnicodeCommandTemplateHandler)services.GetRequiredService(
+            typeof(GeneratedUnicodeCommandTemplateHandler));
+        await handler.Handle(
+            (MessageContext)arguments[0]!,
+            (string)arguments[1]!,
+            (GeneratedHandlerProbe)arguments[2]!);
+    }
+
     private static async ValueTask InvokeFallbackMessage(
         IServiceProvider services,
         object?[] arguments,
@@ -1980,6 +2077,27 @@ public sealed class GeneratedOverlappingPrefixCommandHandler
     public Task Handle(MessageContext context, GeneratedHandlerProbe probe)
     {
         probe.Events.Add("generated-overlapping-prefix");
+        return Task.CompletedTask;
+    }
+}
+
+public sealed class GeneratedUnicodeExactCommandHandler
+{
+    public Task Handle(MessageContext context, GeneratedHandlerProbe probe)
+    {
+        probe.Events.Add($"generated-unicode-exact:{context.TelegramMessage.Text}");
+        return Task.CompletedTask;
+    }
+}
+
+public sealed class GeneratedUnicodeCommandTemplateHandler
+{
+    public Task Handle(
+        MessageContext context,
+        string value,
+        GeneratedHandlerProbe probe)
+    {
+        probe.Events.Add($"generated-unicode-template:{value}:{context.TelegramMessage.Text}");
         return Task.CompletedTask;
     }
 }

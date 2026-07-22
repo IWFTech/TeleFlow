@@ -841,6 +841,85 @@ public sealed class TelegramHandlerDispatcherTests
     }
 
     [Fact]
+    public async Task CommandAttribute_MatchesCanonicallyEquivalentUnicodeAndPreservesRawText()
+    {
+        const string input = "/работе\u0308нка";
+        using var serviceProvider = CreateServiceProvider(
+            services => services.AddTelegramHandler<UnicodeExactCommandHandler>());
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate(input));
+
+        Assert.Equal([$"unicode-exact:{input}"], probe.Events);
+    }
+
+    [Fact]
+    public async Task CommandAttribute_DoesNotTreatPlainYeAsYoAlias()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.AddTelegramHandler<UnicodeExactCommandHandler>();
+                services.AddTelegramHandler<AnyMessageHandler>();
+            });
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/работенка"));
+
+        Assert.Equal(["message:/работенка"], probe.Events);
+    }
+
+    [Fact]
+    public async Task CommandTemplate_NormalizesMatchingAndStringRouteValuesButPreservesRawText()
+    {
+        const string input = "/работе\u0308нка мое\u0308";
+        using var serviceProvider = CreateServiceProvider(
+            services => services.AddTelegramHandler<UnicodeCommandTemplateHandler>());
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate(input));
+
+        Assert.Equal([$"unicode-template:моё:{input}"], probe.Events);
+    }
+
+    [Fact]
+    public async Task CommandRegex_DoesNotApplyImplicitUnicodeNormalization()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.AddTelegramHandler<UnicodeCommandRegexHandler>();
+                services.AddTelegramHandler<AnyMessageHandler>();
+            });
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("/работе\u0308нка"));
+
+        Assert.Equal(["message:/работе\u0308нка"], probe.Events);
+    }
+
+    [Fact]
+    public async Task TextTemplate_DoesNotApplyImplicitUnicodeNormalization()
+    {
+        using var serviceProvider = CreateServiceProvider(
+            services =>
+            {
+                services.AddTelegramHandler<UnicodeTextTemplateHandler>();
+                services.AddTelegramHandler<AnyMessageHandler>();
+            });
+
+        var probe = serviceProvider.GetRequiredService<HandlerProbe>();
+
+        await DispatchAsync(serviceProvider, CreateMessageUpdate("работе\u0308нка 42"));
+
+        Assert.Equal(["message:работе\u0308нка 42"], probe.Events);
+    }
+
+    [Fact]
     public async Task TextTemplate_BindsRouteValue()
     {
         using var serviceProvider = CreateServiceProvider(
@@ -4138,6 +4217,52 @@ public sealed class TelegramHandlerDispatcherTests
         public Task Handle(MessageContext context, HandlerProbe probe)
         {
             probe.Events.Add($"short-no-prefix-command:{context.TelegramMessage.Text}");
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class UnicodeExactCommandHandler
+    {
+        [Command("работёнка")]
+        public Task Handle(MessageContext context, HandlerProbe probe)
+        {
+            probe.Events.Add($"unicode-exact:{context.TelegramMessage.Text}");
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class UnicodeCommandTemplateHandler
+    {
+        [CommandTemplate("работёнка {value:string}")]
+        public Task Handle(
+            MessageContext context,
+            string value,
+            HandlerProbe probe)
+        {
+            probe.Events.Add($"unicode-template:{value}:{context.TelegramMessage.Text}");
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class UnicodeCommandRegexHandler
+    {
+        [CommandRegex("^работёнка$")]
+        public Task Handle(MessageContext context, HandlerProbe probe)
+        {
+            probe.Events.Add("unicode-regex");
+            return Task.CompletedTask;
+        }
+    }
+
+    public sealed class UnicodeTextTemplateHandler
+    {
+        [TextTemplate("работёнка {value:int}")]
+        public Task Handle(
+            MessageContext context,
+            int value,
+            HandlerProbe probe)
+        {
+            probe.Events.Add($"unicode-text-template:{value}");
             return Task.CompletedTask;
         }
     }

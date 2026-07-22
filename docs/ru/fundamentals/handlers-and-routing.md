@@ -122,6 +122,11 @@ public Task ShowTicket(MessageContext ctx, long id, CancellationToken ct)
 Это заменяет старый workaround, где на один method вешались и
 `[CommandTemplate]`, и `[TextTemplate]`.
 
+Command names и command-template bodies используют Unicode NFC normalization
+при matching. Raw message text остаётся неизменным, а строковые values из
+`[CommandTemplate]` приходят в NFC. Это поддерживает канонически эквивалентный
+input, но не превращает разные буквы `е` и `ё` в автоматические алиасы.
+
 Text templates работают без command prefix:
 
 ```csharp
@@ -144,7 +149,8 @@ public Task Invoice(MessageContext ctx, CancellationToken ct)
 }
 ```
 
-Regex powerful, но templates обычно проще читать и сопровождать.
+Regex powerful, но templates обычно проще читать и сопровождать. Regex input
+не нормализуется неявно: эта семантика остаётся под контролем expression.
 
 ## Media filters
 
