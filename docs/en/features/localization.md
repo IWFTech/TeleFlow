@@ -20,11 +20,15 @@ Keep one directory per locale. Split files by feature when the catalog grows:
 ```text
 Locales/
   en/
-    common.ftl
-    wallet.ftl
+    common/
+      shared.ftl
+    wallet/
+      messages.ftl
   ru/
-    common.ftl
-    wallet.ftl
+    common/
+      shared.ftl
+    wallet/
+      messages.ftl
 ```
 
 Copy resources to the output directory:
@@ -51,6 +55,8 @@ builder.Services.AddTelegramFluentI18n(options =>
 ```
 
 TeleFlow reads and parses every resource during runtime validation, before the first update is handled. Missing directories, invalid FTL, duplicate messages, empty locale catalogs, and an absent fallback catalog stop startup. The resulting catalog is immutable and shared safely by concurrent updates. Formatting does not read files or parse FTL.
+
+All `.ftl` files under one locale directory are loaded recursively into a single Fluent bundle. Messages and terms may reference definitions from other files and nested directories in that locale; file order does not affect reference resolution. Identifiers must be unique across the entire locale. `$variables` are not global resource values: application code supplies them when formatting a message.
 
 Hot reload is not supported in this release. Restart the application after changing a catalog.
 

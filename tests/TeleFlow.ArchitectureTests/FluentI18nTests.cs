@@ -77,6 +77,20 @@ public sealed class FluentI18nTests
     }
 
     [Fact]
+    public void Formatter_ResolvesMessagesAndTermsAcrossNestedResourceFilesWithinLocale()
+    {
+        using var resources = FluentResources.Create(
+            ("en", "features/wallet.ftl", "wallet-summary = { -brand }: { balance-label } { NUMBER($balance) } BB"),
+            ("en", "shared/common.ftl", "-brand = TeleFlow\nbalance-label = Balance"));
+        using var provider = CreateProvider(resources.Path);
+        var formatter = provider.GetRequiredService<IFluentTextFormatter>();
+
+        Assert.Equal(
+            "TeleFlow: Balance 42 BB",
+            formatter.Format(new Locale("en"), "wallet-summary", ("balance", 42)));
+    }
+
+    [Fact]
     public void Formatter_UsesExactParentAndConfiguredFallbackCatalogs()
     {
         using var resources = FluentResources.Create(
@@ -483,7 +497,9 @@ public sealed class FluentI18nTests
             foreach (var (locale, fileName, content) in files)
             {
                 var localeDirectory = Directory.CreateDirectory(System.IO.Path.Join(root.FullName, locale));
-                System.IO.File.WriteAllText(System.IO.Path.Join(localeDirectory.FullName, fileName), content);
+                var resourceFile = new FileInfo(System.IO.Path.Join(localeDirectory.FullName, fileName));
+                resourceFile.Directory!.Create();
+                System.IO.File.WriteAllText(resourceFile.FullName, content);
             }
 
             return new FluentResources(root.FullName);

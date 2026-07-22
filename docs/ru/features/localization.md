@@ -20,11 +20,15 @@ dotnet add package IWF.TeleFlow.Framework.I18n.Fluent --prerelease
 ```text
 Locales/
   en/
-    common.ftl
-    wallet.ftl
+    common/
+      shared.ftl
+    wallet/
+      messages.ftl
   ru/
-    common.ftl
-    wallet.ftl
+    common/
+      shared.ftl
+    wallet/
+      messages.ftl
 ```
 
 Скопируй ресурсы в output:
@@ -51,6 +55,8 @@ builder.Services.AddTelegramFluentI18n(options =>
 ```
 
 TeleFlow читает и парсит все ресурсы во время runtime validation до обработки первого update. Отсутствующая директория, сломанный FTL, duplicate messages, пустой locale catalog или отсутствующий fallback catalog останавливают startup. После проверки каталог immutable и безопасен для concurrent updates. Форматирование не читает файлы и не парсит FTL.
+
+Все `.ftl` внутри директории одной locale загружаются рекурсивно в единый Fluent bundle. Messages и terms могут ссылаться на определения из других файлов и вложенных директорий этой locale; порядок файлов не влияет на разрешение ссылок. Идентификаторы должны быть уникальны в пределах всей locale. `$variables` не являются глобальными значениями из ресурсов: application code передаёт их при форматировании.
 
 Hot reload в этой версии не поддерживается. После изменения каталога перезапусти приложение.
 
