@@ -16,8 +16,18 @@ on:
       - main
     paths:
       - ".github/workflows/docs-pages.yml"
+      - ".config/dotnet-tools.json"
+      - "Directory.Build.props"
+      - "Directory.Build.targets"
+      - "global.json"
+      - "NuGet.config"
+      - "TeleFlow.sln"
       - "docs/**"
+      - "eng/coverage.runsettings"
+      - "eng/verify-coverage.ps1"
       - "mkdocs.yml"
+      - "src/**"
+      - "tests/**"
   schedule:
     - cron: "17 0 * * *"
   workflow_dispatch:
@@ -35,6 +45,8 @@ jobs:
     name: Build docs site
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      PUBLISH_PAGES: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
 
     steps:
       - name: Checkout
@@ -50,6 +62,78 @@ jobs:
       - name: Install docs dependencies
         run: python -m pip install -r eng/docs-requirements.txt
 
+      - name: Setup .NET
+        if: ${{ env.PUBLISH_PAGES == 'true' }}
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore test graph
+        if: ${{ env.PUBLISH_PAGES == 'true' }}
+        shell: pwsh
+        run: dotnet restore ./tests/TeleFlow.ArchitectureTests/TeleFlow.ArchitectureTests.csproj
+
+      - name: Restore coverage tools
+        if: ${{ env.PUBLISH_PAGES == 'true' }}
+        shell: pwsh
+        run: dotnet tool restore
+
+      - name: Build test graph
+        if: ${{ env.PUBLISH_PAGES == 'true' }}
+        shell: pwsh
+        run: >-
+          dotnet build ./tests/TeleFlow.ArchitectureTests/TeleFlow.ArchitectureTests.csproj
+          -c Release
+          --no-restore
+          /nodeReuse:false
+
+      - name: Collect default-branch coverage
+        if: ${{ env.PUBLISH_PAGES == 'true' }}
+        shell: pwsh
+        run: >-
+          dotnet test ./tests/TeleFlow.ArchitectureTests/TeleFlow.ArchitectureTests.csproj
+          -c Release
+          --no-build
+          --no-restore
+          /nodeReuse:false
+          --filter "Category!=PackageSmoke"
+          --settings ./eng/coverage.runsettings
+          --collect "XPlat Code Coverage"
+          --results-directory ./artifacts/coverage
+          --logger "console;verbosity=minimal"
+
+      - name: Locate coverage report
+        if: ${{ env.PUBLISH_PAGES == 'true' }}
+        id: coverage-report
+        shell: pwsh
+        run: |
+          $reports = @(Get-ChildItem -Path ./artifacts/coverage -Recurse -Filter coverage.cobertura.xml)
+
+          if ($reports.Count -ne 1) {
+              throw "Expected exactly one Cobertura report, found $($reports.Count)."
+          }
+
+          "path=$($reports[0].FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Verify aggregate coverage
+        if: ${{ env.PUBLISH_PAGES == 'true' }}
+        shell: pwsh
+        run: >-
+          ./eng/verify-coverage.ps1
+          -CoveragePath "${{ steps.coverage-report.outputs.path }}"
+          -MinimumLineCoverage 85
+          -MinimumBranchCoverage 75
+
+      - name: Generate coverage report
+        if: ${{ env.PUBLISH_PAGES == 'true' }}
+        shell: pwsh
+        run: >-
+          dotnet reportgenerator
+          "-reports:${{ steps.coverage-report.outputs.path }}"
+          "-targetdir:./artifacts/coverage/report"
+          "-reporttypes:Html;Badges"
+          "-verbosity:Warning"
+
       - name: Update last issue badge endpoint
         shell: pwsh
         env:
@@ -59,19 +143,32 @@ jobs:
       - name: Build docs
         run: mkdocs build --strict --site-dir site
 
+      - name: Add coverage report to Pages site
+        if: ${{ env.PUBLISH_PAGES == 'true' }}
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path ./site/coverage | Out-Null
+          New-Item -ItemType Directory -Force -Path ./site/badges | Out-Null
+
+          Copy-Item -Path ./artifacts/coverage/report/* -Destination ./site/coverage -Recurse -Force
+          Copy-Item `
+              -Path ./artifacts/coverage/report/badge_linecoverage.svg `
+              -Destination ./site/badges/coverage.svg `
+              -Force
+
       - name: Configure GitHub Pages
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ env.PUBLISH_PAGES == 'true' }}
         uses: actions/configure-pages@v6
 
       - name: Upload GitHub Pages artifact
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ env.PUBLISH_PAGES == 'true' }}
         uses: actions/upload-pages-artifact@v5
         with:
           path: site
 
   deploy:
     name: Deploy docs site
-    if: ${{ github.event_name != 'pull_request' }}
+    if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10

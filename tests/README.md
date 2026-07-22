@@ -260,8 +260,14 @@ the nearby test comment.
 
 ## Coverage Rules
 
-Coverage reporting is tracked separately by issue #18. This file defines how
-coverage should be interpreted once reporting is enabled.
+CI collects coverage from the fast in-process suite on Linux. It validates
+aggregate line and branch floors, checks changed-line coverage on pull requests,
+and stores the generated HTML report as a GitHub Actions artifact. Use the same
+scope locally:
+
+```powershell
+dotnet test ./tests/TeleFlow.ArchitectureTests/TeleFlow.ArchitectureTests.csproj -c Release --no-build --no-restore /nodeReuse:false --filter "Category!=PackageSmoke" --settings ./eng/coverage.runsettings --collect "XPlat Code Coverage" --results-directory ./artifacts/coverage
+```
 
 Coverage must answer whether important contracts are tested. A single global
 percentage is not enough.
@@ -283,7 +289,21 @@ Coverage must not be padded by testing generated DTOs or trivial accessors.
 Generated code, generated schema models, and build output should be excluded
 from coverage unless a test intentionally verifies generated framework behavior.
 
-Do not add a README coverage badge until CI publishes a stable, trusted value.
+`PackageSmoke` tests are required package-contract checks, but they execute
+`dotnet pack`, restore, and consumer builds in child processes. They do not
+belong in line coverage because Coverlet cannot attribute those child processes
+to the test host meaningfully. CI runs them once on Linux outside the
+cross-platform fast-test matrix.
+
+The `Coverage` job is the pull request source of truth. It enforces aggregate
+floors of 85% lines and 75% branches, plus 80% changed-line coverage. The
+existing Docs Pages workflow independently rebuilds the same trusted coverage
+scope from `main` and publishes the public HTML report and README SVG badge.
+Pull requests never deploy or overwrite the public badge.
+
+Do not add a second coverage SaaS, upload token, gist, bot commit, or mutable
+coverage branch. GitHub Actions artifacts and the existing GitHub Pages site own
+the reporting lifecycle.
 
 ## Current-To-Target Split Map
 
