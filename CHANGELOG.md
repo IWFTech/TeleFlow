@@ -4,6 +4,8 @@ TeleFlow follows SemVer for published NuGet packages and documented public behav
 
 ## Unreleased
 
+## 1.0.0-alpha.13 - 2026-07-31
+
 ### Added
 
 - Added `[SenderChatType(...)]` for messages sent on behalf of a channel or another chat.
@@ -27,6 +29,14 @@ TeleFlow follows SemVer for published NuGet packages and documented public behav
 - Telegram update diagnostics now classify subscription updates instead of reporting them as unknown.
 - Fluent `DATETIME(...)` now formats `DateOnly` and `TimeOnly` without exceptions and maps combined `short` and `long` styles to culture-specific .NET patterns.
 - Dynamic HTML localization arguments now encode quote delimiters and cannot escape quoted markup attributes.
+
+### Breaking Changes
+
+- `[FromBot(false)]` is no longer supported. Use parameterless `[FromUser]` for handlers that accept any non-bot Telegram user.
+- `[FromUser(userId)]` now matches only non-bot users. Handlers that intentionally accept a bot account by id must use `[FromBot(botId)]`.
+- `TelegramChatType.Sender` has been removed because it is not a valid Telegram `Chat.type`. Use `[SenderChatType(...)]` with the actual sender-chat type when matching messages sent on behalf of a chat.
+
+This release remains aligned with Telegram Bot API 10.2. Update all TeleFlow packages used by an application to `1.0.0-alpha.13` together.
 
 ## 1.0.0-alpha.12 - 2026-07-22
 
