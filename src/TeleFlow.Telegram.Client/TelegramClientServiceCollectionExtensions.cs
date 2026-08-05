@@ -143,6 +143,20 @@ public static class TelegramClientServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>
+    /// Replaces the default fail-closed policy used when an individual Telegram update cannot be decoded.
+    /// </summary>
+    public static IServiceCollection AddTelegramUpdateDecodeFailurePolicy<TPolicy>(
+        this IServiceCollection services)
+        where TPolicy : class, ITelegramUpdateDecodeFailurePolicy
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.RemoveAll<ITelegramUpdateDecodeFailurePolicy>();
+        services.AddSingleton<ITelegramUpdateDecodeFailurePolicy, TPolicy>();
+        return services;
+    }
+
     private static void AddTelegramClientDefaults(IServiceCollection services)
     {
         services.TryAddSingleton(TelegramJsonOptions.CreateDefault());
@@ -156,6 +170,8 @@ public static class TelegramClientServiceCollectionExtensions
         services.TryAddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
         services.TryAddSingleton<ITelegramClient, TelegramClient>();
         services.TryAddSingleton<ITelegramRequestExecutor, TelegramRequestExecutor>();
+        services.TryAddSingleton<ITelegramUpdateBatchReceiver, TelegramUpdateBatchReceiver>();
+        services.TryAddSingleton<ITelegramUpdateDecodeFailurePolicy>(StopTelegramUpdateDecodeFailurePolicy.Instance);
     }
 
     private static void EnsureNotRegistered<TService>(IServiceCollection services, string apiName)

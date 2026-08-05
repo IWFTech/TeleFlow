@@ -107,8 +107,8 @@ TeleFlow использует log levels осознанно:
 | --- | --- |
 | `Information` | Runtime lifecycle events: polling start, connected, stopped и coarse transport status. |
 | `Debug` | Per-update diagnostics: handler matching, handler completion, route misses, filter rejections, webhook update acceptance и request timings. |
-| `Warning` | Recoverable или ожидаемые runtime rejections: retry-after, invalid webhook secret, invalid webhook payload, callback payload decode failure и rate-limit rejection. |
-| `Error` | Unhandled handler failures, Telegram request failures, webhook processing failures и update processing failures. |
+| `Warning` | Recoverable или ожидаемые runtime rejections: retry-after, invalid webhook secret, invalid webhook payload, callback payload decode failure, rate-limit rejection и schema decode failures, которые application policy явно пропустила. |
+| `Error` | Unhandled handler failures, Telegram request failures, webhook processing failures, update processing failures и schema decode failures, остановленные policy. |
 
 Обычная успешная обработка update не логируется на `Information`.
 
@@ -136,6 +136,9 @@ Framework logs используют статические framework-owned messa
 - arbitrary user-provided values.
 
 Безопасные metadata: update id, update type, handler, route, module, scene, exception type, HTTP status code, Telegram method name, retry-after, limiter type и developer-controlled policy name.
+
+Schema decode diagnostics содержат `update_id`, JSON path, решение transport и
+SHA-256 fingerprint payload. Raw update payload в лог не попадает.
 
 Logging providers остаются infrastructure приложения. Если приложение подключает provider или sink со своими unsafe processing rules, это находится вне runtime contract TeleFlow.
 

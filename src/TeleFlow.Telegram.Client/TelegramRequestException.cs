@@ -257,3 +257,38 @@ public sealed class TelegramDecodeException : TelegramRequestException
     {
     }
 }
+
+/// <summary>
+/// Reports that one syntactically valid Telegram update could not be mapped to the installed schema.
+/// </summary>
+[SuppressMessage(
+    "Design",
+    "CA1032:Implement standard exception constructors",
+    Justification = "Telegram update decode exceptions intentionally keep update identity and payload diagnostics in the primary constructor.")]
+public sealed class TelegramUpdateDecodeException : TelegramRequestException
+{
+    public TelegramUpdateDecodeException(
+        string message,
+        long updateId,
+        string payloadSha256,
+        string? jsonPath = null,
+        Exception? innerException = null,
+        string? methodName = null)
+        : base(message, innerException, methodName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(payloadSha256);
+
+        UpdateId = updateId;
+        PayloadSha256 = payloadSha256;
+        JsonPath = jsonPath;
+    }
+
+    /// <summary>Gets the Telegram update identifier.</summary>
+    public long UpdateId { get; }
+
+    /// <summary>Gets the lowercase SHA-256 fingerprint of the raw update payload.</summary>
+    public string PayloadSha256 { get; }
+
+    /// <summary>Gets the JSON path reported by the serializer, when available.</summary>
+    public string? JsonPath { get; }
+}

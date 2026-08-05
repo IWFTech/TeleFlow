@@ -4,6 +4,20 @@ TeleFlow follows SemVer for published NuGet packages and documented public behav
 
 ## Unreleased
 
+### Added
+
+- Added `ITelegramUpdateDecodeFailurePolicy` with explicit `Stop` and `Skip` decisions shared by long polling and webhooks. Applications can durably quarantine a raw update before allowing transport acknowledgement.
+
+### Changed
+
+- Refreshed the generated Telegram schema and client surface for Telegram Bot API 10.2.
+- Long polling now decodes `getUpdates` results one update at a time, retries only transient transport/API failures, and stops by default on deterministic schema decode failures.
+- Raw and framework webhook transports now distinguish malformed requests from valid Telegram updates that do not match the installed schema.
+
+### Fixed
+
+- Removed the invalid generated `"one"` literal constraint from rich-message ordered-list item types. All Telegram-documented list label types (`a`, `A`, `i`, `I`, and `1`) now deserialize correctly.
+
 ## 1.0.0-alpha.13 - 2026-07-31
 
 ### Added

@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using TeleFlow.Telegram.Internal;
 using TeleFlow.Telegram.Schema.Types;
 
 namespace TeleFlow.Telegram.Webhooks.Internal;
@@ -19,6 +20,8 @@ internal sealed partial class TelegramRawWebhookEndpoint
     private const int UpdateReceivedEventId = 3;
     private const int UpdateProcessedEventId = 4;
     private const int UpdateProcessingFailedEventId = 5;
+    private const int UpdateDecodeStoppedEventId = 6;
+    private const int UpdateDecodeSkippedEventId = 7;
 
     private static readonly TelegramJsonOptions DefaultJsonOptions = TelegramJsonOptions.CreateDefault();
 
@@ -51,14 +54,13 @@ internal sealed partial class TelegramRawWebhookEndpoint
         }
 
         var jsonOptions = context.RequestServices.GetService<TelegramJsonOptions>() ?? DefaultJsonOptions;
-        Update? update;
+        JsonDocument? document;
 
         try
         {
-            update = await JsonSerializer.DeserializeAsync<Update>(
+            document = await JsonDocument.ParseAsync(
                 context.Request.Body,
-                jsonOptions.SerializerOptions,
-                context.RequestAborted).ConfigureAwait(false);
+                cancellationToken: context.RequestAborted).ConfigureAwait(false);
         }
         catch (JsonException)
         {
@@ -70,52 +72,127 @@ internal sealed partial class TelegramRawWebhookEndpoint
             return Results.StatusCode(_options.InvalidPayloadStatusCode);
         }
 
-        if (update is null)
+        using (document)
         {
-            if (_logger is not null)
+            var payload = document.RootElement;
+            if (!TryGetUpdateId(payload, out var updateId))
             {
-                LogInvalidPayloadRejected(_logger, _options.InvalidPayloadStatusCode);
+                if (_logger is not null)
+                {
+                    LogInvalidPayloadRejected(_logger, _options.InvalidPayloadStatusCode);
+                }
+
+                return Results.StatusCode(_options.InvalidPayloadStatusCode);
             }
 
-            return Results.StatusCode(_options.InvalidPayloadStatusCode);
-        }
+            var decodeResult = TelegramUpdateDecoder.Decode(
+                payload,
+                updateId,
+                jsonOptions.SerializerOptions);
 
-        string? updateType = null;
-        string GetUpdateType()
-        {
-            return updateType ??= TelegramWebhookUpdateLogFormatter.GetUpdateType(update);
-        }
+            if (!decodeResult.IsSuccess)
+            {
+                return await HandleDecodeFailureAsync(context, decodeResult).ConfigureAwait(false);
+            }
 
-        if (_logger?.IsEnabled(LogLevel.Debug) == true)
-        {
-            LogUpdateReceived(_logger, update.UpdateId, GetUpdateType());
-        }
-
-        var bot = context.RequestServices.GetRequiredService<ITelegramClient>();
-        try
-        {
-            var result = await _handler(update, bot, context.RequestAborted).ConfigureAwait(false);
+            var update = decodeResult.Update!;
+            string? updateType = null;
+            string GetUpdateType()
+            {
+                return updateType ??= TelegramWebhookUpdateLogFormatter.GetUpdateType(update);
+            }
 
             if (_logger?.IsEnabled(LogLevel.Debug) == true)
             {
-                LogUpdateProcessed(_logger, update.UpdateId, GetUpdateType());
+                LogUpdateReceived(_logger, update.UpdateId, GetUpdateType());
             }
 
-            return result;
-        }
-        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            if (_logger?.IsEnabled(LogLevel.Error) == true)
+            var bot = context.RequestServices.GetRequiredService<ITelegramClient>();
+            try
             {
-                LogUpdateProcessingFailed(_logger, exception, update.UpdateId, GetUpdateType());
-            }
+                var result = await _handler(update, bot, context.RequestAborted).ConfigureAwait(false);
 
-            throw;
+                if (_logger?.IsEnabled(LogLevel.Debug) == true)
+                {
+                    LogUpdateProcessed(_logger, update.UpdateId, GetUpdateType());
+                }
+
+                return result;
+            }
+            catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                if (_logger?.IsEnabled(LogLevel.Error) == true)
+                {
+                    LogUpdateProcessingFailed(_logger, exception, update.UpdateId, GetUpdateType());
+                }
+
+                throw;
+            }
         }
+    }
+
+    private async Task<IResult> HandleDecodeFailureAsync(
+        HttpContext context,
+        TelegramUpdateDecodeResult item)
+    {
+        var exception = item.Exception
+            ?? throw new InvalidOperationException("A failed Telegram update decode result did not contain an exception.");
+        var failure = new TelegramUpdateDecodeFailure(
+            TelegramUpdateTransport.Webhook,
+            item.UpdateId,
+            item.RawPayloadJson
+                ?? throw new InvalidOperationException("A failed Telegram update decode result did not contain raw payload evidence."),
+            item.PayloadSha256
+                ?? throw new InvalidOperationException("A failed Telegram update decode result did not contain a payload hash."),
+            exception);
+        var policy = context.RequestServices.GetService<ITelegramUpdateDecodeFailurePolicy>()
+            ?? StopTelegramUpdateDecodeFailurePolicy.Instance;
+        var decision = await policy
+            .DecideAsync(failure, context.RequestAborted)
+            .ConfigureAwait(false);
+
+        switch (decision)
+        {
+            case TelegramUpdateDecodeFailureDecision.Stop:
+                if (_logger is not null)
+                {
+                    LogUpdateDecodeStopped(
+                        _logger,
+                        exception,
+                        item.UpdateId,
+                        exception.JsonPath,
+                        exception.PayloadSha256);
+                }
+
+                return Results.StatusCode(StatusCodes.Status500InternalServerError);
+            case TelegramUpdateDecodeFailureDecision.Skip:
+                if (_logger is not null)
+                {
+                    LogUpdateDecodeSkipped(
+                        _logger,
+                        item.UpdateId,
+                        exception.JsonPath,
+                        exception.PayloadSha256);
+                }
+
+                return Results.Ok();
+            default:
+                throw new InvalidOperationException(
+                    $"Unsupported Telegram update decode failure decision '{decision}'.");
+        }
+    }
+
+    private static bool TryGetUpdateId(JsonElement payload, out long updateId)
+    {
+        updateId = default;
+        return payload.ValueKind == JsonValueKind.Object &&
+            payload.TryGetProperty("update_id", out var updateIdElement) &&
+            updateIdElement.ValueKind == JsonValueKind.Number &&
+            updateIdElement.TryGetInt64(out updateId);
     }
 
     private bool IsSecretTokenAccepted(HttpContext context)
@@ -173,4 +250,25 @@ internal sealed partial class TelegramRawWebhookEndpoint
         Exception exception,
         long updateId,
         string updateType);
+
+    [LoggerMessage(
+        EventId = UpdateDecodeStoppedEventId,
+        Level = LogLevel.Error,
+        Message = "Telegram webhook update decoding failed and the request was rejected for retry. update_id={UpdateId}, json_path={JsonPath}, payload_sha256={PayloadSha256}.")]
+    private static partial void LogUpdateDecodeStopped(
+        ILogger logger,
+        Exception exception,
+        long updateId,
+        string? jsonPath,
+        string payloadSha256);
+
+    [LoggerMessage(
+        EventId = UpdateDecodeSkippedEventId,
+        Level = LogLevel.Warning,
+        Message = "Telegram webhook update decoding failed and the update was acknowledged by application policy. update_id={UpdateId}, json_path={JsonPath}, payload_sha256={PayloadSha256}.")]
+    private static partial void LogUpdateDecodeSkipped(
+        ILogger logger,
+        long updateId,
+        string? jsonPath,
+        string payloadSha256);
 }

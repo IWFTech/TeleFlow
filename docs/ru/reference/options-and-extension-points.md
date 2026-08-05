@@ -131,10 +131,14 @@ services.AddTelegramRequestExecutor<MyExecutor>();
 services.AddTelegramHttpTransport(httpClient);
 services.AddTelegramJsonOptions(options => { });
 services.AddDeepLinkPayloadSerializer<MySerializer>();
+services.AddTelegramUpdateDecodeFailurePolicy<MyDurableQuarantinePolicy>();
 ```
 
 ## Рекомендации
 
 Replacement points заменяй только когда приложение владеет behavior. Держи defaults, пока нет конкретной причины их менять.
+
+Default update decode policy возвращает `Stop`. Заменяй её только когда
+приложение умеет durable-сохранить raw update до возврата `Skip`.
 
 Lifecycle tasks используй для короткой startup/shutdown работы приложения. Не регистрируй `ITeleFlowStartupTask` или `ITeleFlowShutdownTask` напрямую в `IServiceCollection`: TeleFlow не использует direct lifecycle service registrations и понятно падает во время application build. Регистрируй tasks через `AddTeleFlowStartupTask<TTask>()` и `AddTeleFlowShutdownTask<TTask>()`, чтобы они создавались из правильного lifecycle scope.

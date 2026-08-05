@@ -6,9 +6,13 @@ using TeleFlow.Telegram.Schema.Types;
 
 namespace TeleFlow.Telegram;
 
+/// <summary>
+/// Receives Telegram updates through getUpdates, preserves acknowledgement ordering, and applies explicit schema decode failure policy.
+/// </summary>
 public sealed partial class TelegramLongPollingClient : ITelegramLongPollingClient
 {
-    private readonly ITelegramClient _telegramClient;
+    private readonly ITelegramUpdateBatchReceiver _batchReceiver;
+    private readonly ITelegramUpdateDecodeFailurePolicy _decodeFailurePolicy;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<TelegramLongPollingClient> _logger;
 
@@ -16,12 +20,27 @@ public sealed partial class TelegramLongPollingClient : ITelegramLongPollingClie
         ITelegramClient telegramClient,
         TimeProvider timeProvider,
         ILoggerFactory loggerFactory)
+        : this(
+            new TypedTelegramUpdateBatchReceiver(telegramClient),
+            StopTelegramUpdateDecodeFailurePolicy.Instance,
+            timeProvider,
+            loggerFactory)
     {
-        ArgumentNullException.ThrowIfNull(telegramClient);
+    }
+
+    internal TelegramLongPollingClient(
+        ITelegramUpdateBatchReceiver batchReceiver,
+        ITelegramUpdateDecodeFailurePolicy decodeFailurePolicy,
+        TimeProvider timeProvider,
+        ILoggerFactory loggerFactory)
+    {
+        ArgumentNullException.ThrowIfNull(batchReceiver);
+        ArgumentNullException.ThrowIfNull(decodeFailurePolicy);
         ArgumentNullException.ThrowIfNull(timeProvider);
         ArgumentNullException.ThrowIfNull(loggerFactory);
 
-        _telegramClient = telegramClient;
+        _batchReceiver = batchReceiver;
+        _decodeFailurePolicy = decodeFailurePolicy;
         _timeProvider = timeProvider;
         _logger = loggerFactory.CreateLogger<TelegramLongPollingClient>();
     }
@@ -70,7 +89,15 @@ public sealed partial class TelegramLongPollingClient : ITelegramLongPollingClie
 
             for (var index = 0; index < updates.Count; index++)
             {
-                var update = updates[index];
+                var item = updates[index];
+                if (!item.IsSuccess)
+                {
+                    await HandleDecodeFailureAsync(item, cancellationToken).ConfigureAwait(false);
+                    offset = item.UpdateId + 1;
+                    continue;
+                }
+
+                var update = item.Update!;
 
                 if (_logger.IsEnabled(LogLevel.Debug))
                 {
@@ -142,7 +169,15 @@ public sealed partial class TelegramLongPollingClient : ITelegramLongPollingClie
 
             for (var index = 0; index < updates.Count; index++)
             {
-                var update = updates[index];
+                var item = updates[index];
+                if (!item.IsSuccess)
+                {
+                    await HandleDecodeFailureAsync(item, cancellationToken).ConfigureAwait(false);
+                    offset = item.UpdateId + 1;
+                    continue;
+                }
+
+                var update = item.Update!;
                 var polledUpdate = new TelegramPolledUpdate(update, index + 1, updates.Count);
 
                 var debugEnabled = _logger.IsEnabled(LogLevel.Debug);
@@ -179,7 +214,7 @@ public sealed partial class TelegramLongPollingClient : ITelegramLongPollingClie
         }
     }
 
-    private async Task<IReadOnlyList<Update>> GetUpdatesBatchAsync(
+    private async Task<IReadOnlyList<TelegramUpdateDecodeResult>> GetUpdatesBatchAsync(
         long? offset,
         TelegramRawLongPollingOptions options,
         IReadOnlyList<string>? allowedUpdates,
@@ -192,7 +227,7 @@ public sealed partial class TelegramLongPollingClient : ITelegramLongPollingClie
         {
             try
             {
-                var updates = await _telegramClient.SendAsync(
+                var updates = await _batchReceiver.ReceiveAsync(
                     new GetUpdates
                     {
                         Offset = offset,
@@ -249,6 +284,48 @@ public sealed partial class TelegramLongPollingClient : ITelegramLongPollingClie
             : new ValueTask(Task.Delay(delay, _timeProvider, cancellationToken));
     }
 
+    private async ValueTask HandleDecodeFailureAsync(
+        TelegramUpdateDecodeResult item,
+        CancellationToken cancellationToken)
+    {
+        var exception = item.Exception
+            ?? throw new InvalidOperationException("A failed Telegram update decode result did not contain an exception.");
+        var failure = new TelegramUpdateDecodeFailure(
+            TelegramUpdateTransport.LongPolling,
+            item.UpdateId,
+            item.RawPayloadJson
+                ?? throw new InvalidOperationException("A failed Telegram update decode result did not contain raw payload evidence."),
+            item.PayloadSha256
+                ?? throw new InvalidOperationException("A failed Telegram update decode result did not contain a payload hash."),
+            exception);
+
+        var decision = await _decodeFailurePolicy
+            .DecideAsync(failure, cancellationToken)
+            .ConfigureAwait(false);
+
+        switch (decision)
+        {
+            case TelegramUpdateDecodeFailureDecision.Stop:
+                LogUpdateDecodeStopped(
+                    _logger,
+                    exception,
+                    item.UpdateId,
+                    exception.JsonPath,
+                    exception.PayloadSha256);
+                throw exception;
+            case TelegramUpdateDecodeFailureDecision.Skip:
+                LogUpdateDecodeSkipped(
+                    _logger,
+                    item.UpdateId,
+                    exception.JsonPath,
+                    exception.PayloadSha256);
+                return;
+            default:
+                throw new InvalidOperationException(
+                    $"Unsupported Telegram update decode failure decision '{decision}'.");
+        }
+    }
+
     private static string[]? CopyAllowedUpdates(IReadOnlyList<string>? allowedUpdates)
     {
         return allowedUpdates is null ? null : allowedUpdates.ToArray();
@@ -258,7 +335,6 @@ public sealed partial class TelegramLongPollingClient : ITelegramLongPollingClie
     {
         return exception is TelegramNetworkException or
             TelegramServerException or
-            TelegramDecodeException or
             TelegramRetryAfterException;
     }
 
@@ -338,4 +414,25 @@ public sealed partial class TelegramLongPollingClient : ITelegramLongPollingClie
         ILogger logger,
         Exception exception,
         TimeSpan delay);
+
+    [LoggerMessage(
+        EventId = 9,
+        Level = LogLevel.Error,
+        Message = "Telegram update decoding failed and polling was stopped. update_id={UpdateId}, json_path={JsonPath}, payload_sha256={PayloadSha256}.")]
+    private static partial void LogUpdateDecodeStopped(
+        ILogger logger,
+        Exception exception,
+        long updateId,
+        string? jsonPath,
+        string payloadSha256);
+
+    [LoggerMessage(
+        EventId = 10,
+        Level = LogLevel.Warning,
+        Message = "Telegram update decoding failed and the update was skipped by application policy. update_id={UpdateId}, json_path={JsonPath}, payload_sha256={PayloadSha256}.")]
+    private static partial void LogUpdateDecodeSkipped(
+        ILogger logger,
+        long updateId,
+        string? jsonPath,
+        string payloadSha256);
 }

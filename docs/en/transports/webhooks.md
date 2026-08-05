@@ -62,6 +62,12 @@ builder.Services.AddWebhook(options =>
 
 The raw webhook layer validates the secret token and can reject invalid payloads.
 
+Malformed JSON and payloads without a valid `update_id` are rejected as invalid
+requests. If a syntactically valid Telegram update cannot be decoded by the
+installed schema, `ITelegramUpdateDecodeFailurePolicy` decides delivery:
+`Stop` returns `500`, while `Skip` returns `200` only after the policy completes.
+The default is `Stop`; use `Skip` only after durable quarantine.
+
 ## Deployment Checklist
 
 - Configure Telegram webhook URL outside the request handler.

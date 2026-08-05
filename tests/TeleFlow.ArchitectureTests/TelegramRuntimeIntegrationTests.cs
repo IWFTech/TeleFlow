@@ -1738,6 +1738,23 @@ public sealed class TelegramRuntimeIntegrationTests
     }
 
     [Fact]
+    public async Task Client_DirectGetUpdatesCall_RemainsStrictAndAtomicOnSchemaFailure()
+    {
+        var handler = new RecordingHttpMessageHandler(
+            CreateJsonResponse(
+                """{"ok":true,"result":[{"update_id":1,"message":{"message_id":10,"date":"invalid","chat":{"id":100,"type":"private"}}}]}"""));
+
+        using var serviceProvider = CreateTelegramServiceProvider(handler);
+        var client = serviceProvider.GetRequiredService<ITelegramClient>();
+
+        var exception = await Assert.ThrowsAsync<TelegramDecodeException>(() =>
+            client.SendAsync(new GetUpdates()));
+
+        Assert.Equal("getUpdates", exception.MethodName);
+        Assert.Single(handler.Requests);
+    }
+
+    [Fact]
     public async Task Executor_WrapsHttpRequestExceptionAsNetworkException()
     {
         var handler = new ThrowingHttpMessageHandler(
@@ -1966,7 +1983,7 @@ public sealed class TelegramRuntimeIntegrationTests
             new TelegramNetworkException("network failed", methodName: "getUpdates"),
             new TelegramServerException("server failed", methodName: "getUpdates", httpStatusCode: 502),
             Array.Empty<Update>(),
-            new TelegramDecodeException("decode failed", methodName: "getUpdates"),
+            new TelegramNetworkException("network failed after recovery", methodName: "getUpdates"),
             new List<Update> { CreateMessageUpdate(1) });
         var dispatcher = new RecordingDispatcher(cancelAfter: 1);
         using var cancellation = new CancellationTokenSource();
@@ -1994,6 +2011,29 @@ public sealed class TelegramRuntimeIntegrationTests
             timeProvider.Delays);
         Assert.Equal([1L], dispatcher.UpdateIds);
         Assert.Equal(5, telegramClient.GetUpdatesRequests.Count);
+    }
+
+    [Fact]
+    public async Task LongPolling_DoesNotRetryDeterministicGetUpdatesDecodeFailure()
+    {
+        var telegramClient = new SequencedTelegramClient(
+            new TelegramDecodeException("decode failed", methodName: "getUpdates"));
+        var dispatcher = new RecordingDispatcher();
+        using var cancellation = new CancellationTokenSource();
+
+        var application = CreateTelegramApplication(
+            services =>
+            {
+                services.AddSingleton<ITelegramClient>(telegramClient);
+                services.AddSingleton<IUpdateDispatcher>(dispatcher);
+            },
+            services => services.AddLongPolling(),
+            cancellation);
+
+        await Assert.ThrowsAsync<TelegramDecodeException>(() => application.RunAsync(cancellation.Token));
+
+        Assert.Empty(dispatcher.UpdateIds);
+        Assert.Single(telegramClient.GetUpdatesRequests);
     }
 
     [Fact]
