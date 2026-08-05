@@ -10,14 +10,13 @@
 
 #nullable enable
 using System.Text.Json.Serialization;
-using System.Text.Json;
 
 namespace TeleFlow.Telegram.Schema.Types;
 
 /// <summary>
 /// An item of a list.
 /// </summary>
-public sealed partial record class RichBlockListItem : IJsonOnDeserialized
+public sealed partial record class RichBlockListItem
 {
     /// <summary>
     /// Label of the item
@@ -57,18 +56,8 @@ public sealed partial record class RichBlockListItem : IJsonOnDeserialized
     /// <summary>
     /// For ordered lists, the type of the item label; must be one of “a” for lowercase letters, “A” for uppercase letters, “i” for lowercase Roman numerals, “I” for uppercase Roman numerals, or “1” for decimal numbers
     /// </summary>
-    public const string? TypeValue = "one";
-
     [JsonPropertyName("type")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? Type { get; init; } = TypeValue;
+    public string? Type { get; init; }
 
-    void IJsonOnDeserialized.OnDeserialized()
-    {
-        if (Type != TypeValue)
-        {
-            throw new JsonException("Expected Telegram literal 'one' for field 'type' on RichBlockListItem.");
-        }
-
-    }
 }
