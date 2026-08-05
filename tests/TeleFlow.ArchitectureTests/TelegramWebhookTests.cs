@@ -83,6 +83,95 @@ public sealed class TelegramWebhookTests
     }
 
     [Fact]
+    public async Task RawWebhookEndpoint_DefaultPolicyReturnsServerErrorForSchemaDecodeFailure()
+    {
+        var invoked = false;
+        await using var app = CreateApp((_, _, _) =>
+        {
+            invoked = true;
+            return Task.FromResult<IResult>(Results.Ok());
+        });
+
+        var context = await InvokeAsync(app, PoisonUpdateJson);
+
+        Assert.Equal(StatusCodes.Status500InternalServerError, context.Response.StatusCode);
+        Assert.False(invoked);
+    }
+
+    [Fact]
+    public async Task RawWebhookEndpoint_SkipPolicyAcknowledgesOnlyAfterFailureHandlerSucceeds()
+    {
+        var invoked = false;
+        var failurePolicy = new RecordingDecodeFailurePolicy(TelegramUpdateDecodeFailureDecision.Skip);
+        await using var app = CreateApp(
+            (_, _, _) =>
+            {
+                invoked = true;
+                return Task.FromResult<IResult>(Results.Ok());
+            },
+            decodeFailurePolicy: failurePolicy);
+
+        var context = await InvokeAsync(app, PoisonUpdateJson);
+
+        var failure = Assert.Single(failurePolicy.Failures);
+        Assert.Equal(StatusCodes.Status200OK, context.Response.StatusCode);
+        Assert.Equal(TelegramUpdateTransport.Webhook, failure.Transport);
+        Assert.Equal(124, failure.UpdateId);
+        Assert.Contains("\"date\": \"invalid\"", failure.RawPayloadJson, StringComparison.Ordinal);
+        Assert.False(invoked);
+    }
+
+    [Fact]
+    public async Task RawWebhookEndpoint_DecodeFailureDiagnosticsDoNotLogRawPayload()
+    {
+        var loggerFactory = new RecordingLoggerFactory();
+        var failurePolicy = new RecordingDecodeFailurePolicy(TelegramUpdateDecodeFailureDecision.Skip);
+        await using var app = CreateApp(
+            static (_, _, _) => Task.FromResult<IResult>(Results.Ok()),
+            loggerFactory: loggerFactory,
+            decodeFailurePolicy: failurePolicy);
+
+        var context = await InvokeAsync(app, PoisonUpdateJson);
+
+        Assert.Equal(StatusCodes.Status200OK, context.Response.StatusCode);
+        var warning = Assert.Single(
+            loggerFactory.Entries,
+            entry => entry.Level == LogLevel.Warning && entry.EventId.Id == 7);
+        Assert.Contains("update_id=124", warning.Message, StringComparison.Ordinal);
+        Assert.Contains("payload_sha256=", warning.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("private poison payload", warning.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RawWebhookEndpoint_DoesNotAcknowledgeWhenFailureHandlerThrows()
+    {
+        var failurePolicy = new ThrowingDecodeFailurePolicy();
+        await using var app = CreateApp(
+            static (_, _, _) => Task.FromResult<IResult>(Results.Ok()),
+            decodeFailurePolicy: failurePolicy);
+        var context = CreateHttpContext(app.Services, PoisonUpdateJson);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            GetSingleRoute(app).RequestDelegate!(context));
+
+        Assert.Equal("quarantine failed", exception.Message);
+    }
+
+    [Fact]
+    public async Task RawWebhookEndpoint_MissingUpdateIdRemainsInvalidPayload()
+    {
+        var failurePolicy = new RecordingDecodeFailurePolicy(TelegramUpdateDecodeFailureDecision.Skip);
+        await using var app = CreateApp(
+            static (_, _, _) => Task.FromResult<IResult>(Results.Ok()),
+            decodeFailurePolicy: failurePolicy);
+
+        var context = await InvokeAsync(app, "{\"message\":{}}");
+
+        Assert.Equal(StatusCodes.Status400BadRequest, context.Response.StatusCode);
+        Assert.Empty(failurePolicy.Failures);
+    }
+
+    [Fact]
     public async Task RawWebhookEndpoint_RejectsMissingSecretToken()
     {
         var invoked = false;
@@ -296,12 +385,28 @@ public sealed class TelegramWebhookTests
         }
         """;
 
+    private const string PoisonUpdateJson = """
+        {
+          "update_id": 124,
+          "message": {
+            "message_id": 1,
+            "date": "invalid",
+            "chat": {
+              "id": 42,
+              "type": "private"
+            },
+            "text": "private poison payload"
+          }
+        }
+        """;
+
     private static WebApplication CreateApp(
         TelegramRawWebhookHandler handler,
         string path = "/telegram",
         FakeTelegramClient? bot = null,
         Action<TelegramRawWebhookOptions>? configure = null,
-        RecordingLoggerFactory? loggerFactory = null)
+        RecordingLoggerFactory? loggerFactory = null,
+        ITelegramUpdateDecodeFailurePolicy? decodeFailurePolicy = null)
     {
         var builder = WebApplication.CreateBuilder();
 
@@ -309,6 +414,11 @@ public sealed class TelegramWebhookTests
         if (loggerFactory is not null)
         {
             builder.Services.AddSingleton<ILoggerFactory>(loggerFactory);
+        }
+
+        if (decodeFailurePolicy is not null)
+        {
+            builder.Services.AddSingleton(decodeFailurePolicy);
         }
 
         var app = builder.Build();
@@ -368,6 +478,31 @@ public sealed class TelegramWebhookTests
             CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
+        }
+    }
+
+    private sealed class RecordingDecodeFailurePolicy(TelegramUpdateDecodeFailureDecision decision) :
+        ITelegramUpdateDecodeFailurePolicy
+    {
+        public List<TelegramUpdateDecodeFailure> Failures { get; } = [];
+
+        public ValueTask<TelegramUpdateDecodeFailureDecision> DecideAsync(
+            TelegramUpdateDecodeFailure failure,
+            CancellationToken cancellationToken = default)
+        {
+            Failures.Add(failure);
+            return ValueTask.FromResult(decision);
+        }
+    }
+
+    private sealed class ThrowingDecodeFailurePolicy : ITelegramUpdateDecodeFailurePolicy
+    {
+        public ValueTask<TelegramUpdateDecodeFailureDecision> DecideAsync(
+            TelegramUpdateDecodeFailure failure,
+            CancellationToken cancellationToken = default)
+        {
+            return ValueTask.FromException<TelegramUpdateDecodeFailureDecision>(
+                new InvalidOperationException("quarantine failed"));
         }
     }
 }

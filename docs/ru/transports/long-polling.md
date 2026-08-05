@@ -45,6 +45,13 @@ options.AllowedUpdates = TelegramAllowedUpdates.Only(
 
 Long polling retry-ит transient `getUpdates` failures с настраиваемым backoff. Если Telegram client отдаёт `TelegramRetryAfterException`, polling ждёт Telegram-provided retry delay вместо обычной backoff delay. Handler failures не swallowing. Offset продвигается только после успешной обработки update.
 
+Transient failures здесь означают network failure, Telegram `5xx` и
+`retry_after`. Ошибки response envelope и update schema детерминированы и не
+retry-ятся. Updates из одного успешного `getUpdates` response декодируются по
+одному, поэтому приложение может durable-сохранить несовместимый update через
+`ITelegramUpdateDecodeFailurePolicy`, не теряя валидных соседей. Default policy
+останавливает polling и сохраняет offset.
+
 Точный исход acknowledgement для handled route failures, middleware failures,
 cancellation и automatic callback answers определён в
 [контракте ошибок и подтверждения update](../reference/update-failure-contract.md).

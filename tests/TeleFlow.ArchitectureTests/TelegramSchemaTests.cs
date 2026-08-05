@@ -359,6 +359,64 @@ public sealed class TelegramSchemaTests
         Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ChatMemberOwner>(invalidJson));
     }
 
+    [Theory]
+    [InlineData("a")]
+    [InlineData("A")]
+    [InlineData("i")]
+    [InlineData("I")]
+    [InlineData("1")]
+    public void RichBlockListItems_AcceptEveryDocumentedOrderedLabelType(string labelType)
+    {
+        var received = JsonSerializer.Deserialize<RichBlockListItem>(
+            $$"""{"label":"item","blocks":[],"type":"{{labelType}}"}""");
+        var outgoing = JsonSerializer.Deserialize<InputRichBlockListItem>(
+            $$"""{"blocks":[],"type":"{{labelType}}"}""");
+
+        Assert.Equal(labelType, received?.Type);
+        Assert.Equal(labelType, outgoing?.Type);
+    }
+
+    [Fact]
+    public void UpdateDto_DeserializesRichMessageOrderedListFromProductionIncidentShape()
+    {
+        const string json = """
+            {
+              "update_id": 12925763,
+              "message": {
+                "message_id": 114031,
+                "date": 1785956961,
+                "chat": {
+                  "id": -1003805009428,
+                  "type": "supergroup"
+                },
+                "rich_message": {
+                  "blocks": [
+                    {
+                      "type": "list",
+                      "items": [
+                        {
+                          "label": "1",
+                          "blocks": [],
+                          "value": 1,
+                          "type": "1"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+            """;
+
+        var update = JsonSerializer.Deserialize<Update>(json);
+        var list = Assert.IsType<RichBlockList>(Assert.Single(update!.Message!.RichMessage!.Blocks).RichBlockList);
+        var item = Assert.Single(list.Items);
+
+        Assert.Equal(12925763, update.UpdateId);
+        Assert.Equal("1", item.Type);
+        Assert.Equal(1, item.Value);
+    }
+
     [Fact]
     public void SendMessage_SerializesTelegramWireNames()
     {

@@ -38,7 +38,8 @@ public sealed class PublicSurfaceTests
         "TeleFlow.Telegram.TelegramMigrateToChatException",
         "TeleFlow.Telegram.TelegramServerException",
         "TeleFlow.Telegram.TelegramNetworkException",
-        "TeleFlow.Telegram.TelegramDecodeException"
+        "TeleFlow.Telegram.TelegramDecodeException",
+        "TeleFlow.Telegram.TelegramUpdateDecodeException"
     ];
 
     private static readonly string[] Phase1bClientTypeNames =
@@ -52,7 +53,11 @@ public sealed class PublicSurfaceTests
         "TeleFlow.Telegram.TelegramDeepLinks",
         "TeleFlow.Telegram.IDeepLinkPayloadSerializer",
         "TeleFlow.Telegram.Base64UrlJsonDeepLinkPayloadSerializer",
-        "TeleFlow.Telegram.TelegramClientServiceCollectionExtensions"
+        "TeleFlow.Telegram.TelegramClientServiceCollectionExtensions",
+        "TeleFlow.Telegram.ITelegramUpdateDecodeFailurePolicy",
+        "TeleFlow.Telegram.TelegramUpdateDecodeFailure",
+        "TeleFlow.Telegram.TelegramUpdateDecodeFailureDecision",
+        "TeleFlow.Telegram.TelegramUpdateTransport"
     ];
 
     private static readonly string[] Phase1cClientTypeNames =

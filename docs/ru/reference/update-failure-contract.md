@@ -47,10 +47,61 @@ execution**. Auto-answer выполняется после handler, но это 
 | Error handler вернул `Unhandled`, и дальше никто не обработал ошибку | Ошибка идёт выше | Offset не продвигается | Ошибка endpoint идёт выше |
 | Handler, middleware или error handler бросил exception | Ошибка идёт выше | Offset не продвигается | Ошибка endpoint идёт выше |
 | Application cancellation | Обработка останавливается | Offset не продвигается | Работает cancellation semantics |
+| Валидный update не соответствует установленной schema, а decode policy вернула `Stop` | Обработка не начинается | Offset не продвигается; polling останавливается без retry детерминированной ошибки | `500 Internal Server Error` |
+| Decode policy durable-сохранила update в quarantine и вернула `Skip` | Обработка не начинается | Offset продвигается через этот update | `200 OK` |
+| Decode policy бросила exception или была отменена | Ошибка идёт выше | Offset не продвигается | Ошибка endpoint идёт выше |
 
 Для webhook TeleFlow не подделывает успешный response после unhandled failure.
 ASP.NET Core возвращает failure response, а решение о повторной доставке остаётся
 у механизма доставки Telegram.
+
+## Ошибки Декодирования Telegram Schema
+
+Long polling и webhooks передают синтаксически валидные Telegram updates в одну
+`ITelegramUpdateDecodeFailurePolicy`. Default policy возвращает `Stop`.
+TeleFlow не считает update одноразовым только потому, что установленная schema
+не смогла его понять.
+
+Приложение, для которого availability важнее остановки, может заменить policy:
+
+```csharp
+public sealed class DurableQuarantinePolicy(IUpdateQuarantineStore store)
+    : ITelegramUpdateDecodeFailurePolicy
+{
+    public async ValueTask<TelegramUpdateDecodeFailureDecision> DecideAsync(
+        TelegramUpdateDecodeFailure failure,
+        CancellationToken ct)
+    {
+        await store.UpsertAsync(
+            failure.UpdateId,
+            failure.Transport,
+            failure.RawPayloadJson,
+            failure.PayloadSha256,
+            failure.Exception.JsonPath,
+            ct);
+
+        return TelegramUpdateDecodeFailureDecision.Skip;
+    }
+}
+
+services.AddTelegramUpdateDecodeFailurePolicy<DurableQuarantinePolicy>();
+```
+
+`Skip` явно подтверждает потерю update. Возвращай его только после commit raw
+payload и diagnostics в durable storage. Если quarantine storage недоступен,
+бросай exception или возвращай `Stop`: transport не подтвердит update. Policy
+может быть вызвана повторно до следующего polling request, который подтвердит
+новый offset, поэтому запись должна быть idempotent по bot identity и
+`update_id`.
+
+Raw payload может содержать текст сообщения, данные пользователя, платёжные
+данные или callback content. TeleFlow никогда не пишет его в логи. Application
+quarantine должна иметь подходящие access control и retention.
+
+Невалидный webhook JSON и payload без корректного `update_id` считаются
+невалидными запросами и не попадают в эту policy. Прямой generated-вызов вроде
+`ITelegramClient.SendAsync(new GetUpdates())` тоже остаётся строгим и атомарным;
+изоляция отдельных updates принадлежит long-polling и webhook transport paths.
 
 ## Error Handlers Это Явная Точка Recovery
 
@@ -101,6 +152,10 @@ bounded `429 retry_after`. Raw `getUpdates` имеет собственный tr
 потому что это idempotent read. TeleFlow не retry-ит вслепую все outgoing
 `network` или `5xx` failures: Telegram мог уже выполнить write до того, как
 client потерял response.
+
+Ошибки response envelope и schema decode детерминированы и не считаются
+transient polling failures. Повторная десериализация тех же байтов с
+exponential backoff не исправляет устаревшую schema.
 
 ## Middleware Это Другая Граница
 

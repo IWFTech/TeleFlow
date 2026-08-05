@@ -58,7 +58,7 @@ public sealed class RawLongPollingTests
             new TelegramNetworkException("network failed", methodName: "getUpdates"),
             new TelegramServerException("server failed", methodName: "getUpdates", httpStatusCode: 502),
             Array.Empty<Update>(),
-            new TelegramDecodeException("decode failed", methodName: "getUpdates"),
+            new TelegramNetworkException("network failed after recovery", methodName: "getUpdates"),
             new List<Update> { CreateMessageUpdate(1) });
         using var cancellation = new CancellationTokenSource();
         var polling = CreatePollingClient(telegramClient, timeProvider);
@@ -86,6 +86,90 @@ public sealed class RawLongPollingTests
             [TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(1)],
             timeProvider.Delays);
         Assert.Equal([null, null, null, null, null], telegramClient.GetUpdatesRequests.Select(static request => request.Offset).ToArray());
+    }
+
+    [Fact]
+    public async Task RunAsync_DefaultPolicyStopsOnIndividualDecodeFailureWithoutRetry()
+    {
+        var transport = new QueueTelegramTransport(CreatePoisonBatchResponse());
+        using var provider = CreateTransportProvider(transport);
+        var polling = provider.GetRequiredService<ITelegramLongPollingClient>();
+        var processedUpdates = new List<long>();
+
+        var exception = await Assert.ThrowsAsync<TelegramUpdateDecodeException>(() =>
+            polling.RunAsync((update, _) =>
+            {
+                processedUpdates.Add(update.UpdateId);
+                return Task.CompletedTask;
+            }));
+
+        Assert.Equal(2, exception.UpdateId);
+        Assert.Equal("$.message.date", exception.JsonPath);
+        Assert.Equal([1L], processedUpdates);
+        Assert.Single(transport.Requests);
+    }
+
+    [Fact]
+    public async Task RunAsync_SkipPolicyProcessesRemainingUpdatesAndAdvancesOffset()
+    {
+        var transport = new QueueTelegramTransport(
+            CreatePoisonBatchResponse(),
+            CreateBatchResponse(CreateUpdateJson(4)));
+        using var provider = CreateTransportProvider<SkippingDecodeFailurePolicy>(transport);
+        var polling = provider.GetRequiredService<ITelegramLongPollingClient>();
+        var failurePolicy = provider.GetRequiredService<ITelegramUpdateDecodeFailurePolicy>();
+        var processedUpdates = new List<long>();
+        using var cancellation = new CancellationTokenSource();
+
+        await polling.RunAsync((update, _) =>
+        {
+            processedUpdates.Add(update.UpdateId);
+            if (update.UpdateId == 4)
+            {
+                cancellation.Cancel();
+            }
+
+            return Task.CompletedTask;
+        }, cancellationToken: cancellation.Token);
+
+        var failure = Assert.Single(Assert.IsType<SkippingDecodeFailurePolicy>(failurePolicy).Failures);
+        Assert.Equal(TelegramUpdateTransport.LongPolling, failure.Transport);
+        Assert.Equal(2, failure.UpdateId);
+        Assert.Contains("\"date\":\"invalid\"", failure.RawPayloadJson, StringComparison.Ordinal);
+        Assert.Matches("^[0-9a-f]{64}$", failure.PayloadSha256);
+        Assert.Equal([1L, 3L, 4L], processedUpdates);
+        Assert.Equal(2, transport.Requests.Count);
+        Assert.Contains(
+            "\"offset\":4",
+            Assert.IsType<TelegramJsonTransportContent>(transport.Requests[1].Content).Json,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RunAsync_DoesNotAdvanceOffsetWhenDecodeFailureHandlerThrows()
+    {
+        var transport = new QueueTelegramTransport(CreatePoisonOnlyResponse());
+        using var provider = CreateTransportProvider<ThrowingDecodeFailurePolicy>(transport);
+        var polling = provider.GetRequiredService<ITelegramLongPollingClient>();
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            polling.RunAsync(static (_, _) => Task.CompletedTask));
+
+        Assert.Equal("quarantine failed", exception.Message);
+        Assert.Single(transport.Requests);
+    }
+
+    [Fact]
+    public async Task RunAsync_DoesNotAdvanceOffsetWhenDecodeFailurePolicyCancels()
+    {
+        var transport = new QueueTelegramTransport(CreatePoisonOnlyResponse());
+        using var provider = CreateTransportProvider<CancellingDecodeFailurePolicy>(transport);
+        var polling = provider.GetRequiredService<ITelegramLongPollingClient>();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            polling.RunAsync(static (_, _) => Task.CompletedTask));
+
+        Assert.Single(transport.Requests);
     }
 
     [Fact]
@@ -178,6 +262,19 @@ public sealed class RawLongPollingTests
         Assert.IsType<TelegramLongPollingClient>(provider.GetRequiredService<ITelegramLongPollingClient>());
     }
 
+    [Fact]
+    public void AddTelegramLongPollingClient_ProvidesFailClosedPolicyForManuallyRegisteredClient()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<ITelegramClient>(new SequencedTelegramClient(Array.Empty<Update>()));
+        services.AddTelegramLongPollingClient();
+
+        using var provider = services.BuildServiceProvider();
+
+        Assert.NotNull(provider.GetRequiredService<ITelegramUpdateDecodeFailurePolicy>());
+        Assert.IsType<TelegramLongPollingClient>(provider.GetRequiredService<ITelegramLongPollingClient>());
+    }
+
     private static TelegramLongPollingClient CreatePollingClient(
         ITelegramClient telegramClient,
         TimeProvider? timeProvider = null)
@@ -186,6 +283,51 @@ public sealed class RawLongPollingTests
             telegramClient,
             timeProvider ?? TimeProvider.System,
             NullLoggerFactory.Instance);
+    }
+
+    private static ServiceProvider CreateTransportProvider(QueueTelegramTransport transport)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<ITelegramTransport>(transport);
+        services.AddTelegramClient(options => options.Token = "test-token");
+        services.AddTelegramLongPollingClient();
+        return services.BuildServiceProvider();
+    }
+
+    private static ServiceProvider CreateTransportProvider<TFailurePolicy>(QueueTelegramTransport transport)
+        where TFailurePolicy : class, ITelegramUpdateDecodeFailurePolicy
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<ITelegramTransport>(transport);
+        services.AddTelegramClient(options => options.Token = "test-token");
+        services.AddTelegramUpdateDecodeFailurePolicy<TFailurePolicy>();
+        services.AddTelegramLongPollingClient();
+        return services.BuildServiceProvider();
+    }
+
+    private static TelegramTransportResponse CreatePoisonBatchResponse()
+    {
+        return CreateBatchResponse(
+            CreateUpdateJson(1),
+            CreateUpdateJson(2, "\"invalid\""),
+            CreateUpdateJson(3));
+    }
+
+    private static TelegramTransportResponse CreatePoisonOnlyResponse()
+    {
+        return CreateBatchResponse(CreateUpdateJson(2, "\"invalid\""));
+    }
+
+    private static TelegramTransportResponse CreateBatchResponse(params string[] updates)
+    {
+        return new TelegramTransportResponse(
+            200,
+            $"{{\"ok\":true,\"result\":[{string.Join(',', updates)}]}}");
+    }
+
+    private static string CreateUpdateJson(long updateId, string date = "0")
+    {
+        return $"{{\"update_id\":{updateId},\"message\":{{\"message_id\":10,\"date\":{date},\"chat\":{{\"id\":100,\"type\":\"private\"}},\"text\":\"hello\"}}}}";
     }
 
     private static Update CreateMessageUpdate(long updateId)
@@ -233,6 +375,56 @@ public sealed class RawLongPollingTests
             return result is Exception exception
                 ? Task.FromException<TResult>(exception)
                 : Task.FromResult((TResult)result);
+        }
+    }
+
+    private sealed class QueueTelegramTransport(params TelegramTransportResponse[] responses) : ITelegramTransport
+    {
+        private readonly Queue<TelegramTransportResponse> _responses = new(responses);
+
+        public List<TelegramTransportRequest> Requests { get; } = [];
+
+        public Task<TelegramTransportResponse> SendAsync(
+            TelegramTransportRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            Requests.Add(request);
+            return Task.FromResult(_responses.Dequeue());
+        }
+    }
+
+    private sealed class SkippingDecodeFailurePolicy : ITelegramUpdateDecodeFailurePolicy
+    {
+        public List<TelegramUpdateDecodeFailure> Failures { get; } = [];
+
+        public ValueTask<TelegramUpdateDecodeFailureDecision> DecideAsync(
+            TelegramUpdateDecodeFailure failure,
+            CancellationToken cancellationToken = default)
+        {
+            Failures.Add(failure);
+            return ValueTask.FromResult(TelegramUpdateDecodeFailureDecision.Skip);
+        }
+    }
+
+    private sealed class ThrowingDecodeFailurePolicy : ITelegramUpdateDecodeFailurePolicy
+    {
+        public ValueTask<TelegramUpdateDecodeFailureDecision> DecideAsync(
+            TelegramUpdateDecodeFailure failure,
+            CancellationToken cancellationToken = default)
+        {
+            return ValueTask.FromException<TelegramUpdateDecodeFailureDecision>(
+                new InvalidOperationException("quarantine failed"));
+        }
+    }
+
+    private sealed class CancellingDecodeFailurePolicy : ITelegramUpdateDecodeFailurePolicy
+    {
+        public ValueTask<TelegramUpdateDecodeFailureDecision> DecideAsync(
+            TelegramUpdateDecodeFailure failure,
+            CancellationToken cancellationToken = default)
+        {
+            return ValueTask.FromException<TelegramUpdateDecodeFailureDecision>(
+                new OperationCanceledException(cancellationToken));
         }
     }
 

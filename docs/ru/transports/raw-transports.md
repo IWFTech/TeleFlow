@@ -55,6 +55,14 @@ await foreach (var polled in polling.GetUpdatesAsync(cancellationToken: cancella
 
 `RunAsync(...)` продвигает Telegram offset только после успешного завершения handler. `GetUpdatesAsync(...)` продвигает offset только после `AcknowledgeAsync(...)`. Если update не acknowledged, TeleFlow падает до запроса следующего update. Это защищает от случайной потери updates в queue/gateway сценариях.
 
+Default schema-decode policy работает fail-closed: валидный Telegram update,
+который не удалось декодировать, останавливает polling и не попадает в
+transient retry backoff. Для availability gateway зарегистрируй
+`ITelegramUpdateDecodeFailurePolicy`, которая durable-сохраняет
+`RawPayloadJson` и возвращает `Skip` только после успешного commit. Одна policy
+работает для raw/framework long polling и webhooks. Полный контракт описан в
+[контракте ошибок update](../reference/update-failure-contract.md).
+
 ## Raw webhooks
 
 Установка:
@@ -78,6 +86,11 @@ app.MapTelegramWebhook(
         options.SecretToken = webhookSecret;
     });
 ```
+
+Невалидный JSON отклоняется как invalid request. Синтаксически валидный update
+с известным `update_id`, но несовместимой schema попадает в общую decode policy.
+`Stop` возвращает `500`; `Skip` возвращает `200` только после успешного
+завершения policy.
 
 ## Raw vs framework
 
