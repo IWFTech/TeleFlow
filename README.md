@@ -57,6 +57,14 @@ The documentation is available as a GitHub Pages site and as Markdown in this re
 - Raw long polling and raw webhook packages for applications that do not want the handler framework.
 - Normal .NET dependency injection for handlers, services, repositories, filters, storage, and infrastructure.
 
+## Built with TeleFlow
+
+[Миддл Пассаж](https://t.me/the_slaver_bot) is a real Telegram multiplayer game built with TeleFlow.
+
+The bot is actively used by real players across multiple Telegram chats. TeleFlow is used throughout the application as its Telegram bot framework and infrastructure layer.
+
+This is a production application rather than a framework demo or benchmark project.
+
 ## Install
 
 TeleFlow is currently published as a public alpha. Use `--prerelease` or pin an exact alpha version.
