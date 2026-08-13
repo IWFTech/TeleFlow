@@ -3,6 +3,7 @@ using System.Xml.Linq;
 using TeleFlow.Telegram.Schema.Abstractions;
 using TeleFlow.Telegram.Schema.Constants;
 using TeleFlow.Telegram.Schema.Methods;
+using TeleFlow.Telegram.Schema.Responses;
 using TeleFlow.Telegram.Schema.Types;
 using IoFile = System.IO.File;
 
@@ -579,6 +580,24 @@ public sealed class TelegramSchemaTests
             var contents = IoFile.ReadAllText(file);
             Assert.DoesNotContain("public object Value { get; }", contents, StringComparison.Ordinal);
         }
+    }
+
+    [Fact]
+    public void TelegramApiResponse_ValueTypeResult_RoundTripsWithoutInvalidJsonMetadata()
+    {
+        var response = new TelegramApiResponse<bool>
+        {
+            Ok = true,
+            Result = false
+        };
+
+        var json = JsonSerializer.Serialize(response, JsonOptions);
+        var roundTrip = JsonSerializer.Deserialize<TelegramApiResponse<bool>>(json, JsonOptions);
+
+        Assert.Equal("{\"ok\":true,\"result\":false}", json);
+        Assert.NotNull(roundTrip);
+        Assert.True(roundTrip.Ok);
+        Assert.False(roundTrip.Result);
     }
 
     [Fact]

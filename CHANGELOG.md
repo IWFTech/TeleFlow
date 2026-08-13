@@ -4,6 +4,14 @@ TeleFlow follows SemVer for published NuGet packages and documented public behav
 
 ## Unreleased
 
+## 1.0.0-alpha.14.1 - 2026-08-14
+
+### Fixed
+
+- Fixed `TelegramApiResponse<TResult>` JSON metadata for value-type results such as `bool`. Raw response envelopes now serialize and deserialize valid `false` results without `System.Text.Json` rejecting the generated contract.
+
+This hotfix remains aligned with Telegram Bot API 10.2. Update all TeleFlow packages used by an application to `1.0.0-alpha.14.1` together.
+
 ## 1.0.0-alpha.14 - 2026-08-05
 
 ### Added

@@ -22,7 +22,6 @@ public sealed partial record class TelegramApiResponse<TResult>
     public required bool Ok { get; init; }
 
     [JsonPropertyName("result")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public TResult? Result { get; init; }
 
     [JsonPropertyName("description")]
