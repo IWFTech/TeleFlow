@@ -4,9 +4,16 @@ TeleFlow follows SemVer for published NuGet packages and documented public behav
 
 ## Unreleased
 
+## 1.0.0-alpha.15 - 2026-09-05
+
 ### Changed
 
 - Updated the generated Telegram schema and client surface to Telegram Bot API 10.3.
+- Added the Bot API 10.3 types, methods, unions, and update families to the generated packages.
+- Updated ephemeral message sending to use the typed `ephemeral_message_parameters` contract.
+- Added classification for `stopped_message_generation` updates while preserving chat identity.
+
+This release is aligned with Telegram Bot API 10.3. Update all TeleFlow packages used by an application to `1.0.0-alpha.15` together.
 
 ## 1.0.0-alpha.14.1 - 2026-08-14
 
