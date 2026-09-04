@@ -2691,8 +2691,8 @@ public sealed class TelegramRuntimeIntegrationTests
 
         var sendMessage = Assert.IsType<SendMessage>(fakeClient.Methods.Single());
         Assert.Equal(100L, sendMessage.ChatId.Integer);
-        Assert.Equal(7L, sendMessage.ReceiverUserId);
-        Assert.Null(sendMessage.CallbackQueryId);
+        Assert.Equal(7L, sendMessage.EphemeralMessageParameters?.ReceiverUserId);
+        Assert.Null(sendMessage.EphemeralMessageParameters?.CallbackQueryId);
         Assert.Equal(30L, message.EphemeralMessageId);
         Assert.Equal(7L, message.ReceiverUserId);
     }
@@ -2739,7 +2739,7 @@ public sealed class TelegramRuntimeIntegrationTests
         await context.GetMessageContext().Message.ReplyAsync("reply");
 
         var sendMessage = Assert.IsType<SendMessage>(fakeClient.Methods.Single());
-        Assert.Equal(7L, sendMessage.ReceiverUserId);
+        Assert.Equal(7L, sendMessage.EphemeralMessageParameters?.ReceiverUserId);
         Assert.Null(sendMessage.ReplyParameters?.MessageId);
         Assert.Equal(12L, sendMessage.ReplyParameters?.EphemeralMessageId);
     }
@@ -2810,7 +2810,7 @@ public sealed class TelegramRuntimeIntegrationTests
         await context.GetMessageContext().Message.ReplyPhotoAsync(InputFileString.From("file-id"));
 
         var sendPhoto = Assert.IsType<SendPhoto>(fakeClient.Methods.Single());
-        Assert.Equal(7L, sendPhoto.ReceiverUserId);
+        Assert.Equal(7L, sendPhoto.EphemeralMessageParameters?.ReceiverUserId);
         Assert.Null(sendPhoto.ReplyParameters?.MessageId);
         Assert.Equal(12L, sendPhoto.ReplyParameters?.EphemeralMessageId);
     }
@@ -3847,8 +3847,8 @@ public sealed class TelegramRuntimeIntegrationTests
 
         var sendMessage = Assert.IsType<SendMessage>(fakeClient.Methods.Single());
         Assert.Equal(100L, sendMessage.ChatId.Integer);
-        Assert.Equal(5L, sendMessage.ReceiverUserId);
-        Assert.Equal("callback-1", sendMessage.CallbackQueryId);
+        Assert.Equal(5L, sendMessage.EphemeralMessageParameters?.ReceiverUserId);
+        Assert.Equal("callback-1", sendMessage.EphemeralMessageParameters?.CallbackQueryId);
     }
 
     [Fact]

@@ -253,7 +253,7 @@ public sealed partial class MessageActions
         return _context.Bot.SendMessageAsync(
             IntegerString.From(_context.TelegramChat.Id),
             text,
-            receiverUserId: reply.ReceiverUserId,
+            ephemeralMessageParameters: reply.EphemeralMessageParameters,
             replyParameters: reply.ReplyParameters,
             replyMarkup: replyMarkup,
             parseMode: parseMode,
@@ -307,8 +307,8 @@ public sealed partial class MessageActions
             cancellationToken: ResolveCancellationToken(cancellationToken));
     }
 
-    private (ReplyParameters? ReplyParameters, long? ReceiverUserId) CreateReplyConfiguration(
-        bool replyToCurrentMessage)
+    private (ReplyParameters? ReplyParameters, EphemeralMessageParameters? EphemeralMessageParameters)
+        CreateReplyConfiguration(bool replyToCurrentMessage)
     {
         if (!replyToCurrentMessage)
         {
@@ -320,7 +320,7 @@ public sealed partial class MessageActions
             var target = EphemeralMessageTargetResolver.ResolveForEphemeralMessage(_context.TelegramMessage);
             return (
                 new ReplyParameters { EphemeralMessageId = ephemeralMessageId },
-                target.ReceiverUserId);
+                new EphemeralMessageParameters { ReceiverUserId = target.ReceiverUserId });
         }
 
         return (new ReplyParameters { MessageId = _context.TelegramMessage.MessageId }, null);

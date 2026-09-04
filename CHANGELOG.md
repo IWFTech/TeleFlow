@@ -4,6 +4,10 @@ TeleFlow follows SemVer for published NuGet packages and documented public behav
 
 ## Unreleased
 
+### Changed
+
+- Updated the generated Telegram schema and client surface to Telegram Bot API 10.3.
+
 ## 1.0.0-alpha.14.1 - 2026-08-14
 
 ### Fixed
