@@ -686,6 +686,7 @@ public sealed class TelegramReflectionAssemblyRegistrationTests
             CanPromoteMembers = true,
             CanChangeInfo = true,
             CanInviteUsers = true,
+            CanSendWelcomeMessages = true,
             CanPostStories = true,
             CanEditStories = true,
             CanDeleteStories = true

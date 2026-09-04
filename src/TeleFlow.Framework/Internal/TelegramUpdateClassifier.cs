@@ -120,6 +120,14 @@ internal static class TelegramUpdateClassifier
             return new TelegramUpdateClassification("subscription", subscription.User, null);
         }
 
+        if (update.StoppedMessageGeneration is { } stoppedMessageGeneration)
+        {
+            return new TelegramUpdateClassification(
+                "stopped_message_generation",
+                null,
+                stoppedMessageGeneration.Chat);
+        }
+
         return new TelegramUpdateClassification("unknown", null, null);
     }
 

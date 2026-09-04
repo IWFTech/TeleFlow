@@ -29,8 +29,11 @@ public static class TelegramClientEphemeralMessageExtensions
         var message = await bot.SendMessageAsync(
             target.ChatId,
             text,
-            receiverUserId: target.ReceiverUserId,
-            callbackQueryId: callbackQueryId,
+            ephemeralMessageParameters: new EphemeralMessageParameters
+            {
+                ReceiverUserId = target.ReceiverUserId,
+                CallbackQueryId = callbackQueryId
+            },
             replyMarkup: replyMarkup is null ? null : ReplyMarkup.From(replyMarkup),
             cancellationToken: cancellationToken).ConfigureAwait(false);
 

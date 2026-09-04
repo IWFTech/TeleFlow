@@ -151,7 +151,16 @@ public sealed class TelegramUpdateClassificationTests
                 },
                 "subscription",
                 user,
-                null)
+                null),
+            Case(
+                new Update
+                {
+                    UpdateId = 12,
+                    StoppedMessageGeneration = Object<MessageGenerationStopped>((nameof(MessageGenerationStopped.Chat), chat))
+                },
+                "stopped_message_generation",
+                null,
+                chat)
         };
 
         foreach (var testCase in cases)

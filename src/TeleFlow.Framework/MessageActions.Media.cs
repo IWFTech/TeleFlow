@@ -540,7 +540,7 @@ public sealed partial class MessageActions
             photo,
             caption: caption,
             parseMode: parseMode,
-            receiverUserId: reply.ReceiverUserId,
+            ephemeralMessageParameters: reply.EphemeralMessageParameters,
             replyParameters: reply.ReplyParameters,
             replyMarkup: replyMarkup,
             cancellationToken: ResolveCancellationToken(cancellationToken));
@@ -561,7 +561,7 @@ public sealed partial class MessageActions
             document,
             caption: caption,
             parseMode: parseMode,
-            receiverUserId: reply.ReceiverUserId,
+            ephemeralMessageParameters: reply.EphemeralMessageParameters,
             replyParameters: reply.ReplyParameters,
             replyMarkup: replyMarkup,
             cancellationToken: ResolveCancellationToken(cancellationToken));
@@ -582,7 +582,7 @@ public sealed partial class MessageActions
             video,
             caption: caption,
             parseMode: parseMode,
-            receiverUserId: reply.ReceiverUserId,
+            ephemeralMessageParameters: reply.EphemeralMessageParameters,
             replyParameters: reply.ReplyParameters,
             replyMarkup: replyMarkup,
             cancellationToken: ResolveCancellationToken(cancellationToken));
@@ -603,7 +603,7 @@ public sealed partial class MessageActions
             animation,
             caption: caption,
             parseMode: parseMode,
-            receiverUserId: reply.ReceiverUserId,
+            ephemeralMessageParameters: reply.EphemeralMessageParameters,
             replyParameters: reply.ReplyParameters,
             replyMarkup: replyMarkup,
             cancellationToken: ResolveCancellationToken(cancellationToken));
@@ -624,7 +624,7 @@ public sealed partial class MessageActions
             audio,
             caption: caption,
             parseMode: parseMode,
-            receiverUserId: reply.ReceiverUserId,
+            ephemeralMessageParameters: reply.EphemeralMessageParameters,
             replyParameters: reply.ReplyParameters,
             replyMarkup: replyMarkup,
             cancellationToken: ResolveCancellationToken(cancellationToken));
@@ -645,7 +645,7 @@ public sealed partial class MessageActions
             voice,
             caption: caption,
             parseMode: parseMode,
-            receiverUserId: reply.ReceiverUserId,
+            ephemeralMessageParameters: reply.EphemeralMessageParameters,
             replyParameters: reply.ReplyParameters,
             replyMarkup: replyMarkup,
             cancellationToken: ResolveCancellationToken(cancellationToken));
@@ -662,7 +662,7 @@ public sealed partial class MessageActions
         return _context.Bot.SendStickerAsync(
             CurrentChatId,
             sticker,
-            receiverUserId: reply.ReceiverUserId,
+            ephemeralMessageParameters: reply.EphemeralMessageParameters,
             replyParameters: reply.ReplyParameters,
             replyMarkup: replyMarkup,
             cancellationToken: ResolveCancellationToken(cancellationToken));
@@ -679,7 +679,7 @@ public sealed partial class MessageActions
         return _context.Bot.SendVideoNoteAsync(
             CurrentChatId,
             videoNote,
-            receiverUserId: reply.ReceiverUserId,
+            ephemeralMessageParameters: reply.EphemeralMessageParameters,
             replyParameters: reply.ReplyParameters,
             replyMarkup: replyMarkup,
             cancellationToken: ResolveCancellationToken(cancellationToken));
